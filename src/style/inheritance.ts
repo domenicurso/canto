@@ -53,22 +53,9 @@ function clonePadding(padding: BoxPadding): BoxPadding {
 
 function cloneResolvedStyle(style: ResolvedStyle): ResolvedStyle {
   return {
+    ...createDefaultStyle(),
     ...cloneSnapshot(style),
-    padding: clonePadding(style.padding),
-    width: style.width,
-    height: style.height,
-    minWidth: style.minWidth,
-    minHeight: style.minHeight,
-    maxWidth: style.maxWidth,
-    maxHeight: style.maxHeight,
-    xAlign: style.xAlign,
-    yAlign: style.yAlign,
-    gap: style.gap,
     textWrap: style.textWrap,
-    scrollX: style.scrollX,
-    scrollY: style.scrollY,
-    scrollbarBackground: style.scrollbarBackground,
-    scrollbarForeground: style.scrollbarForeground,
   };
 }
 
