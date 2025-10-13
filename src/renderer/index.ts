@@ -67,8 +67,8 @@ export class Renderer {
     height?: number;
     terminal?: TerminalDriver;
   }) {
-    this.width = options?.width ?? 80;
-    this.height = options?.height ?? 24;
+    this.width = options?.width ?? process.stdout.columns;
+    this.height = options?.height ?? process.stdout.rows;
     this.terminal = options?.terminal ?? new TerminalDriver();
   }
 
