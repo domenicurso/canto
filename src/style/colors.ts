@@ -54,7 +54,7 @@ export function colorToAnsi(
 
   if (typeof color === "string") {
     if (NAMED_COLORS[color] !== undefined) {
-      return `\u001B[${NAMED_COLORS[color]}m`;
+      return `\u001B[${NAMED_COLORS[color] + (type === "foreground" ? 0 : 10)}m`;
     }
     if (color.startsWith("#")) {
       const parsed = parseHex(color as `#${string}`);

@@ -2,6 +2,7 @@ import { performance } from "node:perf_hooks";
 
 import { constraints } from "../layout";
 import { createDefaultStyle, DEFAULT_STYLE_SNAPSHOT } from "../style";
+import { resetAnsi, styleToAnsi } from "./ansi";
 import { CellBuffer } from "./buffer";
 import { diffCells } from "./diff";
 import { TerminalDriver } from "./terminal";
@@ -59,6 +60,7 @@ export class Renderer {
   private readonly buffer = new CellBuffer();
   private width: number;
   private height: number;
+  private initialCursorPosition: { x: number; y: number } | null = null;
 
   constructor(options?: {
     width?: number;
@@ -72,6 +74,15 @@ export class Renderer {
 
   render(root: Node, options: RenderOptions): RenderResult {
     const start = performance.now();
+
+    // Setup terminal for rendering
+    if (options.mode === "fullscreen") {
+      this.terminal.write("\x1b[2J\x1b[H\x1b[?25l"); // Clear screen, move to home, hide cursor
+      this.initialCursorPosition = null; // Reset for fullscreen mode
+    } else {
+      this.terminal.write("\x1b[?25l"); // Hide cursor only
+    }
+
     const context = this.createContext(options);
 
     const inherited = createDefaultStyle();
@@ -100,6 +111,33 @@ export class Renderer {
     this.buffer.cells.clear();
     for (const [key, cell] of cells.entries()) {
       this.buffer.cells.set(key, cell);
+    }
+
+    // Write diff to terminal
+    for (const write of diff.writes) {
+      if (write.cell) {
+        const styleAnsi = styleToAnsi(write.cell.style);
+        // Move cursor to position, apply styling, write character, then reset
+        this.terminal.write(
+          `\x1b[${write.y + 1};${write.x + 1}H${styleAnsi}${write.cell.char}${resetAnsi()}`,
+        );
+      }
+    }
+
+    // Position cursor appropriately after rendering
+    if (options.mode === "auto") {
+      // Move cursor to the line after the rendered content
+      const cursorY = context.origin.y + layoutSize.height;
+      const cursorX = context.origin.x;
+      this.terminal.write(`\x1b[${cursorY + 1};${cursorX + 1}H`);
+    }
+
+    // Show cursor and flush to stdout
+    this.terminal.write("\x1b[?25h"); // Show cursor
+
+    const output = this.terminal.flush();
+    if (output) {
+      process.stdout.write(output);
     }
 
     const usedRect: Rect = {
@@ -135,12 +173,17 @@ export class Renderer {
   clear(): void {
     this.buffer.clear();
     this.terminal.clear();
+    this.terminal.invalidateCursorCache();
+    this.initialCursorPosition = null;
+    process.stdout.write("\x1b[2J\x1b[H"); // Clear screen and move cursor to home
   }
 
   resize(width: number, height: number): void {
     this.width = width;
     this.height = height;
     this.buffer.bounds = { x: 0, y: 0, width, height };
+    this.terminal.invalidateCursorCache();
+    this.initialCursorPosition = null;
   }
 
   private createContext(options: RenderOptions): LayoutContext {
@@ -164,8 +207,23 @@ export class Renderer {
       case "auto": {
         const maxWidth = options.maxWidth ?? this.width;
         const maxHeight = options.maxHeight ?? this.height;
+
+        let origin: { x: number; y: number };
+        if (options.x !== undefined && options.y !== undefined) {
+          // Use explicitly provided coordinates
+          origin = { x: options.x, y: options.y };
+        } else if (this.initialCursorPosition) {
+          // Use cached initial cursor position for subsequent renders
+          origin = this.initialCursorPosition;
+        } else {
+          // Get current cursor position for first render
+          const cursorPos = this.terminal.getCurrentCursorPosition();
+          this.initialCursorPosition = cursorPos;
+          origin = cursorPos;
+        }
+
         return {
-          origin: { x: options.x ?? 0, y: options.y ?? 0 },
+          origin,
           constraints: constraints(0, maxWidth, 0, maxHeight),
           viewport: { width: maxWidth, height: maxHeight },
         };
