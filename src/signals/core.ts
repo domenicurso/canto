@@ -79,6 +79,16 @@ const pendingSignals = new Set<SignalBase<any>>();
 const pendingEffects = new Set<ReactiveEffect>();
 const pendingComputeds = new Set<ComputedSignalImpl<any>>();
 
+// Global signal change listeners
+const globalSignalChangeListeners = new Set<() => void>();
+
+export function addGlobalSignalChangeListener(
+  listener: () => void,
+): () => void {
+  globalSignalChangeListeners.add(listener);
+  return () => globalSignalChangeListeners.delete(listener);
+}
+
 function scheduleSignal(signal: SignalBase<any>): void {
   pendingSignals.add(signal);
   flushIfNeeded();
@@ -132,6 +142,17 @@ function flushPending(): void {
   pendingEffects.clear();
   for (const effect of effects) {
     effect.flush();
+  }
+
+  // Notify global listeners after all signal changes have been flushed
+  if (signals.length > 0 || computeds.length > 0 || effects.length > 0) {
+    for (const listener of globalSignalChangeListeners) {
+      try {
+        listener();
+      } catch (e) {
+        // Ignore errors in listeners to prevent cascading failures
+      }
+    }
   }
 }
 

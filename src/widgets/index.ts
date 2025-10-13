@@ -6,7 +6,6 @@ export { Text, TextNode } from "./text";
 export { Input, InputNode } from "./input";
 export { Textarea, TextareaNode } from "./textarea";
 export { Scrollable, ScrollableNode } from "./scrollable";
-export { Conditional, ConditionalNode } from "./conditional";
 export type {
   ContainerProps,
   InputProps,

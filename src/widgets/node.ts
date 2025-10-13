@@ -23,6 +23,8 @@ export interface Node {
   props(map?: Partial<PropsMap>): Node;
   bind(signal: Signal<string>): Node;
   key(key: string): Node;
+  when(condition: Signal<boolean>): Node;
+  unless(condition: Signal<boolean>): Node;
   _measure(constraints: Constraints, inherited: ResolvedStyle): Size;
   _layout(origin: Point, size: Size): void;
   _paint(): PaintResult;
@@ -96,6 +98,14 @@ export abstract class BaseNode<TProps extends object = object> implements Node {
   key(key: string): this {
     this.keyValue = key;
     return this;
+  }
+
+  when(condition: Signal<boolean>): ConditionalWrapper {
+    return new ConditionalWrapper(condition, this, false);
+  }
+
+  unless(condition: Signal<boolean>): ConditionalWrapper {
+    return new ConditionalWrapper(condition, this, true);
   }
 
   protected setChildren(children: Node[]): void {
@@ -289,5 +299,103 @@ export abstract class BaseNode<TProps extends object = object> implements Node {
       width: Math.max(size.width - (padding.left + padding.right), 0),
       height: Math.max(size.height - (padding.top + padding.bottom), 0),
     };
+  }
+}
+
+class ConditionalWrapper implements Node {
+  readonly id: string;
+  readonly type: NodeType;
+  readonly children: readonly Node[];
+
+  private condition: Signal<boolean>;
+  private wrappedNode: Node;
+  private isUnless: boolean;
+  private conditionSubscription: Disposer | null = null;
+
+  constructor(condition: Signal<boolean>, node: Node, isUnless: boolean) {
+    this.condition = condition;
+    this.wrappedNode = node;
+    this.isUnless = isUnless;
+    this.id = `conditional_${node.id}`;
+    this.type = node.type;
+    this.children = node.children;
+    this.setupConditionSubscription();
+  }
+
+  private setupConditionSubscription(): void {
+    if (this.conditionSubscription) {
+      this.conditionSubscription();
+    }
+    this.conditionSubscription = this.condition.subscribe(() => {
+      this._invalidate();
+    });
+  }
+
+  private shouldRender(): boolean {
+    const conditionValue = this.condition.get();
+    return this.isUnless ? !conditionValue : conditionValue;
+  }
+
+  style(map?: Partial<StyleMap>): Node {
+    this.wrappedNode.style(map);
+    return this;
+  }
+
+  props(map?: Partial<PropsMap>): Node {
+    this.wrappedNode.props(map);
+    return this;
+  }
+
+  bind(signal: Signal<string>): Node {
+    this.wrappedNode.bind(signal);
+    return this;
+  }
+
+  key(key: string): Node {
+    this.wrappedNode.key(key);
+    return this;
+  }
+
+  when(condition: Signal<boolean>): Node {
+    return new ConditionalWrapper(condition, this, false);
+  }
+
+  unless(condition: Signal<boolean>): Node {
+    return new ConditionalWrapper(condition, this, true);
+  }
+
+  _measure(constraints: Constraints, inherited: ResolvedStyle): Size {
+    if (!this.shouldRender()) {
+      return { width: 0, height: 0 };
+    }
+    return this.wrappedNode._measure(constraints, inherited);
+  }
+
+  _layout(origin: Point, size: Size): void {
+    if (!this.shouldRender()) {
+      return;
+    }
+    this.wrappedNode._layout(origin, size);
+  }
+
+  _paint(): PaintResult {
+    if (!this.shouldRender()) {
+      return { spans: [], rects: [] };
+    }
+    return this.wrappedNode._paint();
+  }
+
+  _invalidate(rect?: Rect): void {
+    this.wrappedNode._invalidate(rect);
+  }
+
+  dispose(): void {
+    if (this.conditionSubscription) {
+      this.conditionSubscription();
+      this.conditionSubscription = null;
+    }
+    if (this.wrappedNode instanceof BaseNode) {
+      this.wrappedNode.dispose();
+    }
   }
 }

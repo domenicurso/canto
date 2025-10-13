@@ -1,13 +1,4 @@
-import {
-  computed,
-  Conditional,
-  HStack,
-  Renderer,
-  state,
-  Surface,
-  Text,
-  VStack,
-} from "..";
+import { computed, HStack, Renderer, state, Surface, Text, VStack } from "..";
 
 // Simple conditional rendering demo
 const showMessage = state(true);
@@ -20,7 +11,9 @@ const app = VStack(
     bold: true,
   }),
 
-  Text("Press 'm' to toggle message, 'c' to toggle choices, 'space' to increment counter").style({
+  Text(
+    "Press 'm' to toggle message, 'c' to toggle choices, 'space' to increment counter",
+  ).style({
     faint: true,
   }),
 
@@ -38,46 +31,46 @@ const app = VStack(
   Text(""),
 
   // Conditionally rendered message
-  Conditional(showMessage).setChild(
-    VStack(
-      Text("✨ This message is conditionally rendered!").style({
-        foreground: "magenta",
-        bold: true,
-      }),
-      Text("It only appears when showMessage is true").style({
-        foreground: "brightBlack",
-        italic: true,
-      }),
-    ).style({ gap: 0 }),
-  ),
+  VStack(
+    Text("✨ This message is conditionally rendered!").style({
+      foreground: "magenta",
+      bold: true,
+    }),
+    Text("It only appears when showMessage is true").style({
+      foreground: "brightBlack",
+      italic: true,
+    }),
+  )
+    .style({ gap: 0 })
+    .when(showMessage),
 
   // Conditionally rendered choices
-  Conditional(showChoices).setChild(
-    VStack(
-      Text("📋 Available Options:").style({
-        foreground: "blue",
-        bold: true,
-      }),
-      Text("  → Option A").style({ foreground: "yellow" }),
-      Text("  → Option B").style({ foreground: "yellow" }),
-      Text("  → Option C").style({ foreground: "yellow" }),
-    ).style({ gap: 0 }),
-  ),
+  VStack(
+    Text("📋 Available Options:").style({
+      foreground: "blue",
+      bold: true,
+    }),
+    Text("  → Option A").style({ foreground: "yellow" }),
+    Text("  → Option B").style({ foreground: "yellow" }),
+    Text("  → Option C").style({ foreground: "yellow" }),
+  )
+    .style({ gap: 0 })
+    .when(showChoices),
 
   // Conditionally rendered based on counter
-  Conditional(computed(() => counter.get() >= 5)).setChild(
-    Text("🎉 Counter reached 5 or more!").style({
+  Text("🎉 Counter reached 5 or more!")
+    .style({
       foreground: "brightGreen",
       bold: true,
-    }),
-  ),
+    })
+    .when(computed(() => counter.get() >= 5)),
 
-  Conditional(computed(() => counter.get() >= 10)).setChild(
-    Text("🔥 Counter reached 10 or more! Amazing!").style({
+  Text("🔥 Counter reached 10 or more! Amazing!")
+    .style({
       foreground: "brightRed",
       bold: true,
-    }),
-  ),
+    })
+    .when(computed(() => counter.get() >= 10)),
 
   Text(""),
 
@@ -85,12 +78,12 @@ const app = VStack(
   HStack(
     Text("Status:").style({ foreground: "brightCyan" }),
     Text("Message").style({
-      foreground: computed(() => showMessage.get() ? "green" : "red"),
+      foreground: computed(() => (showMessage.get() ? "green" : "red")),
       bold: computed(() => showMessage.get()),
     }),
     Text("|"),
     Text("Choices").style({
-      foreground: computed(() => showChoices.get() ? "green" : "red"),
+      foreground: computed(() => (showChoices.get() ? "green" : "red")),
       bold: computed(() => showChoices.get()),
     }),
   ).style({ gap: 1 }),

@@ -198,7 +198,7 @@ The style system provides comprehensive visual and layout control with inheritan
 ```ts
 interface StyleMap {
   // Color and appearance
-  foreground?: Color | Signal<Color>;
+  color?: Color | Signal<Color>;
   background?: Color | Signal<Color>;
   bold?: boolean | Signal<boolean>;
   italic?: boolean | Signal<boolean>;

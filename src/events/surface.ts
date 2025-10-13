@@ -1,6 +1,8 @@
 import readline from "readline";
 
 import { Renderer } from "../renderer";
+import { effect } from "../signals";
+import { addGlobalSignalChangeListener, StateSignal } from "../signals/core";
 import { BaseNode, InputNode, ScrollableNode, TextareaNode } from "../widgets";
 import { AsyncChannel, EventBus } from "./bus";
 import { collectFocusableNodes } from "./focus";
@@ -9,6 +11,7 @@ import { isScrollEvent } from "./mouse";
 import { Key } from "./types";
 
 import type { RenderOptions, RenderResult } from "../renderer";
+import type { EffectHandle } from "../signals";
 import type { Node } from "../widgets";
 import type {
   Event,
@@ -30,6 +33,10 @@ export class Surface {
   private bus = new EventBus<SurfaceEventEnvelope>();
   private chan = new AsyncChannel<SurfaceEventEnvelope>();
   private middlewares: SurfaceMiddleware[] = [];
+  private renderEffect: EffectHandle | null = null;
+  private renderTrigger = new StateSignal(0);
+  private globalSignalListener: (() => void) | null = null;
+  private isUpdatingTrigger = false;
 
   constructor(root: Node, renderer: Renderer) {
     this.root = root;
@@ -193,7 +200,57 @@ export class Surface {
     return result;
   }
 
+  startRender(options?: RenderOptions): () => void {
+    // Stop any existing render loop
+    this.stopRender();
+
+    // Store render options for re-rendering
+    const renderOptions = options ?? { mode: "auto" };
+
+    // Set up global signal change listener
+    this.globalSignalListener = addGlobalSignalChangeListener(() => {
+      // Prevent infinite loop by ignoring our own renderTrigger updates
+      if (this.isUpdatingTrigger) {
+        return;
+      }
+      // Trigger re-render by updating the trigger signal
+      this.isUpdatingTrigger = true;
+      this.renderTrigger.set(this.renderTrigger.get() + 1);
+      this.isUpdatingTrigger = false;
+    });
+
+    // Create an effect that depends on our render trigger
+    this.renderEffect = effect(() => {
+      // Access the trigger signal to make this effect depend on it
+      this.renderTrigger.get();
+
+      // Call render
+      this.render(renderOptions);
+
+      // Also refresh focusables to ensure we track any new nodes
+      this.refresh();
+    });
+
+    // Do initial render
+    this.renderTrigger.set(this.renderTrigger.get() + 1);
+
+    // Return a function to stop the render loop
+    return () => this.stopRender();
+  }
+
+  stopRender(): void {
+    if (this.globalSignalListener) {
+      this.globalSignalListener();
+      this.globalSignalListener = null;
+    }
+    if (this.renderEffect) {
+      this.renderEffect.dispose();
+      this.renderEffect = null;
+    }
+  }
+
   dispose(): void {
+    this.stopRender();
     if (this.focused) {
       this.focused.blur();
     }

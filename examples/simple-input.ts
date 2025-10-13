@@ -21,4 +21,4 @@ const app = VStack(
 const renderer = new Renderer();
 const surface = new Surface(app, renderer);
 
-setInterval(() => surface.render({ mode: "auto" }), 16);
+surface.startRender();

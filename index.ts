@@ -15,7 +15,6 @@ export {
   Input,
   Textarea,
   Scrollable,
-  Conditional,
 } from "./src/widgets";
 export type {
   Node,
