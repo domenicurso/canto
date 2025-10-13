@@ -1,0 +1,292 @@
+import { batch, isSignal } from "../signals";
+import { createDefaultStyle, resolveStyle } from "../style";
+
+import type { Constraints } from "../layout";
+import type { Signal } from "../signals";
+import type { ResolvedStyle, StyleMap, StyleSnapshot } from "../style";
+import type { LayoutRect, PaintResult, Point, Rect, Size } from "../types";
+import type { PropsMap } from "./props";
+
+export type NodeType =
+  | "VStack"
+  | "HStack"
+  | "Text"
+  | "Input"
+  | "Textarea"
+  | "Scrollable";
+
+export interface Node {
+  readonly type: NodeType;
+  readonly children: readonly Node[];
+  readonly id: string;
+  style(map?: Partial<StyleMap>): Node;
+  props(map?: Partial<PropsMap>): Node;
+  bind(signal: Signal<string>): Node;
+  key(key: string): Node;
+  _measure(constraints: Constraints, inherited: ResolvedStyle): Size;
+  _layout(origin: Point, size: Size): void;
+  _paint(): PaintResult;
+  _invalidate(rect?: Rect): void;
+}
+
+let nodeId = 0;
+
+type Disposer = () => void;
+
+export abstract class BaseNode<TProps extends object = object> implements Node {
+  readonly id: string;
+  readonly type: NodeType;
+  protected _children: Node[];
+  protected styleDefinition: Partial<StyleMap> = {};
+  protected propsDefinition: Partial<TProps> = {};
+  protected styleSubscriptions: Disposer[] = [];
+  protected propsSubscriptions: Disposer[] = [];
+  protected binding: Signal<string> | null = null;
+  protected bindingSubscription: Disposer | null = null;
+  protected keyValue: string | null = null;
+  protected resolvedStyle: ResolvedStyle = createDefaultStyle();
+  protected layoutRect: LayoutRect = { x: 0, y: 0, width: 0, height: 0 };
+  protected contentRect: LayoutRect = { x: 0, y: 0, width: 0, height: 0 };
+  protected parent: BaseNode | null = null;
+  protected dirty = true;
+
+  protected constructor(type: NodeType, children: Node[] = []) {
+    this.id = `${type}_${nodeId++}`;
+    this.type = type;
+    this._children = [];
+    this.setChildren(children);
+  }
+
+  get children(): readonly Node[] {
+    return this._children;
+  }
+
+  style(map?: Partial<StyleMap>): this {
+    if (!map) {
+      return this;
+    }
+    Object.assign(this.styleDefinition, map);
+    this.resetStyleSubscriptions();
+    this._invalidate();
+    return this;
+  }
+
+  props(map?: Partial<TProps & PropsMap>): this {
+    if (!map) {
+      return this;
+    }
+    Object.assign(this.propsDefinition, map);
+    this.resetPropSubscriptions();
+    this._invalidate();
+    return this;
+  }
+
+  bind(signal: Signal<string>): this {
+    this.binding = signal;
+    if (this.bindingSubscription) {
+      this.bindingSubscription();
+    }
+    this.bindingSubscription = signal.subscribe(() => {
+      this._invalidate();
+    });
+    this._invalidate();
+    return this;
+  }
+
+  key(key: string): this {
+    this.keyValue = key;
+    return this;
+  }
+
+  protected setChildren(children: Node[]): void {
+    this._children = children;
+    for (const child of this._children) {
+      if (child instanceof BaseNode) {
+        child.parent = this;
+      }
+    }
+  }
+
+  protected resetStyleSubscriptions(): void {
+    for (const dispose of this.styleSubscriptions) {
+      dispose();
+    }
+    this.styleSubscriptions = [];
+    for (const value of Object.values(this.styleDefinition)) {
+      if (isSignal(value)) {
+        const signal = value as Signal<any>;
+        this.styleSubscriptions.push(
+          signal.subscribe(() => this._invalidate()),
+        );
+      }
+    }
+  }
+
+  protected resetPropSubscriptions(): void {
+    for (const dispose of this.propsSubscriptions) {
+      dispose();
+    }
+    this.propsSubscriptions = [];
+    for (const value of Object.values(this.propsDefinition)) {
+      if (isSignal(value)) {
+        const signal = value as Signal<any>;
+        this.propsSubscriptions.push(
+          signal.subscribe(() => this._invalidate()),
+        );
+      }
+    }
+  }
+
+  protected resolveCurrentStyle(inherited: ResolvedStyle): ResolvedStyle {
+    this.resolvedStyle = resolveStyle(inherited, this.styleDefinition);
+    return this.resolvedStyle;
+  }
+
+  protected getResolvedStyle(): ResolvedStyle {
+    return this.resolvedStyle;
+  }
+
+  protected getStyleSnapshot(): StyleSnapshot {
+    const style = this.resolvedStyle;
+    return {
+      foreground: style.foreground ?? null,
+      background: style.background ?? null,
+      bold: style.bold,
+      italic: style.italic,
+      underline: style.underline,
+    };
+  }
+
+  protected getProp<K extends keyof TProps>(key: K): any {
+    const value = this.propsDefinition[key];
+    if (value && isSignal(value)) {
+      return (value as unknown as Signal<any>).get();
+    }
+    return value;
+  }
+
+  protected getBindingValue(): string {
+    if (this.binding) {
+      return this.binding.get();
+    }
+    return "";
+  }
+
+  protected setBindingValue(value: string): void {
+    if (this.binding) {
+      batch(() => this.binding!.set(value));
+    }
+  }
+
+  protected readPropValue(key: string): any {
+    const props = this.propsDefinition as Record<string, any>;
+    const value = props?.[key];
+    if (isSignal(value)) {
+      return value.get();
+    }
+    return value;
+  }
+
+  isFocusable(): boolean {
+    if (this.type === "Input" || this.type === "Textarea") {
+      return !Boolean(this.readPropValue("disabled"));
+    }
+    const focusable = this.readPropValue("focusable");
+    return Boolean(focusable);
+  }
+
+  triggerSubmit(): void {
+    const handler = (this.propsDefinition as Record<string, any>)?.onSubmit;
+    if (typeof handler === "function") {
+      handler();
+    }
+  }
+
+  focus(): void {
+    const handler = this.readPropValue("onFocus");
+    if (typeof handler === "function") {
+      handler();
+    }
+  }
+
+  blur(): void {
+    const handler = this.readPropValue("onBlur");
+    if (typeof handler === "function") {
+      handler();
+    }
+  }
+
+  protected notifyChange(handlerKey: keyof TProps, value: any): void {
+    const handler = this.propsDefinition[handlerKey];
+    if (typeof handler === "function") {
+      (handler as (value: any) => void)(value);
+    }
+  }
+
+  _invalidate(_rect?: Rect): void {
+    if (this.dirty) {
+      return;
+    }
+    this.dirty = true;
+    if (this.parent) {
+      this.parent._invalidate();
+    }
+  }
+
+  abstract _measure(constraints: Constraints, inherited: ResolvedStyle): Size;
+
+  abstract _layout(origin: Point, size: Size): void;
+
+  abstract _paint(): PaintResult;
+
+  protected paintChildren(): PaintResult {
+    const spans: PaintResult["spans"] = [];
+    const rects: PaintResult["rects"] = [];
+    for (const child of this._children) {
+      const result = child._paint();
+      spans.push(...result.spans);
+      rects.push(...result.rects);
+    }
+    return { spans, rects };
+  }
+
+  dispose(): void {
+    for (const dispose of this.styleSubscriptions) {
+      dispose();
+    }
+    this.styleSubscriptions = [];
+    for (const dispose of this.propsSubscriptions) {
+      dispose();
+    }
+    this.propsSubscriptions = [];
+    if (this.bindingSubscription) {
+      this.bindingSubscription();
+      this.bindingSubscription = null;
+    }
+    for (const child of this._children) {
+      if (child instanceof BaseNode) {
+        child.dispose();
+      }
+    }
+  }
+
+  getLayoutRect(): LayoutRect {
+    return this.layoutRect;
+  }
+
+  protected updateLayoutRect(origin: Point, size: Size): void {
+    this.layoutRect = {
+      x: origin.x,
+      y: origin.y,
+      width: size.width,
+      height: size.height,
+    };
+    const padding = this.resolvedStyle.padding;
+    this.contentRect = {
+      x: origin.x + padding.left,
+      y: origin.y + padding.top,
+      width: Math.max(size.width - (padding.left + padding.right), 0),
+      height: Math.max(size.height - (padding.top + padding.bottom), 0),
+    };
+  }
+}
