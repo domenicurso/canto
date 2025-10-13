@@ -121,6 +121,11 @@ export class Renderer {
         this.terminal.write(
           `\x1b[${write.y + 1};${write.x + 1}H${styleAnsi}${write.cell.char}${resetAnsi()}`,
         );
+      } else {
+        // Clear cell by writing a space with reset styling
+        this.terminal.write(
+          `\x1b[${write.y + 1};${write.x + 1}H${resetAnsi()} ${resetAnsi()}`,
+        );
       }
     }
 
