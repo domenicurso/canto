@@ -43,6 +43,7 @@ export {
   isActivationKey,
   isNavigationKey,
   isScrollEvent,
+  Key,
 } from "./src/events";
 export type {
   Event,

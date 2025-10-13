@@ -2,9 +2,11 @@ import readline from "readline";
 
 import { Renderer } from "../renderer";
 import { BaseNode, InputNode, ScrollableNode, TextareaNode } from "../widgets";
+import { AsyncChannel, EventBus } from "./bus";
 import { collectFocusableNodes } from "./focus";
 import { isActivationKey } from "./keyboard";
 import { isScrollEvent } from "./mouse";
+import { Key } from "./types";
 
 import type { RenderOptions, RenderResult } from "../renderer";
 import type { Node } from "../widgets";
@@ -13,6 +15,8 @@ import type {
   KeyPressEvent,
   MouseEvent,
   ResizeEvent,
+  SurfaceEventEnvelope,
+  SurfaceMiddleware,
   TextInputEvent,
 } from "./types";
 
@@ -23,6 +27,9 @@ export class Surface {
   private focusedIndex = -1;
   private focused: BaseNode | null = null;
   private stdinSetup = false;
+  private bus = new EventBus<SurfaceEventEnvelope>();
+  private chan = new AsyncChannel<SurfaceEventEnvelope>();
+  private middlewares: SurfaceMiddleware[] = [];
 
   constructor(root: Node, renderer: Renderer) {
     this.root = root;
@@ -40,18 +47,76 @@ export class Surface {
   }
 
   dispatch(event: Event): boolean {
-    switch (event.type) {
-      case "KeyPress":
-        return this.handleKeyPress(event);
-      case "TextInput":
-        return this.handleTextInput(event);
-      case "Mouse":
-        return this.handleMouse(event);
-      case "Resize":
-        return this.handleResize(event);
-      default:
-        return false;
-    }
+    // PRE: broadcast and run middleware chain
+    this.emitPre(event);
+    const handled = this.runMiddleware(event, 0);
+    // POST: report final handled
+    this.emitPost(event, handled);
+    return handled;
+  }
+
+  /** Subscribe to pre/post envelopes. Returns unsubscribe. */
+  on(fn: (e: SurfaceEventEnvelope) => void) {
+    return this.bus.on(fn);
+  }
+
+  /** Convenience typed subscriptions */
+  onKey(
+    fn: (e: KeyPressEvent, phase: "pre" | "post", handled?: boolean) => void,
+  ) {
+    return this.on((env) => {
+      if (env.event.type !== "KeyPress") return;
+      env.phase === "post"
+        ? fn(env.event, "post", (env as any).handled)
+        : fn(env.event, "pre");
+    });
+  }
+
+  onText(
+    fn: (e: TextInputEvent, phase: "pre" | "post", handled?: boolean) => void,
+  ) {
+    return this.on((env) => {
+      if (env.event.type !== "TextInput") return;
+      env.phase === "post"
+        ? fn(env.event, "post", (env as any).handled)
+        : fn(env.event, "pre");
+    });
+  }
+
+  onMouse(
+    fn: (e: MouseEvent, phase: "pre" | "post", handled?: boolean) => void,
+  ) {
+    return this.on((env) => {
+      if (env.event.type !== "Mouse") return;
+      env.phase === "post"
+        ? fn(env.event, "post", (env as any).handled)
+        : fn(env.event, "pre");
+    });
+  }
+
+  onResize(
+    fn: (e: ResizeEvent, phase: "pre" | "post", handled?: boolean) => void,
+  ) {
+    return this.on((env) => {
+      if (env.event.type !== "Resize") return;
+      env.phase === "post"
+        ? fn(env.event, "post", (env as any).handled)
+        : fn(env.event, "pre");
+    });
+  }
+
+  /** Async iterator of envelopes: for await (const env of surface.events()) { ... } */
+  events(): AsyncIterable<SurfaceEventEnvelope> {
+    return this.chan;
+  }
+
+  /** Middleware: observe/transform/block before default dispatch. */
+  use(mw: SurfaceMiddleware) {
+    this.middlewares.push(mw);
+    return () => {
+      const i = this.middlewares.indexOf(mw);
+      if (i >= 0) this.middlewares.splice(i, 1);
+    };
   }
 
   focus(node: Node): boolean {
@@ -135,7 +200,47 @@ export class Surface {
     if (this.root instanceof BaseNode) {
       this.root.dispose();
     }
+    this.chan.close();
     this.cleanupStdin();
+  }
+
+  // === INTERNAL: emit helpers ===
+  private emitPre(event: Event): void {
+    const env: SurfaceEventEnvelope = { phase: "pre", event };
+    this.bus.emit(env);
+    this.chan.push(env);
+  }
+
+  private emitPost(event: Event, handled: boolean): void {
+    const env: SurfaceEventEnvelope = { phase: "post", event, handled };
+    this.bus.emit(env);
+    this.chan.push(env);
+  }
+
+  private runMiddleware(event: Event, idx: number): boolean {
+    const mw = this.middlewares[idx];
+    if (!mw) {
+      // terminal step: call the original switch-based handler
+      return this.routeEvent(event);
+    }
+    // middleware can observe/modify/block; next() continues chain
+    return mw(event, () => this.runMiddleware(event, idx + 1));
+  }
+
+  // factor out the old switch into a method
+  private routeEvent(event: Event): boolean {
+    switch (event.type) {
+      case "KeyPress":
+        return this.handleKeyPress(event);
+      case "TextInput":
+        return this.handleTextInput(event);
+      case "Mouse":
+        return this.handleMouse(event);
+      case "Resize":
+        return this.handleResize(event);
+      default:
+        return false;
+    }
   }
 
   private setupStdin(): void {
@@ -260,10 +365,10 @@ export class Surface {
 
   private handleKeyPress(event: KeyPressEvent): boolean {
     const key = event.key.toLowerCase();
-    if (key === "tab") {
+    if (key === Key.Tab) {
       return event.shift ? this.focusPrevious() : this.focusNext();
     }
-    if (key === "escape") {
+    if (key === Key.Escape) {
       this.blur();
       return true;
     }
@@ -327,14 +432,14 @@ export class Surface {
     const cmdOrCtrl = ctrl || meta;
 
     switch (key) {
-      case "backspace":
+      case Key.Backspace:
         node.backspace();
         return true;
-      case "delete":
+      case Key.Delete:
         node.delete();
         return true;
 
-      case "arrowleft":
+      case Key.ArrowLeft:
         if (cmdOrCtrl && shift) {
           node.moveCursorToStart(true);
         } else if (cmdOrCtrl) {
@@ -346,7 +451,7 @@ export class Surface {
         }
         return true;
 
-      case "arrowright":
+      case Key.ArrowRight:
         if (cmdOrCtrl && shift) {
           node.moveCursorToEnd(true);
         } else if (cmdOrCtrl) {
@@ -358,7 +463,7 @@ export class Surface {
         }
         return true;
 
-      case "arrowup":
+      case Key.ArrowUp:
         if (cmdOrCtrl && shift) {
           node.moveCursorToStart(true);
         } else if (cmdOrCtrl) {
@@ -366,7 +471,7 @@ export class Surface {
         }
         return true;
 
-      case "arrowdown":
+      case Key.ArrowDown:
         if (cmdOrCtrl && shift) {
           node.moveCursorToEnd(true);
         } else if (cmdOrCtrl) {
@@ -374,7 +479,7 @@ export class Surface {
         }
         return true;
 
-      case "home":
+      case Key.Home:
         if (shift) {
           node.moveCursorToStart(true);
         } else {
@@ -382,7 +487,7 @@ export class Surface {
         }
         return true;
 
-      case "end":
+      case Key.End:
         if (shift) {
           node.moveCursorToEnd(true);
         } else {
@@ -390,14 +495,14 @@ export class Surface {
         }
         return true;
 
-      case "a":
+      case Key.A:
         if (cmdOrCtrl) {
           node.selectAll();
           return true;
         }
         return false;
 
-      case "enter":
+      case Key.Return:
         node.submit();
         return true;
 
@@ -409,19 +514,19 @@ export class Surface {
   private handleTextareaKey(node: TextareaNode, event: KeyPressEvent): boolean {
     const key = event.key.toLowerCase();
     switch (key) {
-      case "backspace":
+      case Key.Backspace:
         node.backspace();
         return true;
-      case "delete":
+      case Key.Delete:
         node.delete();
         return true;
-      case "arrowleft":
+      case Key.ArrowLeft:
         node.moveCursor(-1);
         return true;
-      case "arrowright":
+      case Key.ArrowRight:
         node.moveCursor(1);
         return true;
-      case "enter":
+      case Key.Return:
         node.insert("\n");
         return true;
       default:

@@ -1,4 +1,5 @@
 export { Surface } from "./surface";
+export { Key } from "./types";
 export type {
   Event,
   KeyPressEvent,

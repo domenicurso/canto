@@ -1,9 +1,8 @@
-import readline from "readline";
-
 import {
   computed,
   Conditional,
   HStack,
+  Key,
   Renderer,
   state,
   Surface,
@@ -38,12 +37,11 @@ const app = VStack(
             computed(() => {
               return currentIndex.get() === index ? "→" : " ";
             }),
-          ).style({ foreground: "yellow", bold: true }),
+          ).style({ bold: true }),
           Text(choice).style({
-            foreground: "yellow",
             faint: computed(() => currentIndex.get() !== index),
           }),
-        ).style({ gap: 1 }),
+        ).style({ foreground: "yellow", gap: 1 }),
       ),
     ),
   ),
@@ -52,56 +50,38 @@ const app = VStack(
 const renderer = new Renderer();
 const surface = new Surface(app, renderer);
 
-// Remove Surface's keypress listener and set up our own
-process.stdin.removeAllListeners("keypress");
-
-// Set up our own keypress handling
-readline.emitKeypressEvents(process.stdin);
-if (process.stdin.isTTY) {
-  process.stdin.setRawMode(true);
-}
-process.stdin.resume();
-
-process.stdin.on("keypress", (_, key) => {
-  // Handle Ctrl+C
-  if (key && key.ctrl && key.name === "c") {
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(false);
-    }
-    process.stdin.pause();
-    process.stdout.write("\x1b[?25h");
-    process.exit(0);
-  }
-
-  if (!key) return;
-
-  // If prompt is complete, don't handle special keys
-  if (isComplete.get()) {
+// Use the new event extraction API to handle navigation
+surface.onKey((event, phase) => {
+  // Only handle in pre-phase and when prompt is not complete
+  if (phase !== "pre" || isComplete.get()) {
     return;
   }
 
-  switch (key.name) {
-    case "up":
+  switch (event.key) {
+    case Key.ArrowUp:
       currentIndex.set(
         (currentIndex.get() - 1 + choices.length) % choices.length,
       );
       break;
-    case "down":
+    case Key.ArrowDown:
       currentIndex.set((currentIndex.get() + 1) % choices.length);
       break;
-    case "enter":
-    case "return":
+    case Key.Return:
       const selected = choices[currentIndex.get()]!;
       selectedValue.set(selected);
       isComplete.set(true);
-
-      // Exit after showing result
-      setTimeout(() => {
-        console.log(`\nYou selected: ${selected}`);
-        process.exit(0);
-      }, 500);
-      break;
+      console.log(`You selected: ${selected}`);
+      process.exit(0);
   }
+});
+
+// Use middleware to handle global Ctrl+C gracefully
+surface.use((event, next) => {
+  if (event.type === "KeyPress" && event.ctrl && event.key === Key.C) {
+    process.stdout.write("\x1b[?25h"); // Show cursor
+    process.exit(0);
+  }
+  return next(); // Continue with normal event handling
 });
 
 // Start the prompt
