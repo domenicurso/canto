@@ -39,6 +39,7 @@ export interface StyleMap {
   bold?: StyleValue<boolean>;
   italic?: StyleValue<boolean>;
   underline?: StyleValue<boolean>;
+  faint?: StyleValue<boolean>;
 
   padding?: StyleValue<Padding>;
   paddingTop?: StyleValue<number>;
@@ -78,6 +79,7 @@ export interface StyleSnapshot {
   bold: boolean;
   italic: boolean;
   underline: boolean;
+  faint: boolean;
 }
 
 export interface ResolvedStyle extends StyleSnapshot {
@@ -104,4 +106,5 @@ export const DEFAULT_STYLE_SNAPSHOT: StyleSnapshot = {
   bold: false,
   italic: false,
   underline: false,
+  faint: false,
 };

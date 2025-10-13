@@ -154,6 +154,7 @@ export abstract class BaseNode<TProps extends object = object> implements Node {
       bold: style.bold,
       italic: style.italic,
       underline: style.underline,
+      faint: style.faint,
     };
   }
 

@@ -18,6 +18,7 @@ function cloneSnapshot(snapshot: StyleSnapshot): StyleSnapshot {
     bold: snapshot.bold,
     italic: snapshot.italic,
     underline: snapshot.underline,
+    faint: snapshot.faint,
   };
 }
 
@@ -175,6 +176,10 @@ export function resolveStyle(
   if ("underline" in map) {
     const value = unwrap(map.underline);
     base.underline = Boolean(value);
+  }
+  if ("faint" in map) {
+    const value = unwrap(map.faint);
+    base.faint = Boolean(value);
   }
 
   resolveDimension(base, "width", map);

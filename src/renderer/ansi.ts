@@ -10,6 +10,7 @@ export function styleToAnsi(style: StyleSnapshot): string {
   if (fg) parts.push(fg);
   if (bg) parts.push(bg);
   if (style.bold) parts.push("\u001B[1m");
+  if (style.faint) parts.push("\u001B[2m");
   if (style.italic) parts.push("\u001B[3m");
   if (style.underline) parts.push("\u001B[4m");
   return parts.join("");

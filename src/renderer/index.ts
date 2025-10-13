@@ -52,11 +52,12 @@ function cloneSnapshot(snapshot: StyleSnapshot): StyleSnapshot {
     bold: snapshot.bold,
     italic: snapshot.italic,
     underline: snapshot.underline,
+    faint: snapshot.faint,
   };
 }
 
 export class Renderer {
-  private readonly terminal: TerminalDriver;
+  readonly terminal: TerminalDriver;
   private readonly buffer = new CellBuffer();
   private width: number;
   private height: number;
@@ -189,6 +190,10 @@ export class Renderer {
     this.buffer.bounds = { x: 0, y: 0, width, height };
     this.terminal.invalidateCursorCache();
     this.initialCursorPosition = null;
+    // Clear the screen and buffer to force complete re-render
+    this.buffer.clear();
+    this.terminal.clear();
+    process.stdout.write("\x1b[2J\x1b[H"); // Clear screen and move cursor to home
   }
 
   private createContext(options: RenderOptions): LayoutContext {
