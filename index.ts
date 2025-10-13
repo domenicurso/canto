@@ -6,11 +6,7 @@ export {
   isSignal,
   unwrapMaybeSignal,
 } from "./src/signals";
-export type {
-  Signal,
-  ComputedSignal,
-  EffectHandle,
-} from "./src/signals";
+export type { Signal, ComputedSignal, EffectHandle } from "./src/signals";
 
 export {
   VStack,
@@ -19,7 +15,7 @@ export {
   Input,
   Textarea,
   Scrollable,
-  BaseNode,
+  Conditional,
 } from "./src/widgets";
 export type {
   Node,
@@ -32,9 +28,7 @@ export type {
   PropsMap,
 } from "./src/widgets";
 
-export {
-  Renderer,
-} from "./src/renderer";
+export { Renderer } from "./src/renderer";
 export type {
   RenderOptions,
   RenderMode,

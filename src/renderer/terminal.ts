@@ -25,8 +25,9 @@ export class TerminalDriver {
     try {
       const fs = require("node:fs");
 
-      // Set stdin to raw mode to read cursor position response
-      if (process.stdin.isTTY) {
+      // Save current raw mode state and set to raw mode if needed
+      const wasRawMode = process.stdin.isRaw;
+      if (process.stdin.isTTY && !wasRawMode) {
         process.stdin.setRawMode(true);
       }
 
@@ -48,8 +49,8 @@ export class TerminalDriver {
         }
       }
 
-      // Reset stdin
-      if (process.stdin.isTTY) {
+      // Reset stdin to original state
+      if (process.stdin.isTTY && !wasRawMode) {
         process.stdin.setRawMode(false);
       }
 

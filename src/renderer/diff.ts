@@ -55,6 +55,7 @@ function shallowEqualStyle(a: Cell["style"], b: Cell["style"]): boolean {
     a.background === b.background &&
     a.bold === b.bold &&
     a.italic === b.italic &&
-    a.underline === b.underline
+    a.underline === b.underline &&
+    a.faint === b.faint
   );
 }
