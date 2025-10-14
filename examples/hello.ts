@@ -1,31 +1,27 @@
-import { computed, Renderer, state, Surface, Text, VStack } from "..";
+import { computed, HStack, Renderer, state, Surface, Text, VStack } from "..";
 
 const count = state(0);
-const label = computed(() => `Count: ${count.get()}`);
+
+const label1 = computed(() => `Data Point A: ${"#".repeat(count.get())}`);
+const label2 = computed(() => `Data Point B: ${"#".repeat(count.get() + 5)}`);
 
 const app = VStack(
-  Text("Hello, Avery Kane").style({ background: "red", padding: [1, 2] }),
-  Text(label),
-).style({ gap: 1, xAlign: "center" });
+  Text("Live Data Feed").style({
+    background: "red",
+    padding: [1, 2],
+  }),
+  VStack(Text(label1), Text(label2)),
+  HStack(
+    Text("All data points are being updated in real time,"),
+    Text("reflecting simulated changes in metrics.").style({ bold: true }),
+  ).style({ italic: true, gap: 1 }),
+).style({ gap: 1 });
 
-const renderer = new Renderer({ width: 40, height: 10 });
+const renderer = new Renderer();
 const surface = new Surface(app, renderer);
 
-surface.render({ mode: "auto", maxWidth: 40, maxHeight: 10 });
+surface.startRender();
 
-const interval = setInterval(() => {
-  count.set(count.get() + 1);
-  surface.render({ mode: "auto", maxWidth: 40, maxHeight: 10 });
+setInterval(() => {
+  count.set((count.get() + 1) % 50); // loop back around for a smooth cycle
 }, 100);
-
-// Cleanup on exit
-function cleanup() {
-  clearInterval(interval);
-  renderer.clear();
-  process.stdout.write("\x1b[?25h"); // Show cursor
-  process.exit(0);
-}
-
-process.on("SIGINT", cleanup);
-process.on("SIGTERM", cleanup);
-process.on("exit", cleanup);
