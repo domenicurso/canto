@@ -20,7 +20,7 @@ const app = VStack(
 const renderer = new Renderer();
 const surface = new Surface(app, renderer);
 
-surface.startRender();
+surface.startRender({ cursor: { visibility: "hidden" } });
 
 setInterval(() => {
   count.set((count.get() + 1) % 50); // loop back around for a smooth cycle

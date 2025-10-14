@@ -14,17 +14,161 @@ import type { Node } from "../widgets";
 import type { Cell } from "./buffer";
 
 export type RenderMode = "fullscreen" | "manual" | "auto";
-export type CursorPolicy = "preserve" | "after" | "hide";
 
-export interface RenderOptions {
-  mode: RenderMode;
-  cursor?: CursorPolicy;
+/**
+ * Cursor behavior after rendering - where to position the cursor.
+ */
+export type CursorBehavior =
+  | "preserve" // Keep cursor at its original position (useful for inline updates)
+  | "after"; // Position cursor after the rendered content (default for flowing content)
+
+/**
+ * Cursor visibility after rendering - whether cursor should be shown or hidden.
+ */
+export type CursorVisibility =
+  | "visible" // Show cursor after rendering
+  | "hidden"; // Keep cursor hidden after rendering
+
+/**
+ * Cursor configuration with separate behavior and visibility controls.
+ *
+ * This allows fine-grained control over cursor positioning and appearance:
+ * - Behavior controls WHERE the cursor ends up after rendering
+ * - Visibility controls WHETHER the cursor is shown or hidden
+ *
+ * Common combinations:
+ * - `{ behavior: "after", visibility: "visible" }` - Default for flowing content (like text output)
+ * - `{ behavior: "preserve", visibility: "visible" }` - For inline updates that shouldn't move cursor
+ * - `{ behavior: "after", visibility: "hidden" }` - For static displays where cursor would be distracting
+ * - `{ behavior: "preserve", visibility: "hidden" }` - For background updates with no visual cursor changes
+ *
+ * @example
+ * ```ts
+ * // Text output that flows naturally - cursor moves after content and stays visible
+ * render(textWidget, {
+ *   bounds: { mode: "auto" },
+ *   cursor: { behavior: "after", visibility: "visible" }
+ * });
+ *
+ * // Status bar update that shouldn't disrupt typing - preserve cursor position
+ * render(statusBar, {
+ *   bounds: { mode: "manual", width: 80, height: 1, x: 0, y: 0 },
+ *   cursor: { behavior: "preserve", visibility: "visible" }
+ * });
+ *
+ * // Fullscreen app where cursor would be distracting - hide it
+ * render(gameUI, {
+ *   bounds: { mode: "fullscreen" },
+ *   cursor: { behavior: "after", visibility: "hidden" }
+ * });
+ *
+ * // Background progress indicator - no cursor changes at all
+ * render(progressBar, {
+ *   bounds: { mode: "manual", width: 20, height: 1, x: 60, y: 10 },
+ *   cursor: { behavior: "preserve", visibility: "hidden" }
+ * });
+ * ```
+ */
+export interface CursorConfig {
+  /** Where to position the cursor. Defaults to "after". */
+  behavior?: CursorBehavior;
+  /** Whether to show or hide the cursor. Defaults to "visible". */
+  visibility?: CursorVisibility;
+}
+
+/**
+ * Render bounds configuration with strict typing based on render mode.
+ *
+ * Uses discriminated unions to ensure type safety - only valid combinations
+ * of properties are allowed for each render mode.
+ */
+export type RenderBounds = FullscreenBounds | ManualBounds | AutoBounds;
+
+/**
+ * Fullscreen rendering bounds - renders to the entire terminal viewport.
+ *
+ * Clears the screen and renders content to fill the entire terminal.
+ * Ideal for applications that need full control over the display.
+ */
+export interface FullscreenBounds {
+  mode: "fullscreen";
+}
+
+/**
+ * Manual rendering bounds - render to exact dimensions and position.
+ *
+ * Provides precise control over render area. Requires explicit width and height.
+ * Position defaults to (0,0) if not specified.
+ */
+export interface ManualBounds {
+  mode: "manual";
+  /** Exact width in terminal columns */
+  width: number;
+  /** Exact height in terminal rows */
+  height: number;
+  /** X position (column). Defaults to 0. */
   x?: number;
+  /** Y position (row). Defaults to 0. */
   y?: number;
-  width?: number;
-  height?: number;
+}
+
+/**
+ * Auto rendering bounds - automatic sizing with optional constraints.
+ *
+ * Measures content and renders with automatic positioning. Uses current
+ * cursor position or specified coordinates. Ideal for flowing content
+ * that should adapt to available space.
+ */
+export interface AutoBounds {
+  mode: "auto";
+  /** X position (column). Uses current cursor position if not specified. */
+  x?: number;
+  /** Y position (row). Uses current cursor position if not specified. */
+  y?: number;
+  /** Maximum width constraint. Defaults to terminal width. */
   maxWidth?: number;
+  /** Maximum height constraint. Defaults to terminal height. */
   maxHeight?: number;
+}
+
+/**
+ * Render options with bounds and cursor configuration.
+ *
+ * @example
+ * ```ts
+ * // Fullscreen rendering
+ * const fullscreenOpts: RenderOptions = {
+ *   bounds: { mode: "fullscreen" },
+ *   cursor: { behavior: "after", visibility: "hidden" }
+ * };
+ *
+ * // Manual positioning with exact dimensions
+ * const manualOpts: RenderOptions = {
+ *   bounds: {
+ *     mode: "manual",
+ *     width: 80,
+ *     height: 24,
+ *     x: 10,
+ *     y: 5
+ *   },
+ *   cursor: { behavior: "preserve", visibility: "visible" }
+ * };
+ *
+ * // Auto sizing with constraints
+ * const autoOpts: RenderOptions = {
+ *   bounds: {
+ *     mode: "auto",
+ *     maxWidth: 120
+ *   },
+ *   cursor: { behavior: "after", visibility: "visible" }
+ * };
+ * ```
+ */
+export interface RenderOptions {
+  /** Bounds configuration defining where and how to render. Defaults to auto mode. */
+  bounds?: RenderBounds;
+  /** Cursor configuration for positioning and visibility. */
+  cursor?: CursorConfig;
 }
 
 export interface RenderResult {
@@ -73,18 +217,47 @@ export class Renderer {
     this.terminal = options?.terminal ?? new TerminalDriver();
   }
 
+  /**
+   * Renders a widget tree to the terminal with the specified options.
+   *
+   * @param root - The root widget node to render
+   * @param options - Rendering configuration options
+   * @returns Render result with bounds and performance statistics
+   *
+   * @example
+   * ```ts
+   * const result = renderer.render(myWidget, {
+   *   bounds: {
+   *     mode: "auto",
+   *     maxWidth: 80
+   *   },
+   *   cursor: { behavior: "after", visibility: "visible" }
+   * });
+   *
+   * console.log(`Rendered ${result.stats.cellsWritten} cells in ${result.stats.renderTime}ms`);
+   * ```
+   */
   render(root: Node, options: RenderOptions): RenderResult {
     const start = performance.now();
+    const bounds = options.bounds ?? { mode: "auto" };
+    const cursorBehavior = options.cursor?.behavior ?? "after";
+    const cursorVisibility = options.cursor?.visibility ?? "visible";
+    let originalCursorPosition: { x: number; y: number } | null = null;
+
+    // Capture original cursor position if we need to preserve it
+    if (cursorBehavior === "preserve" && bounds.mode !== "fullscreen") {
+      originalCursorPosition = this.terminal.getCurrentCursorPosition();
+    }
 
     // Setup terminal for rendering
-    if (options.mode === "fullscreen") {
+    if (bounds.mode === "fullscreen") {
       this.terminal.write("\x1b[2J\x1b[H\x1b[?25l"); // Clear screen, move to home, hide cursor
       this.initialCursorPosition = null; // Reset for fullscreen mode
     } else {
       this.terminal.write("\x1b[?25l"); // Hide cursor only
     }
 
-    const context = this.createContext(options);
+    const context = this.createContext(bounds);
 
     const inherited = createDefaultStyle();
     const measured = root._measure(context.constraints, inherited);
@@ -93,9 +266,32 @@ export class Renderer {
       height: Math.min(measured.height, context.viewport.height),
     };
 
-    if (options.mode === "fullscreen") {
+    if (bounds.mode === "fullscreen") {
       layoutSize.width = context.viewport.width;
       layoutSize.height = context.viewport.height;
+    }
+
+    // Handle terminal scrolling when content would render beyond the screen
+    // This is crucial for proper rendering when the cursor is near the bottom
+    const contentBottom = context.origin.y + layoutSize.height;
+    if (contentBottom > this.height && bounds.mode !== "fullscreen") {
+      // Calculate how many lines we need to scroll to fit the content
+      const linesToScroll = contentBottom - this.height;
+
+      // Scroll the terminal by writing newlines directly to stdout
+      // This must be done BEFORE any positioned writes to maintain coordinate system
+      process.stdout.write("\n".repeat(linesToScroll));
+
+      // Note: We don't adjust context.origin.y because the coordinate system remains the same
+      // after scrolling - we just made more room at the bottom of the terminal
+
+      // Update cached cursor positions so they remain valid after scrolling
+      if (this.initialCursorPosition) {
+        this.initialCursorPosition.y -= linesToScroll;
+      }
+      if (originalCursorPosition) {
+        originalCursorPosition.y -= linesToScroll;
+      }
     }
 
     root._layout(context.origin, layoutSize);
@@ -130,16 +326,19 @@ export class Renderer {
       }
     }
 
-    // Position cursor appropriately after rendering
-    if (options.mode === "auto") {
-      // Move cursor to the line after the rendered content
-      const cursorY = context.origin.y + layoutSize.height;
-      const cursorX = context.origin.x;
-      this.terminal.write(`\x1b[${cursorY + 1};${cursorX + 1}H`);
-    }
+    // Position cursor based on cursor behavior
+    this.applyCursorBehavior(
+      cursorBehavior,
+      bounds,
+      context,
+      layoutSize,
+      originalCursorPosition,
+    );
 
-    // Show cursor and flush to stdout
-    this.terminal.write("\x1b[?25h"); // Show cursor
+    // Show or hide cursor based on visibility setting
+    if (cursorVisibility === "visible") {
+      this.terminal.write("\x1b[?25h"); // Show cursor
+    }
 
     const output = this.terminal.flush();
     if (output) {
@@ -196,8 +395,40 @@ export class Renderer {
     process.stdout.write("\x1b[2J\x1b[H"); // Clear screen and move cursor to home
   }
 
-  private createContext(options: RenderOptions): LayoutContext {
-    switch (options.mode) {
+  private applyCursorBehavior(
+    cursorBehavior: CursorBehavior,
+    bounds: RenderBounds,
+    context: LayoutContext,
+    layoutSize: { width: number; height: number },
+    originalCursorPosition: { x: number; y: number } | null,
+  ): void {
+    switch (cursorBehavior) {
+      case "preserve":
+        if (originalCursorPosition && bounds.mode !== "fullscreen") {
+          this.terminal.write(
+            `\x1b[${originalCursorPosition.y + 1};${originalCursorPosition.x + 1}H`,
+          );
+        }
+        break;
+      case "after":
+        if (bounds.mode === "auto" || bounds.mode === "manual") {
+          // Move cursor to the line after the rendered content
+          const cursorY = context.origin.y + layoutSize.height;
+          const cursorX = context.origin.x;
+
+          // Clamp cursor position to terminal bounds
+          const clampedY = Math.min(cursorY, this.height - 1);
+          this.terminal.write(`\x1b[${clampedY + 1};${cursorX + 1}H`);
+        } else if (bounds.mode === "fullscreen") {
+          // In fullscreen mode, position cursor at bottom-left
+          this.terminal.write(`\x1b[${this.height};1H`);
+        }
+        break;
+    }
+  }
+
+  private createContext(bounds: RenderBounds): LayoutContext {
+    switch (bounds.mode) {
       case "fullscreen":
         return {
           origin: { x: 0, y: 0 },
@@ -205,23 +436,20 @@ export class Renderer {
           viewport: { width: this.width, height: this.height },
         };
       case "manual": {
-        if (options.width === undefined || options.height === undefined) {
-          throw new Error("Manual mode requires width and height");
-        }
         return {
-          origin: { x: options.x ?? 0, y: options.y ?? 0 },
-          constraints: constraints(0, options.width, 0, options.height),
-          viewport: { width: options.width, height: options.height },
+          origin: { x: bounds.x ?? 0, y: bounds.y ?? 0 },
+          constraints: constraints(0, bounds.width, 0, bounds.height),
+          viewport: { width: bounds.width, height: bounds.height },
         };
       }
       case "auto": {
-        const maxWidth = options.maxWidth ?? this.width;
-        const maxHeight = options.maxHeight ?? this.height;
+        const maxWidth = bounds.maxWidth ?? this.width;
+        const maxHeight = bounds.maxHeight ?? this.height;
 
         let origin: { x: number; y: number };
-        if (options.x !== undefined && options.y !== undefined) {
+        if (bounds.x !== undefined && bounds.y !== undefined) {
           // Use explicitly provided coordinates
-          origin = { x: options.x, y: options.y };
+          origin = { x: bounds.x, y: bounds.y };
         } else if (this.initialCursorPosition) {
           // Use cached initial cursor position for subsequent renders
           origin = this.initialCursorPosition;
@@ -239,7 +467,7 @@ export class Renderer {
         };
       }
       default:
-        throw new Error(`Unknown render mode: ${String(options.mode)}`);
+        throw new Error(`Unknown render mode: ${String((bounds as any).mode)}`);
     }
   }
 

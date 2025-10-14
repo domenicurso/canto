@@ -138,14 +138,4 @@ process.stdin.on("keypress", (str: string, key: any) => {
   }
 });
 
-// Start the demo
-surface.render({ mode: "auto" });
-
-// Render loop
-const interval = setInterval(() => {
-  surface.render({ mode: "auto" });
-}, 16);
-
-process.on("exit", () => {
-  clearInterval(interval);
-});
+surface.startRender();

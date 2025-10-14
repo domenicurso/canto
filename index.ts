@@ -31,7 +31,9 @@ export { Renderer } from "./src/renderer";
 export type {
   RenderOptions,
   RenderMode,
-  CursorPolicy,
+  CursorBehavior,
+  CursorVisibility,
+  CursorConfig,
   RenderResult,
 } from "./src/renderer";
 

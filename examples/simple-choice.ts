@@ -68,5 +68,4 @@ surface.onKey((event, phase) => {
   }
 });
 
-// Start the prompt with automatic rendering
-surface.startRender({ mode: "auto" });
+surface.startRender();

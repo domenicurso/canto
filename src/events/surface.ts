@@ -188,7 +188,7 @@ export class Surface {
   render(options?: RenderOptions): RenderResult {
     const result = this.renderer.render(
       this.root,
-      options ?? { mode: "fullscreen" },
+      options ?? { bounds: { mode: "auto" } },
     );
 
     // Position cursor at focused input widget
@@ -205,7 +205,7 @@ export class Surface {
     this.stopRender();
 
     // Store render options for re-rendering
-    const renderOptions = options ?? { mode: "auto" };
+    const renderOptions = options ?? { bounds: { mode: "auto" } };
 
     // Set up global signal change listener
     this.globalSignalListener = addGlobalSignalChangeListener(() => {

@@ -84,15 +84,5 @@ const app = VStack(
 const renderer = new Renderer();
 const surface = new Surface(app, renderer);
 
-// Just render and optionally focus an input
-surface.render({ mode: "auto" });
+surface.startRender();
 
-// Auto-render loop
-const interval = setInterval(() => {
-  surface.render({ mode: "auto" });
-}, 16);
-
-// Cleanup is handled automatically by Surface
-process.on("exit", () => {
-  clearInterval(interval);
-});
