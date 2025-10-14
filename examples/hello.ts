@@ -6,10 +6,7 @@ const label1 = computed(() => `Data Point A: ${"#".repeat(count.get())}`);
 const label2 = computed(() => `Data Point B: ${"#".repeat(count.get() + 5)}`);
 
 const app = VStack(
-  Text("Live Data Feed").style({
-    background: "red",
-    padding: [1, 2],
-  }),
+  Text("Live Data Feed").style({ background: "red", padding: [1, 2] }),
   VStack(Text(label1), Text(label2)),
   HStack(
     Text("All data points are being updated in real time,"),
