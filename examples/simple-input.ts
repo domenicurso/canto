@@ -1,24 +1,66 @@
-import { computed, Input, Renderer, state, Surface, Text, VStack } from "..";
+import {
+  computed,
+  effect,
+  HStack,
+  Input,
+  Key,
+  Renderer,
+  state,
+  Surface,
+  Text,
+  VStack,
+} from "..";
 
-// Just create a signal
-const text = state("Hello world!");
+const message = "What is your name";
+const defaultValue = "John Doe";
+
+const value = state("");
+const error = state("");
+const isComplete = state(false);
+
+const inputWidget = Input()
+  .bind(value)
+  .props({ placeholder: defaultValue })
+  .style({ foreground: "yellow" });
 
 // Just create an Input widget
 const app = VStack(
-  Text("Minimal Input Example").style({ bold: true, foreground: "green" }),
-  Text("Tab to focus, then type. All keyboard shortcuts work automatically."),
-  Text(""),
-  Input().bind(text).props({ placeholder: "Type here..." }).style({
-    width: 30,
-  }),
-  Text(""),
-  Text(computed(() => `Current value: "${text.get()}"`)).style({
-    foreground: "cyan",
-  }),
+  HStack(
+    Text("?").style({ foreground: "green" }),
+    Text(`${message}:`).style({ foreground: "cyan" }),
+    inputWidget,
+    Text(error)
+      .style({
+        foreground: "red",
+        paddingLeft: 1,
+      })
+      .unless(computed(() => error.get() === ""))
+      .unless(isComplete),
+  ).style({ gap: 1 }),
 ).style({ gap: 1 });
+
+effect(() => {
+  error.set(
+    value.get() && value.get().length > 20 ? "Maximum length is 20" : "",
+  );
+});
 
 // Just render it - that's all!
 const renderer = new Renderer();
 const surface = new Surface(app, renderer);
 
+surface.onKey((event, phase) => {
+  if (phase !== "pre") return;
+
+  if (event.key === Key.Return) {
+    if (error.get()) return;
+    value.set(value.get().trim() || defaultValue);
+    isComplete.set(true);
+    surface.stopRender();
+    console.log("\nUser input:", value.get());
+    process.exit(0);
+  }
+});
+
 surface.startRender();
+surface.focus(inputWidget);
