@@ -1,4 +1,5 @@
 import { applyMinMax, clamp, resolveDimension } from "../layout";
+import { StateSignal } from "../signals/core";
 import { BaseNode } from "./node";
 
 import type { Constraints } from "../layout";
@@ -14,6 +15,7 @@ export class InputNode extends BaseNode<InputProps> {
   private selectionStart = 0;
   private selectionEnd = 0;
   private scrollOffset = 0;
+  private cursorStateSignal = new StateSignal(0);
 
   constructor() {
     super("Input", []);
@@ -134,12 +136,7 @@ export class InputNode extends BaseNode<InputProps> {
   private clearSelection(): void {
     this.selectionStart = this.cursor;
     this.selectionEnd = this.cursor;
-  }
-
-  private getSelectedText(): string {
-    const start = Math.min(this.selectionStart, this.selectionEnd);
-    const end = Math.max(this.selectionStart, this.selectionEnd);
-    return this.value.slice(start, end);
+    this.cursorStateSignal.set(this.cursorStateSignal.get() + 1);
   }
 
   private deleteSelection(): void {
@@ -165,6 +162,7 @@ export class InputNode extends BaseNode<InputProps> {
     this.focused = true;
     super.focus();
     this._invalidate();
+    this.cursorStateSignal.set(this.cursorStateSignal.get() + 1);
   }
 
   override blur(): void {
@@ -198,6 +196,7 @@ export class InputNode extends BaseNode<InputProps> {
 
     this.updateScroll();
     this._invalidate();
+    this.cursorStateSignal.set(this.cursorStateSignal.get() + 1);
   }
 
   setCursor(position: number, extend = false): void {
@@ -213,6 +212,7 @@ export class InputNode extends BaseNode<InputProps> {
 
     this.updateScroll();
     this._invalidate();
+    this.cursorStateSignal.set(this.cursorStateSignal.get() + 1);
   }
 
   moveCursorToStart(extend = false): void {
@@ -227,6 +227,7 @@ export class InputNode extends BaseNode<InputProps> {
 
     this.updateScroll();
     this._invalidate();
+    this.cursorStateSignal.set(this.cursorStateSignal.get() + 1);
   }
 
   moveCursorToEnd(extend = false): void {
@@ -241,6 +242,7 @@ export class InputNode extends BaseNode<InputProps> {
 
     this.updateScroll();
     this._invalidate();
+    this.cursorStateSignal.set(this.cursorStateSignal.get() + 1);
   }
 
   selectAll(): void {
@@ -249,6 +251,7 @@ export class InputNode extends BaseNode<InputProps> {
     this.cursor = this.value.length;
     this.updateScroll();
     this._invalidate();
+    this.cursorStateSignal.set(this.cursorStateSignal.get() + 1);
   }
 
   selectWord(position: number, extend = false): void {
@@ -282,6 +285,7 @@ export class InputNode extends BaseNode<InputProps> {
     this.cursor = end;
     this.updateScroll();
     this._invalidate();
+    this.cursorStateSignal.set(this.cursorStateSignal.get() + 1);
   }
 
   insert(text: string): void {
@@ -361,6 +365,11 @@ export class InputNode extends BaseNode<InputProps> {
 
   isFocused(): boolean {
     return this.focused;
+  }
+
+  override dispose(): void {
+    this.cursorStateSignal.dispose();
+    super.dispose();
   }
 
   _measure(constraints: Constraints, inherited: ResolvedStyle): Size {
