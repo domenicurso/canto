@@ -12,7 +12,6 @@ export interface InputProps {
   onFocus?: () => void;
   onBlur?: () => void;
   filter?: (value: string) => string;
-  validator?: (value: string) => boolean;
 }
 
 export interface TextareaProps {

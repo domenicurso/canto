@@ -63,16 +63,8 @@ export class InputNode extends BaseNode<InputProps> {
     return typeof filter === "function" ? filter(value) : value;
   }
 
-  private isValid(value: string): boolean {
-    const validator = this.getProp("validator");
-    return typeof validator === "function" ? validator(value) !== false : true;
-  }
-
   private commitValue(next: string, notify = true): void {
     const filtered = this.applyFilter(next);
-    if (!this.isValid(filtered)) {
-      return;
-    }
     this.value = filtered;
     this.cursor = Math.min(this.cursor, this.value.length);
     this.selectionStart = Math.min(this.selectionStart, this.value.length);
