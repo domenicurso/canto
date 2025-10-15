@@ -1,6 +1,11 @@
-import { applyMinMax, clamp, resolveDimension } from "../layout";
+import { alignOffset } from "../layout";
 import { StateSignal } from "../signals/core";
 import { BaseNode } from "./node";
+import {
+  horizontalAlignFromDistribute,
+  normalizeCrossAlign,
+  resolveAxisSize,
+} from "./style-utils";
 
 import type { Constraints } from "../layout";
 import type { Signal } from "../signals";
@@ -91,10 +96,7 @@ export class InputNode extends BaseNode<InputProps> {
 
     const style = this.getResolvedStyle();
     const padding = style.padding;
-    const availableWidth = Math.max(
-      layout.width - (padding.left + padding.right),
-      1,
-    );
+    const availableWidth = Math.max(this.contentRect.width, 1);
 
     // If text fits, no scrolling needed
     if (this.value.length <= availableWidth) {
@@ -384,25 +386,23 @@ export class InputNode extends BaseNode<InputProps> {
     const intrinsicWidth = contentWidth + padding.left + padding.right;
     const intrinsicHeight = contentHeight + padding.top + padding.bottom;
 
-    // Resolve width with proper constraints
-    let width = resolveDimension(
+    const width = resolveAxisSize(
       style.width,
+      style.minWidth,
+      style.maxWidth,
+      intrinsicWidth,
       constraints.minWidth,
       constraints.maxWidth,
-      intrinsicWidth,
     );
-    width = applyMinMax(width, style.minWidth, style.maxWidth);
-    width = clamp(width, constraints.minWidth, constraints.maxWidth);
 
-    // Resolve height with proper constraints
-    let height = resolveDimension(
+    const height = resolveAxisSize(
       style.height,
+      style.minHeight,
+      style.maxHeight,
+      intrinsicHeight,
       constraints.minHeight,
       constraints.maxHeight,
-      intrinsicHeight,
     );
-    height = applyMinMax(height, style.minHeight, style.maxHeight);
-    height = clamp(height, constraints.minHeight, constraints.maxHeight);
 
     return { width, height };
   }
@@ -417,9 +417,12 @@ export class InputNode extends BaseNode<InputProps> {
       0,
     );
 
+    const verticalAlign = normalizeCrossAlign(style.align);
+    const offsetY = alignOffset(innerHeight, 1, verticalAlign);
+
     this.contentRect = {
       x: origin.x + padding.left,
-      y: origin.y + padding.top,
+      y: origin.y + padding.top + offsetY,
       width: innerWidth,
       height: innerHeight,
     };
@@ -504,8 +507,25 @@ export class InputNode extends BaseNode<InputProps> {
     }
 
     // Calculate text position
-    const textX = layout.x + padding.left;
-    const textY = layout.y + padding.top;
+    const baseX = this.contentRect.x;
+    const baseY = this.contentRect.y;
+    const horizontalAlign = horizontalAlignFromDistribute(style.distribute);
+
+    let textOffset = 0;
+    if (
+      this.scrollOffset === 0 &&
+      !showLeadingEllipsis &&
+      !showTrailingEllipsis
+    ) {
+      textOffset = alignOffset(
+        availableWidth,
+        displayText.length,
+        horizontalAlign,
+      );
+    }
+
+    const textX = baseX + textOffset;
+    const textY = baseY;
 
     // Render main text
     if (displayText.length > 0) {

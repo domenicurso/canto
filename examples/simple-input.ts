@@ -21,7 +21,12 @@ const isComplete = state(false);
 const inputWidget = Input()
   .bind(value)
   .props({ placeholder: defaultValue })
-  .style({ foreground: "yellow" });
+  .style({
+    foreground: "yellow",
+    width: "hug",
+    shrink: 1,
+    minWidth: 1,
+  });
 
 // Just create an Input widget
 const app = VStack(
@@ -33,10 +38,12 @@ const app = VStack(
       .style({
         foreground: "red",
         paddingLeft: 1,
+        shrink: 0,
+        width: "hug",
       })
       .unless(computed(() => error.get() === ""))
       .unless(isComplete),
-  ).style({ gap: 1 }),
+  ).style({ gap: 1, width: "fill" }),
 ).style({ gap: 1 });
 
 effect(() => {

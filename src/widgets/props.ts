@@ -33,6 +33,14 @@ export interface ScrollableProps {
   scrollWheelEnabled?: boolean;
 }
 
+export interface ButtonProps {
+  label?: string | Signal<string>;
+  disabled?: boolean | Signal<boolean>;
+  onPress?: () => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+}
+
 export interface ContainerProps {
   focusable?: boolean;
   onFocus?: () => void;
@@ -45,6 +53,7 @@ export type NodeProps =
   | InputProps
   | TextareaProps
   | ScrollableProps
+  | ButtonProps
   | ContainerProps;
 
 export type PropsMap = NodeProps;

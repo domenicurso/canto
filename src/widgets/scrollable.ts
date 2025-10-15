@@ -1,6 +1,5 @@
-import { applyMinMax, clamp, resolveDimension } from "../layout";
-import { isSignal } from "../signals";
 import { BaseNode } from "./node";
+import { StackNodeBase } from "./stack";
 
 import type { Constraints } from "../layout";
 import type { Signal } from "../signals";
@@ -14,7 +13,9 @@ import type {
   Span,
 } from "../types";
 import type { Node } from "./node";
-import type { ScrollableProps } from "./props";
+import type { ContainerProps, ScrollableProps } from "./props";
+
+type ScrollableContainerProps = ScrollableProps & ContainerProps;
 
 function intersectRect(a: LayoutRect, b: LayoutRect): LayoutRect | null {
   const x1 = Math.max(a.x, b.x);
@@ -61,7 +62,7 @@ function clipRect(rect: Rect, viewport: LayoutRect): Rect | null {
   };
 }
 
-export class ScrollableNode extends BaseNode<ScrollableProps> {
+export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
   private contentSize: Size = { width: 0, height: 0 };
   private viewport: LayoutRect = { x: 0, y: 0, width: 0, height: 0 };
   private scrollOffsetX = 0;
@@ -70,10 +71,11 @@ export class ScrollableNode extends BaseNode<ScrollableProps> {
   private scrollSubscriptionY: (() => void) | null = null;
 
   constructor(child: Node) {
-    super("Scrollable", [child]);
+    super("Scrollable", [child], null);
+    this.syncScrollProps();
   }
 
-  private get child(): Node {
+  private get childNode(): Node {
     const child = this.children[0];
     if (!child) {
       throw new Error("ScrollableNode requires exactly one child");
@@ -118,8 +120,8 @@ export class ScrollableNode extends BaseNode<ScrollableProps> {
     const maxX = Math.max(this.contentSize.width - this.viewport.width, 0);
     const maxY = Math.max(this.contentSize.height - this.viewport.height, 0);
     return {
-      x: clamp(x, 0, maxX),
-      y: clamp(y, 0, maxY),
+      x: Math.max(0, Math.min(x, maxX)),
+      y: Math.max(0, Math.min(y, maxY)),
     };
   }
 
@@ -131,22 +133,22 @@ export class ScrollableNode extends BaseNode<ScrollableProps> {
       this.scrollSubscriptionY();
     }
 
-    if (isSignal(this.propsDefinition.scrollX)) {
-      const signal = this.propsDefinition.scrollX as Signal<number>;
-      this.scrollOffsetX = clamp(signal.get(), 0, Number.MAX_SAFE_INTEGER);
+    if (this.propsDefinition.scrollX) {
+      const signal = this.propsDefinition.scrollX;
+      this.scrollOffsetX = this.clampScroll(signal.get(), this.scrollOffsetY).x;
       this.scrollSubscriptionX = signal.subscribe((value) => {
-        this.scrollOffsetX = value;
+        this.scrollOffsetX = this.clampScroll(value, this.scrollOffsetY).x;
         this._invalidate();
       });
     } else {
       this.scrollSubscriptionX = null;
     }
 
-    if (isSignal(this.propsDefinition.scrollY)) {
-      const signal = this.propsDefinition.scrollY as Signal<number>;
-      this.scrollOffsetY = clamp(signal.get(), 0, Number.MAX_SAFE_INTEGER);
+    if (this.propsDefinition.scrollY) {
+      const signal = this.propsDefinition.scrollY;
+      this.scrollOffsetY = this.clampScroll(this.scrollOffsetX, signal.get()).y;
       this.scrollSubscriptionY = signal.subscribe((value) => {
-        this.scrollOffsetY = value;
+        this.scrollOffsetY = this.clampScroll(this.scrollOffsetX, value).y;
         this._invalidate();
       });
     } else {
@@ -154,7 +156,7 @@ export class ScrollableNode extends BaseNode<ScrollableProps> {
     }
   }
 
-  override props(map?: Partial<ScrollableProps>): this {
+  override props(map?: Partial<ScrollableContainerProps>): this {
     super.props(map);
     this.syncScrollProps();
     return this;
@@ -172,55 +174,35 @@ export class ScrollableNode extends BaseNode<ScrollableProps> {
     }
   }
 
-  _measure(constraints: Constraints, inherited: ResolvedStyle): Size {
-    const style = this.resolveCurrentStyle(inherited);
-    const padding = style.padding;
-    const innerConstraints: Constraints = {
-      minWidth: 0,
-      maxWidth: Math.max(
-        constraints.maxWidth - (padding.left + padding.right),
-        0,
-      ),
-      minHeight: 0,
-      maxHeight: Math.max(
-        constraints.maxHeight - (padding.top + padding.bottom),
-        0,
-      ),
-    };
+  override _measure(constraints: Constraints, inherited: ResolvedStyle): Size {
+    const size = super._measure(constraints, inherited);
+    const measurement = this.getMeasurement();
+    const style = this.getResolvedStyle();
+    const horizontalPadding = style.padding.left + style.padding.right;
+    const verticalPadding = style.padding.top + style.padding.bottom;
 
-    this.contentSize = this.child._measure(innerConstraints, style);
-
-    const intrinsicWidth =
-      this.contentSize.width + padding.left + padding.right;
-    const intrinsicHeight =
-      this.contentSize.height + padding.top + padding.bottom;
-
-    let width = resolveDimension(
-      style.width,
-      constraints.minWidth,
-      constraints.maxWidth,
-      intrinsicWidth,
-    );
-    width = applyMinMax(width, style.minWidth, style.maxWidth);
-    width = clamp(width, constraints.minWidth, constraints.maxWidth);
-
-    let height = resolveDimension(
-      style.height,
-      constraints.minHeight,
-      constraints.maxHeight,
-      intrinsicHeight,
-    );
-    height = applyMinMax(height, style.minHeight, style.maxHeight);
-    height = clamp(height, constraints.minHeight, constraints.maxHeight);
-
-    return { width, height };
+    if (measurement) {
+      this.contentSize = {
+        width: Math.max(
+          measurement.intrinsicOuterSize.width - horizontalPadding,
+          0,
+        ),
+        height: Math.max(
+          measurement.intrinsicOuterSize.height - verticalPadding,
+          0,
+        ),
+      };
+    } else {
+      this.contentSize = { width: 0, height: 0 };
+    }
+    return size;
   }
 
-  _layout(origin: Point, size: Size): void {
-    const style = this.getResolvedStyle();
-    this.updateLayoutRect(origin, size);
-    const padding = style.padding;
+  override _layout(origin: Point, size: Size): void {
+    super._layout(origin, size);
 
+    const style = this.getResolvedStyle();
+    const padding = style.padding;
     this.viewport = {
       x: origin.x + padding.left,
       y: origin.y + padding.top,
@@ -228,35 +210,58 @@ export class ScrollableNode extends BaseNode<ScrollableProps> {
       height: Math.max(size.height - (padding.top + padding.bottom), 0),
     };
 
+    const child = this.childNode;
+    let childRect: LayoutRect = {
+      x: this.viewport.x,
+      y: this.viewport.y,
+      width: this.viewport.width,
+      height: this.viewport.height,
+    };
+
+    if (child instanceof BaseNode) {
+      childRect = child.getLayoutRect();
+    }
+
+    this.contentSize = {
+      width: childRect.width,
+      height: childRect.height,
+    };
+
     const clamped = this.clampScroll(this.scrollOffsetX, this.scrollOffsetY);
     this.scrollOffsetX = clamped.x;
     this.scrollOffsetY = clamped.y;
 
-    const childOrigin = {
+    const desiredOrigin = {
       x: this.viewport.x - this.scrollOffsetX,
       y: this.viewport.y - this.scrollOffsetY,
     };
 
-    this.child._layout(childOrigin, this.contentSize);
+    child._layout(desiredOrigin, {
+      width: childRect.width,
+      height: childRect.height,
+    });
+
     this.dirty = false;
   }
 
-  _paint(): PaintResult {
+  override _paint(): PaintResult {
     const style = this.getResolvedStyle();
     const snapshot = this.getStyleSnapshot();
     const layout = this.getLayoutRect();
-    const childPaint = this.child._paint();
+    const childPaint = this.childNode._paint();
 
     const spans: PaintResult["spans"] = [];
-    const rects: PaintResult["rects"] = [
-      {
+    const rects: PaintResult["rects"] = [];
+
+    if (style.background !== null) {
+      rects.push({
         x: layout.x,
         y: layout.y,
         width: layout.width,
         height: layout.height,
         style: snapshot,
-      },
-    ];
+      });
+    }
 
     const viewportRect: LayoutRect = {
       x: this.viewport.x,
@@ -280,6 +285,10 @@ export class ScrollableNode extends BaseNode<ScrollableProps> {
     }
 
     return { spans, rects };
+  }
+
+  isWheelScrollEnabled(): boolean {
+    return this.isWheelEnabled();
   }
 }
 

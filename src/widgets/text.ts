@@ -1,15 +1,14 @@
-import {
-  alignOffset,
-  applyMinMax,
-  clamp,
-  resolveDimension,
-  wrapText,
-} from "../layout";
+import { alignOffset, wrapText } from "../layout";
 import { BaseNode } from "./node";
+import {
+  horizontalAlignFromDistribute,
+  normalizeCrossAlign,
+  resolveAxisSize,
+} from "./style-utils";
 
 import type { Constraints } from "../layout";
 import type { Signal } from "../signals";
-import type { ResolvedStyle } from "../style";
+import type { CrossAlignment, ResolvedStyle } from "../style";
 import type { PaintResult, Point, Size } from "../types";
 import type { Node } from "./node";
 import type { TextProps } from "./props";
@@ -44,15 +43,18 @@ export class TextNode extends BaseNode<TextProps> {
   _measure(constraints: Constraints, inherited: ResolvedStyle): Size {
     const style = this.resolveCurrentStyle(inherited);
     const padding = style.padding;
-    const availableWidth =
-      constraints.maxWidth - (padding.left + padding.right);
-    const innerWidth = Number.isFinite(availableWidth)
-      ? Math.max(Math.floor(availableWidth), 1)
+    const horizontalPadding = padding.left + padding.right;
+    const verticalPadding = padding.top + padding.bottom;
+
+    const availableContentWidth = constraints.maxWidth - horizontalPadding;
+    const wrapWidth = Number.isFinite(availableContentWidth)
+      ? Math.max(Math.floor(availableContentWidth), 1)
       : undefined;
+
     const content = this.resolveContent();
 
-    if (innerWidth !== undefined) {
-      this.lines = wrapText(content, innerWidth, style.textWrap);
+    if (wrapWidth !== undefined && wrapWidth > 0) {
+      this.lines = wrapText(content, wrapWidth, style.textWrap);
     } else {
       const fallbackLines = content.split(/\r?\n/);
       this.lines = fallbackLines.length > 0 ? fallbackLines : [""];
@@ -68,26 +70,26 @@ export class TextNode extends BaseNode<TextProps> {
     );
     const contentHeight = this.lines.length;
 
-    const intrinsicWidth = contentWidth + padding.left + padding.right;
-    const intrinsicHeight = contentHeight + padding.top + padding.bottom;
+    const intrinsicWidth = contentWidth + horizontalPadding;
+    const intrinsicHeight = contentHeight + verticalPadding;
 
-    let width = resolveDimension(
+    const width = resolveAxisSize(
       style.width,
+      style.minWidth,
+      style.maxWidth,
+      intrinsicWidth,
       constraints.minWidth,
       constraints.maxWidth,
-      intrinsicWidth,
     );
-    width = applyMinMax(width, style.minWidth, style.maxWidth);
-    width = clamp(width, constraints.minWidth, constraints.maxWidth);
 
-    let height = resolveDimension(
+    const height = resolveAxisSize(
       style.height,
+      style.minHeight,
+      style.maxHeight,
+      intrinsicHeight,
       constraints.minHeight,
       constraints.maxHeight,
-      intrinsicHeight,
     );
-    height = applyMinMax(height, style.minHeight, style.maxHeight);
-    height = clamp(height, constraints.minHeight, constraints.maxHeight);
 
     return { width, height };
   }
@@ -102,7 +104,8 @@ export class TextNode extends BaseNode<TextProps> {
       0,
     );
     const totalHeight = this.lines.length;
-    const offsetY = alignOffset(innerHeight, totalHeight, style.yAlign);
+    const verticalAlign = normalizeCrossAlign(style.align);
+    const offsetY = alignOffset(innerHeight, totalHeight, verticalAlign);
 
     this.contentRect = {
       x: origin.x + padding.left,
@@ -135,13 +138,14 @@ export class TextNode extends BaseNode<TextProps> {
       layout.width - (padding.left + padding.right),
       0,
     );
-    const offsetY = this.contentRect.y - (layout.y + padding.top);
+    const baseY = this.contentRect.y;
+    const horizontalAlign = horizontalAlignFromDistribute(style.distribute);
 
     this.lines.forEach((line, index) => {
-      const offsetX = alignOffset(innerWidth, line.length, style.xAlign);
+      const offsetX = alignOffset(innerWidth, line.length, horizontalAlign);
       spans.push({
-        x: layout.x + padding.left + offsetX,
-        y: layout.y + padding.top + offsetY + index,
+        x: this.contentRect.x + offsetX,
+        y: baseY + index,
         text: line,
         style: snapshot,
       });

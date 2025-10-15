@@ -8,12 +8,14 @@ import type { LayoutRect, PaintResult, Point, Rect, Size } from "../types";
 import type { PropsMap } from "./props";
 
 export type NodeType =
+  | "Stack"
   | "VStack"
   | "HStack"
   | "Text"
   | "Input"
   | "Textarea"
-  | "Scrollable";
+  | "Scrollable"
+  | "Button";
 
 export interface Node {
   readonly type: NodeType;
@@ -51,6 +53,7 @@ export abstract class BaseNode<TProps extends object = object> implements Node {
   protected contentRect: LayoutRect = { x: 0, y: 0, width: 0, height: 0 };
   protected parent: BaseNode | null = null;
   protected dirty = true;
+  protected overflow = false;
 
   protected constructor(type: NodeType, children: Node[] = []) {
     this.id = `${type}_${nodeId++}`;
@@ -152,7 +155,7 @@ export abstract class BaseNode<TProps extends object = object> implements Node {
     return this.resolvedStyle;
   }
 
-  protected getResolvedStyle(): ResolvedStyle {
+  public getResolvedStyle(): ResolvedStyle {
     return this.resolvedStyle;
   }
 
@@ -300,6 +303,14 @@ export abstract class BaseNode<TProps extends object = object> implements Node {
       height: Math.max(size.height - (padding.top + padding.bottom), 0),
     };
   }
+
+  protected setOverflow(value: boolean): void {
+    this.overflow = value;
+  }
+
+  hasOverflow(): boolean {
+    return this.overflow;
+  }
 }
 
 class ConditionalWrapper implements Node {
@@ -364,6 +375,10 @@ class ConditionalWrapper implements Node {
     return new ConditionalWrapper(condition, this, true);
   }
 
+  getWrappedNode(): Node {
+    return this.wrappedNode;
+  }
+
   _measure(constraints: Constraints, inherited: ResolvedStyle): Size {
     if (!this.shouldRender()) {
       return { width: 0, height: 0 };
@@ -398,4 +413,14 @@ class ConditionalWrapper implements Node {
       this.wrappedNode.dispose();
     }
   }
+}
+
+export function resolveNodeStyle(node: Node): ResolvedStyle | null {
+  if (node instanceof BaseNode) {
+    return node.getResolvedStyle();
+  }
+  if (node instanceof ConditionalWrapper) {
+    return resolveNodeStyle(node.getWrappedNode());
+  }
+  return null;
 }

@@ -4,11 +4,16 @@ import { DEFAULT_STYLE_SNAPSHOT } from "./types";
 import type { Signal } from "../signals";
 import type {
   BoxPadding,
-  Dimension,
+  CrossAlignment,
+  DimensionLimitToken,
+  DimensionToken,
+  FlowAxis,
+  FlowDistribution,
   ResolvedStyle,
   StyleMap,
   StyleSnapshot,
   StyleValue,
+  TextWrap,
 } from "./types";
 
 function cloneSnapshot(snapshot: StyleSnapshot): StyleSnapshot {
@@ -22,27 +27,6 @@ function cloneSnapshot(snapshot: StyleSnapshot): StyleSnapshot {
   };
 }
 
-export function createDefaultStyle(): ResolvedStyle {
-  return {
-    ...cloneSnapshot(DEFAULT_STYLE_SNAPSHOT),
-    padding: { top: 0, right: 0, bottom: 0, left: 0 },
-    width: undefined,
-    height: undefined,
-    minWidth: 0,
-    minHeight: 0,
-    maxWidth: undefined,
-    maxHeight: undefined,
-    xAlign: "left",
-    yAlign: "top",
-    gap: 0,
-    textWrap: "none",
-    scrollX: false,
-    scrollY: false,
-    scrollbarBackground: null,
-    scrollbarForeground: null,
-  };
-}
-
 function clonePadding(padding: BoxPadding): BoxPadding {
   return {
     top: padding.top,
@@ -53,10 +37,44 @@ function clonePadding(padding: BoxPadding): BoxPadding {
 }
 
 function cloneResolvedStyle(style: ResolvedStyle): ResolvedStyle {
+  const base = createDefaultStyle();
+  const snapshot = cloneSnapshot(style);
+  base.foreground = snapshot.foreground;
+  base.background = snapshot.background;
+  base.bold = snapshot.bold;
+  base.italic = snapshot.italic;
+  base.underline = snapshot.underline;
+  base.faint = snapshot.faint;
+  base.padding = clonePadding(style.padding);
+  base.textWrap = style.textWrap;
+  base.scrollX = style.scrollX;
+  base.scrollY = style.scrollY;
+  base.scrollbarBackground = style.scrollbarBackground;
+  base.scrollbarForeground = style.scrollbarForeground;
+  return base;
+}
+
+export function createDefaultStyle(): ResolvedStyle {
   return {
-    ...createDefaultStyle(),
-    ...cloneSnapshot(style),
-    textWrap: style.textWrap,
+    ...cloneSnapshot(DEFAULT_STYLE_SNAPSHOT),
+    padding: { top: 0, right: 0, bottom: 0, left: 0 },
+    width: "auto",
+    height: "auto",
+    minWidth: "none",
+    minHeight: "none",
+    maxWidth: "none",
+    maxHeight: "none",
+    flow: "y",
+    gap: 0,
+    distribute: "start",
+    align: "start",
+    grow: undefined,
+    shrink: undefined,
+    textWrap: "none",
+    scrollX: false,
+    scrollY: false,
+    scrollbarBackground: null,
+    scrollbarForeground: null,
   };
 }
 
@@ -73,22 +91,33 @@ function unwrap<T>(value: StyleValue<T> | undefined): T | undefined {
 export function expandPadding(
   value: number | [number, number] | [number, number, number, number],
 ): BoxPadding {
-  if (typeof value === "number") {
-    return { top: value, right: value, bottom: value, left: value };
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const normalized = Math.max(0, Math.floor(value));
+    return {
+      top: normalized,
+      right: normalized,
+      bottom: normalized,
+      left: normalized,
+    };
   }
   if (Array.isArray(value)) {
     if (value.length === 2) {
       const [vertical, horizontal] = value;
       return {
-        top: vertical,
-        right: horizontal,
-        bottom: vertical,
-        left: horizontal,
+        top: Math.max(0, Math.floor(vertical)),
+        right: Math.max(0, Math.floor(horizontal)),
+        bottom: Math.max(0, Math.floor(vertical)),
+        left: Math.max(0, Math.floor(horizontal)),
       };
     }
     if (value.length === 4) {
       const [top, right, bottom, left] = value;
-      return { top, right, bottom, left };
+      return {
+        top: Math.max(0, Math.floor(top)),
+        right: Math.max(0, Math.floor(right)),
+        bottom: Math.max(0, Math.floor(bottom)),
+        left: Math.max(0, Math.floor(left)),
+      };
     }
   }
   throw new Error("Invalid padding value");
@@ -102,48 +131,130 @@ export function resolvePadding(style: ResolvedStyle, map: StyleMap): void {
     }
   }
 
-  if ("paddingTop" in map && map.paddingTop !== undefined) {
-    const value = unwrap(map.paddingTop);
-    if (typeof value === "number") {
-      style.padding.top = value;
+  const assignEdge = (
+    key: "top" | "right" | "bottom" | "left",
+    raw: unknown,
+  ) => {
+    if (typeof raw === "number" && Number.isFinite(raw)) {
+      style.padding[key] = Math.max(0, Math.floor(raw));
     }
+  };
+
+  if ("paddingTop" in map && map.paddingTop !== undefined) {
+    assignEdge("top", unwrap(map.paddingTop));
   }
   if ("paddingRight" in map && map.paddingRight !== undefined) {
-    const value = unwrap(map.paddingRight);
-    if (typeof value === "number") {
-      style.padding.right = value;
-    }
+    assignEdge("right", unwrap(map.paddingRight));
   }
   if ("paddingBottom" in map && map.paddingBottom !== undefined) {
-    const value = unwrap(map.paddingBottom);
-    if (typeof value === "number") {
-      style.padding.bottom = value;
-    }
+    assignEdge("bottom", unwrap(map.paddingBottom));
   }
   if ("paddingLeft" in map && map.paddingLeft !== undefined) {
-    const value = unwrap(map.paddingLeft);
-    if (typeof value === "number") {
-      style.padding.left = value;
-    }
+    assignEdge("left", unwrap(map.paddingLeft));
   }
 }
 
-function resolveDimension(
-  style: ResolvedStyle,
-  key: keyof Pick<
-    ResolvedStyle,
-    "width" | "height" | "minWidth" | "maxWidth" | "minHeight" | "maxHeight"
-  >,
-  map: StyleMap,
-): void {
-  if (key in map) {
-    const raw = unwrap(
-      map[key as keyof StyleMap] as StyleValue<Dimension> | undefined,
-    );
-    if (raw !== undefined) {
-      (style as any)[key] = raw;
+function normalizeDimensionToken(
+  value: unknown,
+  fallback: DimensionToken,
+): DimensionToken {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, Math.floor(value));
+  }
+  if (typeof value === "string") {
+    const token = value.trim();
+    if (
+      token === "hug" ||
+      token === "auto" ||
+      token === "lock" ||
+      token === "fill"
+    ) {
+      return token;
+    }
+    if (/^-?\d+(\.\d+)?%$/.test(token)) {
+      return token as `${number}%`;
+    }
+    if (/^-?\d+(\.\d+)?fr$/.test(token)) {
+      return token as `${number}fr`;
+    }
+    const numeric = Number(token);
+    if (Number.isFinite(numeric)) {
+      return Math.max(0, Math.floor(numeric));
     }
   }
+  return fallback;
+}
+
+function normalizeLimitToken(
+  value: unknown,
+  fallback: DimensionLimitToken,
+): DimensionLimitToken {
+  if (value === "none") {
+    return "none";
+  }
+  if (fallback === "none") {
+    const normalized = normalizeDimensionToken(value, "auto");
+    if (normalized === "auto" && value !== "auto") {
+      return "none";
+    }
+    return normalized;
+  }
+  return normalizeDimensionToken(value, fallback);
+}
+
+function sanitizeFlow(value: unknown, fallback: FlowAxis): FlowAxis {
+  if (value === "x" || value === "y") {
+    return value;
+  }
+  return fallback;
+}
+
+function sanitizeDistribution(
+  value: unknown,
+  fallback: FlowDistribution,
+): FlowDistribution {
+  if (
+    value === "start" ||
+    value === "center" ||
+    value === "end" ||
+    value === "between" ||
+    value === "around"
+  ) {
+    return value;
+  }
+  return fallback;
+}
+
+function sanitizeAlignment(
+  value: unknown,
+  fallback: CrossAlignment,
+): CrossAlignment {
+  if (
+    value === "start" ||
+    value === "center" ||
+    value === "end" ||
+    value === "stretch"
+  ) {
+    return value;
+  }
+  return fallback;
+}
+
+function sanitizeWrap(value: unknown, fallback: TextWrap): TextWrap {
+  if (value === "none" || value === "word" || value === "char") {
+    return value;
+  }
+  return fallback;
+}
+
+function sanitizeNonNegative(value: unknown): number | undefined {
+  if (typeof value !== "number") {
+    return undefined;
+  }
+  if (!Number.isFinite(value)) {
+    return undefined;
+  }
+  return value < 0 ? 0 : value;
 }
 
 export function resolveStyle(
@@ -166,52 +277,96 @@ export function resolveStyle(
     base.background = value ?? null;
   }
   if ("bold" in map) {
-    const value = unwrap(map.bold);
-    base.bold = Boolean(value);
+    base.bold = Boolean(unwrap(map.bold));
   }
   if ("italic" in map) {
-    const value = unwrap(map.italic);
-    base.italic = Boolean(value);
+    base.italic = Boolean(unwrap(map.italic));
   }
   if ("underline" in map) {
-    const value = unwrap(map.underline);
-    base.underline = Boolean(value);
+    base.underline = Boolean(unwrap(map.underline));
   }
   if ("faint" in map) {
-    const value = unwrap(map.faint);
-    base.faint = Boolean(value);
+    base.faint = Boolean(unwrap(map.faint));
   }
 
-  resolveDimension(base, "width", map);
-  resolveDimension(base, "height", map);
-  resolveDimension(base, "minWidth", map);
-  resolveDimension(base, "maxWidth", map);
-  resolveDimension(base, "minHeight", map);
-  resolveDimension(base, "maxHeight", map);
-
-  if ("xAlign" in map) {
-    const value = unwrap(map.xAlign);
-    if (value) {
-      base.xAlign = value;
+  if ("width" in map) {
+    const value = unwrap(map.width);
+    if (value !== undefined) {
+      base.width = normalizeDimensionToken(value, base.width);
     }
   }
-  if ("yAlign" in map) {
-    const value = unwrap(map.yAlign);
-    if (value) {
-      base.yAlign = value;
+  if ("height" in map) {
+    const value = unwrap(map.height);
+    if (value !== undefined) {
+      base.height = normalizeDimensionToken(value, base.height);
     }
+  }
+  if ("minWidth" in map) {
+    const value = unwrap(map.minWidth);
+    if (value !== undefined) {
+      base.minWidth = normalizeLimitToken(value, base.minWidth);
+    }
+  }
+  if ("minHeight" in map) {
+    const value = unwrap(map.minHeight);
+    if (value !== undefined) {
+      base.minHeight = normalizeLimitToken(value, base.minHeight);
+    }
+  }
+  if ("maxWidth" in map) {
+    const value = unwrap(map.maxWidth);
+    if (value !== undefined) {
+      base.maxWidth = normalizeLimitToken(value, base.maxWidth);
+    }
+  }
+  if ("maxHeight" in map) {
+    const value = unwrap(map.maxHeight);
+    if (value !== undefined) {
+      base.maxHeight = normalizeLimitToken(value, base.maxHeight);
+    }
+  }
+  if ("flow" in map) {
+    base.flow = sanitizeFlow(unwrap(map.flow), base.flow);
   }
   if ("gap" in map) {
-    const value = unwrap(map.gap);
-    if (typeof value === "number") {
-      base.gap = value;
+    const gap = unwrap(map.gap);
+    if (typeof gap === "number" && Number.isFinite(gap)) {
+      base.gap = Math.max(0, Math.floor(gap));
+    }
+  }
+  if ("distribute" in map) {
+    base.distribute = sanitizeDistribution(
+      unwrap(map.distribute),
+      base.distribute,
+    );
+  }
+  if ("align" in map) {
+    base.align = sanitizeAlignment(unwrap(map.align), base.align);
+  }
+  if ("grow" in map) {
+    const raw = unwrap(map.grow);
+    if (raw === null) {
+      base.grow = undefined;
+    } else {
+      const normalized = sanitizeNonNegative(raw);
+      if (normalized !== undefined) {
+        base.grow = normalized;
+      }
+    }
+  }
+  if ("shrink" in map) {
+    const raw = unwrap(map.shrink);
+    if (raw === null) {
+      base.shrink = undefined;
+    } else {
+      const normalized = sanitizeNonNegative(raw);
+      if (normalized !== undefined) {
+        base.shrink = normalized;
+      }
     }
   }
   if ("textWrap" in map) {
-    const value = unwrap(map.textWrap);
-    if (value) {
-      base.textWrap = value;
-    }
+    base.textWrap = sanitizeWrap(unwrap(map.textWrap), base.textWrap);
   }
   if ("scrollX" in map) {
     const value = unwrap(map.scrollX);

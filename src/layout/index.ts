@@ -1,9 +1,15 @@
 export type { Constraints } from "./constraints";
 export { constraints, tight, loose, clampSize, clamp } from "./constraints";
-export { resolveDimension, applyMinMax } from "./measure";
-export { wrapText } from "./textwrap";
 export {
-  computeStackHeight,
-  computeStackWidth,
+  prepareStackMeasurement,
+  finalizeStackMeasurement,
+  layoutStack,
   alignOffset,
-} from "./flex";
+} from "./stack";
+export type {
+  PreparedStackMeasurement,
+  StackMeasurement,
+  StackLayoutItem,
+  StackLayoutResult,
+} from "./stack";
+export { wrapText } from "./textwrap";

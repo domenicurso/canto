@@ -1,14 +1,18 @@
 export type {
+  BoxPadding,
   Color,
-  Dimension,
-  HorizontalAlign,
+  CrossAlignment,
+  DimensionLimitToken,
+  DimensionToken,
+  FlowAxis,
+  FlowDistribution,
+  FlowItemDistribution,
   Padding,
   ResolvedStyle,
   StyleMap,
   StyleSnapshot,
+  StyleValue,
   TextWrap,
-  VerticalAlign,
-  BoxPadding,
 } from "./types";
 export { DEFAULT_STYLE_SNAPSHOT } from "./types";
 export {

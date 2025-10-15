@@ -9,12 +9,14 @@ export {
 export type { Signal, ComputedSignal, EffectHandle } from "./src/signals";
 
 export {
+  Stack,
   VStack,
   HStack,
   Text,
   Input,
   Textarea,
   Scrollable,
+  Button,
 } from "./src/widgets";
 export type {
   Node,
@@ -23,6 +25,7 @@ export type {
   InputProps,
   TextareaProps,
   ScrollableProps,
+  ButtonProps,
   ContainerProps,
   PropsMap,
 } from "./src/widgets";
@@ -60,8 +63,8 @@ export {
   loose,
   clamp,
   clampSize,
-  resolveDimension,
   wrapText,
+  alignOffset,
 } from "./src/layout";
 export type { Constraints } from "./src/layout";
 
@@ -78,12 +81,15 @@ export type {
   StyleSnapshot,
   ResolvedStyle,
   Color,
-  Dimension,
+  DimensionToken,
+  DimensionLimitToken,
   Padding,
-  HorizontalAlign,
-  VerticalAlign,
+  FlowAxis,
+  FlowDistribution,
+  CrossAlignment,
   TextWrap,
   BoxPadding,
+  StyleValue,
 } from "./src/style";
 
 export type {

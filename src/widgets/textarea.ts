@@ -1,11 +1,10 @@
-import {
-  alignOffset,
-  applyMinMax,
-  clamp,
-  resolveDimension,
-  wrapText,
-} from "../layout";
+import { alignOffset, wrapText } from "../layout";
 import { BaseNode } from "./node";
+import {
+  horizontalAlignFromDistribute,
+  normalizeCrossAlign,
+  resolveAxisSize,
+} from "./style-utils";
 
 import type { Constraints } from "../layout";
 import type { Signal } from "../signals";
@@ -157,15 +156,16 @@ export class TextareaNode extends BaseNode<TextareaProps> {
   _measure(constraints: Constraints, inherited: ResolvedStyle): Size {
     const style = this.resolveCurrentStyle(inherited);
     const padding = style.padding;
-    const availableWidth =
-      constraints.maxWidth - (padding.left + padding.right);
-    const innerWidth = Number.isFinite(availableWidth)
+    const horizontalPadding = padding.left + padding.right;
+    const verticalPadding = padding.top + padding.bottom;
+    const availableWidth = constraints.maxWidth - horizontalPadding;
+    const wrapWidth = Number.isFinite(availableWidth)
       ? Math.max(Math.floor(availableWidth), 1)
       : undefined;
     const content = this.value.length > 0 ? this.value : this.getPlaceholder();
 
-    if (innerWidth !== undefined) {
-      this.lines = wrapText(content, innerWidth, style.textWrap);
+    if (wrapWidth !== undefined && wrapWidth > 0) {
+      this.lines = wrapText(content, wrapWidth, style.textWrap);
     } else {
       const fallback = content.split(/\r?\n/);
       this.lines = fallback.length > 0 ? fallback : [""];
@@ -177,26 +177,26 @@ export class TextareaNode extends BaseNode<TextareaProps> {
     );
     const contentHeight = this.lines.length;
 
-    const intrinsicWidth = contentWidth + padding.left + padding.right;
-    const intrinsicHeight = contentHeight + padding.top + padding.bottom;
+    const intrinsicWidth = contentWidth + horizontalPadding;
+    const intrinsicHeight = contentHeight + verticalPadding;
 
-    let width = resolveDimension(
+    const width = resolveAxisSize(
       style.width,
+      style.minWidth,
+      style.maxWidth,
+      intrinsicWidth,
       constraints.minWidth,
       constraints.maxWidth,
-      intrinsicWidth,
     );
-    width = applyMinMax(width, style.minWidth, style.maxWidth);
-    width = clamp(width, constraints.minWidth, constraints.maxWidth);
 
-    let height = resolveDimension(
+    const height = resolveAxisSize(
       style.height,
+      style.minHeight,
+      style.maxHeight,
+      intrinsicHeight,
       constraints.minHeight,
       constraints.maxHeight,
-      intrinsicHeight,
     );
-    height = applyMinMax(height, style.minHeight, style.maxHeight);
-    height = clamp(height, constraints.minHeight, constraints.maxHeight);
 
     return { width, height };
   }
@@ -211,7 +211,8 @@ export class TextareaNode extends BaseNode<TextareaProps> {
       0,
     );
     const totalHeight = this.lines.length;
-    const offsetY = alignOffset(innerHeight, totalHeight, style.yAlign);
+    const verticalAlign = normalizeCrossAlign(style.align);
+    const offsetY = alignOffset(innerHeight, totalHeight, verticalAlign);
     this.contentRect = {
       x: origin.x + padding.left,
       y: origin.y + padding.top + offsetY,
@@ -225,29 +226,29 @@ export class TextareaNode extends BaseNode<TextareaProps> {
     const snapshot = this.getStyleSnapshot();
     const layout = this.getLayoutRect();
     const style = this.getResolvedStyle();
-    const padding = style.padding;
     const spans: PaintResult["spans"] = [];
     const rects: PaintResult["rects"] = [];
 
-    rects.push({
-      x: layout.x,
-      y: layout.y,
-      width: layout.width,
-      height: layout.height,
-      style: snapshot,
-    });
+    if (style.background !== null) {
+      rects.push({
+        x: layout.x,
+        y: layout.y,
+        width: layout.width,
+        height: layout.height,
+        style: snapshot,
+      });
+    }
 
-    const innerWidth = Math.max(
-      layout.width - (padding.left + padding.right),
-      0,
-    );
-    const offsetY = this.contentRect.y - (layout.y + padding.top);
+    const innerWidth = Math.max(this.contentRect.width, 0);
+    const baseX = this.contentRect.x;
+    const baseY = this.contentRect.y;
+    const horizontalAlign = horizontalAlignFromDistribute(style.distribute);
 
     this.lines.forEach((line, index) => {
-      const offsetX = alignOffset(innerWidth, line.length, style.xAlign);
+      const offsetX = alignOffset(innerWidth, line.length, horizontalAlign);
       spans.push({
-        x: layout.x + padding.left + offsetX,
-        y: layout.y + padding.top + offsetY + index,
+        x: baseX + offsetX,
+        y: baseY + index,
         text: line,
         style: snapshot,
       });
