@@ -41,3 +41,20 @@ surface.startRender({ cursor: { visibility: "hidden" } });
 
 setInterval(() => count.set((count.get() + 1) % 50), 100);
 ```
+
+## Widgets
+
+### Leaf
+
+- `Text`
+- `Input`
+- `Image` (unstable)
+- `Textarea` (unstable)
+- `Button` (unstable)
+
+### Container
+
+- `VStack`
+- `HStack`
+- `Stack`
+- `Scrollable` (unstable)
