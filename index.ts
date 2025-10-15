@@ -17,6 +17,7 @@ export {
   Textarea,
   Scrollable,
   Button,
+  Image,
 } from "./src/widgets";
 export type {
   Node,
@@ -27,6 +28,7 @@ export type {
   ScrollableProps,
   ButtonProps,
   ContainerProps,
+  ImageProps,
   PropsMap,
 } from "./src/widgets";
 

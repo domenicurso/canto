@@ -15,7 +15,8 @@ export type NodeType =
   | "Input"
   | "Textarea"
   | "Scrollable"
-  | "Button";
+  | "Button"
+  | "Image";
 
 export interface Node {
   readonly type: NodeType;

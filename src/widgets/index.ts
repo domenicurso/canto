@@ -6,6 +6,7 @@ export { Input, InputNode } from "./input";
 export { Textarea, TextareaNode } from "./textarea";
 export { Scrollable, ScrollableNode } from "./scrollable";
 export { Button, ButtonNode } from "./button";
+export { Image, ImageNode } from "./image";
 export type {
   ContainerProps,
   InputProps,
@@ -13,5 +14,6 @@ export type {
   ScrollableProps,
   TextProps,
   TextareaProps,
+  ImageProps,
   PropsMap,
 } from "./props";

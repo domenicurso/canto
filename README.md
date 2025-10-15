@@ -14,7 +14,14 @@ Canto's design philosophy follows these principles:
 Below is an example of what a simple Canto app might look like in practice:
 
 ```ts
-import { computed, Renderer, state, Surface, Text, VStack } from "@domurso/canto"
+import {
+  computed,
+  Renderer,
+  state,
+  Surface,
+  Text,
+  VStack,
+} from "@domurso/canto";
 
 const count = state(0);
 
@@ -24,11 +31,13 @@ const label2 = computed(() => `Data Point B: ${"#".repeat(count.get() + 5)}`);
 const app = VStack(
   Text("Live Data Feed").style({ background: "red", padding: [1, 2] }),
   VStack(Text(label1), Text(label2)),
-  Text("Data Point B is always 5 more units than Point A").style({ italic: true })
+  Text("Data Point B is always 5 more units than Point A").style({
+    italic: true,
+  }),
 ).style({ gap: 1 });
 
 const surface = new Surface(app, new Renderer());
 surface.startRender({ cursor: { visibility: "hidden" } });
 
-setInterval(() => count.set((count.get() + 1) % 50), 100)
+setInterval(() => count.set((count.get() + 1) % 50), 100);
 ```

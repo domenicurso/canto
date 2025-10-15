@@ -48,12 +48,18 @@ export interface ContainerProps {
   onSubmit?: () => void;
 }
 
+export interface ImageProps {
+  path?: string | Signal<string>;
+  cellAspectRatio?: number | Signal<number>;
+}
+
 export type NodeProps =
   | TextProps
   | InputProps
   | TextareaProps
   | ScrollableProps
   | ButtonProps
-  | ContainerProps;
+  | ContainerProps
+  | ImageProps;
 
 export type PropsMap = NodeProps;
