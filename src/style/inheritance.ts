@@ -36,21 +36,16 @@ function clonePadding(padding: BoxPadding): BoxPadding {
   };
 }
 
-function cloneResolvedStyle(style: ResolvedStyle): ResolvedStyle {
+function createInheritedStyle(inherited: ResolvedStyle): ResolvedStyle {
   const base = createDefaultStyle();
-  const snapshot = cloneSnapshot(style);
-  base.foreground = snapshot.foreground;
-  base.background = snapshot.background;
-  base.bold = snapshot.bold;
-  base.italic = snapshot.italic;
-  base.underline = snapshot.underline;
-  base.faint = snapshot.faint;
-  base.padding = clonePadding(style.padding);
-  base.textWrap = style.textWrap;
-  base.scrollX = style.scrollX;
-  base.scrollY = style.scrollY;
-  base.scrollbarBackground = style.scrollbarBackground;
-  base.scrollbarForeground = style.scrollbarForeground;
+  // Only inherit text-related and visual properties that make sense
+  base.foreground = inherited.foreground;
+  base.background = inherited.background;
+  base.bold = inherited.bold;
+  base.italic = inherited.italic;
+  base.underline = inherited.underline;
+  base.faint = inherited.faint;
+  base.textWrap = inherited.textWrap;
   return base;
 }
 
@@ -261,7 +256,9 @@ export function resolveStyle(
   inherited: ResolvedStyle | undefined,
   map?: StyleMap,
 ): ResolvedStyle {
-  const base = inherited ? cloneResolvedStyle(inherited) : createDefaultStyle();
+  const base = inherited
+    ? createInheritedStyle(inherited)
+    : createDefaultStyle();
   if (!map) {
     return base;
   }
