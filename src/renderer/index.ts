@@ -383,6 +383,10 @@ export class Renderer {
     process.stdout.write("\x1b[2J\x1b[H"); // Clear screen and move cursor to home
   }
 
+  getSize(): { width: number; height: number } {
+    return { width: this.width, height: this.height };
+  }
+
   resize(width: number, height: number): void {
     this.width = width;
     this.height = height;

@@ -11,8 +11,8 @@ import {
   VStack,
 } from "..";
 
-const message = "What is your name";
-const defaultValue = "John Doe";
+const message = state("What is your name");
+const defaultValue = state("John Doe");
 
 const value = state("");
 const error = state("");
@@ -28,11 +28,19 @@ const inputWidget = Input()
     minWidth: 1,
   });
 
-// Just create an Input widget
 const app = VStack(
   HStack(
     Text("?").style({ foreground: "green" }),
-    Text(`${message}:`).style({ foreground: "cyan" }),
+    HStack(
+      Text(message),
+      Text(` (${defaultValue.get().trim()})`)
+        .style({ faint: true })
+        .when(computed(() => defaultValue.get() !== ""))
+        .unless(isComplete),
+      Text(":").style({
+        faint: computed(() => defaultValue.get() !== "" && !isComplete.get()),
+      }),
+    ).style({ foreground: "cyan" }),
     inputWidget,
     Text(error)
       .style({
@@ -61,7 +69,7 @@ surface.onKey((event, phase) => {
 
   if (event.key === Key.Return) {
     if (error.get()) return;
-    value.set(value.get().trim() || defaultValue);
+    value.set((value.get() || defaultValue.get()).trim());
     isComplete.set(true);
     surface.stopRender();
     console.log("\nUser input:", value.get());

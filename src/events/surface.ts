@@ -37,10 +37,30 @@ export class Surface {
   private renderTrigger = new StateSignal(0);
   private globalSignalListener: (() => void) | null = null;
   private isUpdatingTrigger = false;
+  private currentRenderOptions: RenderOptions | undefined;
+  private terminalSize: { width: number; height: number };
+  private handleTerminalResize = () => {
+    if (!process.stdout.isTTY) {
+      return;
+    }
+    const width = process.stdout.columns ?? this.terminalSize.width;
+    const height = process.stdout.rows ?? this.terminalSize.height;
+    if (
+      width <= 0 ||
+      height <= 0 ||
+      (width === this.terminalSize.width && height === this.terminalSize.height)
+    ) {
+      return;
+    }
+    this.terminalSize = { width, height };
+    const event: ResizeEvent = { type: "Resize", width, height };
+    this.dispatch(event);
+  };
 
   constructor(root: Node, renderer: Renderer) {
     this.root = root;
     this.renderer = renderer;
+    this.terminalSize = this.renderer.getSize();
     this.refreshFocusables();
     this.setupStdin();
   }
@@ -205,18 +225,11 @@ export class Surface {
     this.stopRender();
 
     // Store render options for re-rendering
-    const renderOptions = options ?? { bounds: { mode: "auto" } };
+    this.currentRenderOptions = options ?? { bounds: { mode: "auto" } };
 
     // Set up global signal change listener
     this.globalSignalListener = addGlobalSignalChangeListener(() => {
-      // Prevent infinite loop by ignoring our own renderTrigger updates
-      if (this.isUpdatingTrigger) {
-        return;
-      }
-      // Trigger re-render by updating the trigger signal
-      this.isUpdatingTrigger = true;
-      this.renderTrigger.set(this.renderTrigger.get() + 1);
-      this.isUpdatingTrigger = false;
+      this.requestRender();
     });
 
     // Create an effect that depends on our render trigger
@@ -225,14 +238,14 @@ export class Surface {
       this.renderTrigger.get();
 
       // Call render
-      this.render(renderOptions);
+      this.render(this.currentRenderOptions ?? { bounds: { mode: "auto" } });
 
       // Also refresh focusables to ensure we track any new nodes
       this.refresh();
     });
 
     // Do initial render
-    this.renderTrigger.set(this.renderTrigger.get() + 1);
+    this.requestRender();
 
     // Return a function to stop the render loop
     return () => this.stopRender();
@@ -247,6 +260,7 @@ export class Surface {
       this.renderEffect.dispose();
       this.renderEffect = null;
     }
+    this.currentRenderOptions = undefined;
   }
 
   dispose(): void {
@@ -316,6 +330,10 @@ export class Surface {
     process.stdin.on("keypress", this.handleStdinKeypress.bind(this));
 
     this.stdinSetup = true;
+
+    if (process.stdout.isTTY) {
+      process.stdout.on("resize", this.handleTerminalResize);
+    }
   }
 
   private cleanupStdin(): void {
@@ -329,7 +347,20 @@ export class Surface {
     process.stdin.pause();
     process.stdin.removeAllListeners("keypress");
 
+    if (process.stdout.isTTY) {
+      process.stdout.off("resize", this.handleTerminalResize);
+    }
+
     this.stdinSetup = false;
+  }
+
+  private requestRender(): void {
+    if (this.isUpdatingTrigger) {
+      return;
+    }
+    this.isUpdatingTrigger = true;
+    this.renderTrigger.set(this.renderTrigger.get() + 1);
+    this.isUpdatingTrigger = false;
   }
 
   private handleStdinKeypress(str: string, key: any): void {
@@ -338,7 +369,6 @@ export class Surface {
       this.cleanupStdin();
       process.stdout.write("\x1b[?25h"); // Show cursor
       process.exit(0);
-      return;
     }
 
     if (!key) {
@@ -479,7 +509,9 @@ export class Surface {
   }
 
   private handleResize(event: ResizeEvent): boolean {
+    this.terminalSize = { width: event.width, height: event.height };
     this.renderer.resize(event.width, event.height);
+    this.requestRender();
     return true;
   }
 
