@@ -1,11 +1,8 @@
-import { Image, Renderer, Surface, Text, VStack } from "..";
+import { Image, Renderer, Surface } from "..";
 
-const imagePath = "/Users/dom/Downloads/Monstera Organic Dress.png"; // Change to point at a real PNG on disk
+const imagePath = "/Users/dom/Downloads/Monstera Organic Dress.png";
 
-const app = VStack(
-  Text(`Previewing image: ${imagePath}`),
-  Image(imagePath),
-).style({ gap: 1 });
+const app = Image(imagePath);
 
 const surface = new Surface(app, new Renderer());
 surface.startRender({ cursor: { visibility: "hidden" } });
