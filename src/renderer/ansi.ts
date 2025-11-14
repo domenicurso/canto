@@ -1,4 +1,5 @@
 import { colorToAnsi } from "../style";
+
 import type { StyleSnapshot } from "../style";
 
 const RESET = "\u001B[0m";

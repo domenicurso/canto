@@ -61,25 +61,6 @@ const QUADRANT_CHAR_MAP: Record<number, string> = {
   0b1111: "█",
 };
 
-const NAMED_COLOR_TO_RGB: Record<string, Rgb> = {
-  black: [0, 0, 0],
-  red: [205, 0, 0],
-  green: [0, 205, 0],
-  yellow: [205, 205, 0],
-  blue: [0, 0, 238],
-  magenta: [205, 0, 205],
-  cyan: [0, 205, 205],
-  white: [229, 229, 229],
-  brightBlack: [127, 127, 127],
-  brightRed: [255, 0, 0],
-  brightGreen: [0, 255, 0],
-  brightYellow: [255, 255, 0],
-  brightBlue: [92, 92, 255],
-  brightMagenta: [255, 0, 255],
-  brightCyan: [0, 255, 255],
-  brightWhite: [255, 255, 255],
-};
-
 const DEFAULT_CELL_ASPECT_RATIO = 0.5;
 let cachedCellAspectRatio: number | null = null;
 let attemptedAspectDetection = false;
@@ -236,9 +217,6 @@ function toRgb(color: Color | null | undefined): Rgb | null {
         return [r, g, b];
       }
       return null;
-    }
-    if (NAMED_COLOR_TO_RGB[color]) {
-      return NAMED_COLOR_TO_RGB[color];
     }
   }
   return null;

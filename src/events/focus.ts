@@ -1,5 +1,6 @@
-import type { Node } from "../widgets";
 import { BaseNode } from "../widgets";
+
+import type { Node } from "../widgets";
 
 export function collectFocusableNodes(root: Node): BaseNode[] {
   const result: BaseNode[] = [];

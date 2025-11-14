@@ -85,4 +85,3 @@ const renderer = new Renderer();
 const surface = new Surface(app, renderer);
 
 surface.startRender();
-

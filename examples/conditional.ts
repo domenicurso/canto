@@ -17,8 +17,6 @@ const app = VStack(
     faint: true,
   }),
 
-  Text(""),
-
   // Always visible counter
   HStack(
     Text("Counter:").style({ foreground: "cyan" }),
@@ -28,11 +26,9 @@ const app = VStack(
     }),
   ).style({ gap: 1 }),
 
-  Text(""),
-
   // Conditionally rendered message
   VStack(
-    Text("✨ This message is conditionally rendered!").style({
+    Text("This message is conditionally rendered!").style({
       foreground: "magenta",
       bold: true,
     }),
@@ -58,21 +54,19 @@ const app = VStack(
     .when(showChoices),
 
   // Conditionally rendered based on counter
-  Text("🎉 Counter reached 5 or more!")
+  Text("Counter reached 5 or more!")
     .style({
       foreground: "brightGreen",
       bold: true,
     })
     .when(computed(() => counter.get() >= 5)),
 
-  Text("🔥 Counter reached 10 or more! Amazing!")
+  Text("Counter reached 10 or more! Amazing!")
     .style({
       foreground: "brightRed",
       bold: true,
     })
     .when(computed(() => counter.get() >= 10)),
-
-  Text(""),
 
   // Status display
   HStack(
@@ -88,7 +82,6 @@ const app = VStack(
     }),
   ).style({ gap: 1 }),
 
-  Text(""),
   Text("Press Ctrl+C to exit").style({ faint: true }),
 ).style({ gap: 1 });
 
