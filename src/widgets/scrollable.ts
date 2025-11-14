@@ -2,7 +2,6 @@ import { BaseNode } from "./node";
 import { StackNodeBase } from "./stack";
 
 import type { Constraints } from "../layout";
-import type { Signal } from "../signals";
 import type { ResolvedStyle } from "../style";
 import type {
   LayoutRect,
