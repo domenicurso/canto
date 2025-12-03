@@ -54,6 +54,8 @@ const scrollableContent = VStack(
   ...lines.map((line, index) =>
     Text(line).style({
       foreground: index % 2 === 0 ? "white" : "cyan",
+      // apply faint in groups of 2 where each group alternates
+      faint: index % 4 === 2 || index % 4 === 3,
       padding: [0, 1],
     }),
   ),
