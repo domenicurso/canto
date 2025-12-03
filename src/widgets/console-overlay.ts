@@ -72,6 +72,8 @@ export class ConsoleOverlayNode extends BaseNode<ConsoleOverlayProps> {
       this._children = [
         VStack(this.contentNode, this.console).style({
           gap: 0,
+          distribute: "between",
+          height: "100%"
         }),
       ];
     } else {
