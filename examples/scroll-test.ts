@@ -211,8 +211,9 @@ setTimeout(() => {
   const scrollableNodes = surface.root.children.filter(
     (child) => child.type === "Scrollable",
   );
-  if (scrollableNodes.length > 0) {
-    surface.focus(scrollableNodes[0]);
+  const firstScrollable = scrollableNodes[0];
+  if (firstScrollable) {
+    surface.focus(firstScrollable);
     globalConsole.log("Scrollable area focused - try arrow keys!");
   }
 }, 100);

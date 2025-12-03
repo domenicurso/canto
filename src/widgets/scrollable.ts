@@ -1,7 +1,9 @@
+import { state } from "../signals";
 import { BaseNode } from "./node";
 import { StackNodeBase } from "./stack";
 
 import type { Constraints } from "../layout";
+import type { Signal } from "../signals";
 import type { ResolvedStyle } from "../style";
 import type {
   LayoutRect,
@@ -64,8 +66,8 @@ function clipRect(rect: Rect, viewport: LayoutRect): Rect | null {
 export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
   private contentSize: Size = { width: 0, height: 0 };
   private viewport: LayoutRect = { x: 0, y: 0, width: 0, height: 0 };
-  private scrollOffsetX = 0;
-  private scrollOffsetY = 0;
+  private scrollOffsetX: Signal<number> = state(0);
+  private scrollOffsetY: Signal<number> = state(0);
   private scrollSubscriptionX: (() => void) | null = null;
   private scrollSubscriptionY: (() => void) | null = null;
   private focused = false;
@@ -125,7 +127,7 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
         if (ctrl) {
           this.setScroll(0, 0);
         } else {
-          this.setScroll(0, this.scrollOffsetY);
+          this.setScroll(0, this.scrollOffsetY.get());
         }
         return true;
       case "end":
@@ -137,7 +139,7 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
         } else {
           this.setScroll(
             Math.max(this.contentSize.width - this.viewport.width, 0),
-            this.scrollOffsetY,
+            this.scrollOffsetY.get(),
           );
         }
         return true;
@@ -168,23 +170,29 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
   }
 
   scrollBy(dx: number, dy: number): void {
-    this.setScroll(this.scrollOffsetX + dx, this.scrollOffsetY + dy);
+    this.setScroll(
+      this.scrollOffsetX.get() + dx,
+      this.scrollOffsetY.get() + dy,
+    );
   }
 
   setScroll(x: number, y: number): void {
     const clamped = this.clampScroll(x, y);
-    const changed =
-      clamped.x !== this.scrollOffsetX || clamped.y !== this.scrollOffsetY;
+    const currentX = this.scrollOffsetX.get();
+    const currentY = this.scrollOffsetY.get();
+    const changed = clamped.x !== currentX || clamped.y !== currentY;
     if (!changed) {
       return;
     }
-    this.scrollOffsetX = clamped.x;
-    this.scrollOffsetY = clamped.y;
+
+    // Set the new scroll offsets - signal changes will trigger re-render
+    this.scrollOffsetX.set(clamped.x);
+    this.scrollOffsetY.set(clamped.y);
+
     const handler = this.propsDefinition.onScroll;
     if (typeof handler === "function") {
-      handler(this.scrollOffsetX, this.scrollOffsetY);
+      handler(clamped.x, clamped.y);
     }
-    this._invalidate();
   }
 
   private clampScroll(x: number, y: number): { x: number; y: number } {
@@ -206,10 +214,17 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
 
     if (this.propsDefinition.scrollX) {
       const signal = this.propsDefinition.scrollX;
-      this.scrollOffsetX = this.clampScroll(signal.get(), this.scrollOffsetY).x;
+      const clampedX = this.clampScroll(
+        signal.get(),
+        this.scrollOffsetY.get(),
+      ).x;
+      this.scrollOffsetX.set(clampedX);
       this.scrollSubscriptionX = signal.subscribe((value) => {
-        this.scrollOffsetX = this.clampScroll(value, this.scrollOffsetY).x;
-        this._invalidate();
+        const clampedValue = this.clampScroll(
+          value,
+          this.scrollOffsetY.get(),
+        ).x;
+        this.scrollOffsetX.set(clampedValue);
       });
     } else {
       this.scrollSubscriptionX = null;
@@ -217,10 +232,17 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
 
     if (this.propsDefinition.scrollY) {
       const signal = this.propsDefinition.scrollY;
-      this.scrollOffsetY = this.clampScroll(this.scrollOffsetX, signal.get()).y;
+      const clampedY = this.clampScroll(
+        this.scrollOffsetX.get(),
+        signal.get(),
+      ).y;
+      this.scrollOffsetY.set(clampedY);
       this.scrollSubscriptionY = signal.subscribe((value) => {
-        this.scrollOffsetY = this.clampScroll(this.scrollOffsetX, value).y;
-        this._invalidate();
+        const clampedValue = this.clampScroll(
+          this.scrollOffsetX.get(),
+          value,
+        ).y;
+        this.scrollOffsetY.set(clampedValue);
       });
     } else {
       this.scrollSubscriptionY = null;
@@ -247,25 +269,36 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
 
   override _measure(constraints: Constraints, inherited: ResolvedStyle): Size {
     const size = super._measure(constraints, inherited);
-    const measurement = this.getMeasurement();
     const style = this.getResolvedStyle();
-    const horizontalPadding = style.padding.left + style.padding.right;
-    const verticalPadding = style.padding.top + style.padding.bottom;
 
-    if (measurement) {
-      this.contentSize = {
-        width: Math.max(
-          measurement.intrinsicOuterSize.width - horizontalPadding,
-          0,
-        ),
-        height: Math.max(
-          measurement.intrinsicOuterSize.height - verticalPadding,
-          0,
-        ),
-      };
-    } else {
-      this.contentSize = { width: 0, height: 0 };
-    }
+    // Measure child with unrestricted constraints to determine content size
+    const child = this.childNode;
+    const unrestricted = {
+      minWidth: 0,
+      minHeight: 0,
+      maxWidth: Infinity,
+      maxHeight: Infinity,
+    };
+
+    // Create a modified inherited style that forces no size constraints
+    // This ensures the child and its descendants can expand to natural size
+    const unrestrictedInheritedStyle: ResolvedStyle = {
+      ...style,
+      width: "auto",
+      height: "auto",
+      minWidth: "none",
+      minHeight: "none",
+      maxWidth: "none",
+      maxHeight: "none",
+    };
+
+    const childSize = child._measure(unrestricted, unrestrictedInheritedStyle);
+
+    this.contentSize = {
+      width: childSize.width,
+      height: childSize.height,
+    };
+
     return size;
   }
 
@@ -282,35 +315,53 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
     };
 
     const child = this.childNode;
-    let childRect: LayoutRect = {
-      x: this.viewport.x,
-      y: this.viewport.y,
-      width: this.viewport.width,
-      height: this.viewport.height,
+
+    // Measure child with unrestricted constraints to get its natural size
+    const unrestricted = {
+      minWidth: 0,
+      minHeight: 0,
+      maxWidth: Infinity,
+      maxHeight: Infinity,
     };
 
-    if (child instanceof BaseNode) {
-      childRect = child.getLayoutRect();
+    // Create unconstrained inherited style for content measurement
+    const unrestrictedInheritedStyle: ResolvedStyle = {
+      ...style,
+      width: "auto",
+      height: "auto",
+      minWidth: "none",
+      minHeight: "none",
+      maxWidth: "none",
+      maxHeight: "none",
+    };
+
+    const childSize = child._measure(unrestricted, unrestrictedInheritedStyle);
+
+    // Use the child's natural size as content size
+    this.contentSize = {
+      width: childSize.width,
+      height: childSize.height,
+    };
+
+    // Only clamp scroll offset if it's now invalid (content shrunk)
+    const maxX = Math.max(this.contentSize.width - this.viewport.width, 0);
+    const maxY = Math.max(this.contentSize.height - this.viewport.height, 0);
+
+    // Only adjust scroll offset if it exceeds the new bounds
+    if (this.scrollOffsetX.get() > maxX) {
+      this.scrollOffsetX.set(maxX);
+    }
+    if (this.scrollOffsetY.get() > maxY) {
+      this.scrollOffsetY.set(maxY);
     }
 
-    this.contentSize = {
-      width: childRect.width,
-      height: childRect.height,
+    // Position child based on scroll offset
+    const childOrigin = {
+      x: this.viewport.x - this.scrollOffsetX.get(),
+      y: this.viewport.y - this.scrollOffsetY.get(),
     };
 
-    const clamped = this.clampScroll(this.scrollOffsetX, this.scrollOffsetY);
-    this.scrollOffsetX = clamped.x;
-    this.scrollOffsetY = clamped.y;
-
-    const desiredOrigin = {
-      x: this.viewport.x - this.scrollOffsetX,
-      y: this.viewport.y - this.scrollOffsetY,
-    };
-
-    child._layout(desiredOrigin, {
-      width: childRect.width,
-      height: childRect.height,
-    });
+    child._layout(childOrigin, childSize);
 
     this.dirty = false;
   }
@@ -319,6 +370,11 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
     const style = this.getResolvedStyle();
     const snapshot = this.getStyleSnapshot();
     const layout = this.getLayoutRect();
+
+    // Subscribe to scroll offset signals to ensure re-renders on changes
+    const scrollX = this.scrollOffsetX.get();
+    const scrollY = this.scrollOffsetY.get();
+
     const childPaint = this.childNode._paint();
 
     const spans: PaintResult["spans"] = [];

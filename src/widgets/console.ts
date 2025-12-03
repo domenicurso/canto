@@ -27,6 +27,8 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
   private inputValue: Signal<string>;
   private contentStack: Node | null = null;
   private inputField: Node | null = null;
+  private messageContainer: Node | null = null;
+  private scrollableContent: Node | null = null;
   private maxMessages: number;
 
   constructor(props: ConsoleProps = {}) {
@@ -62,10 +64,23 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
         },
       })
       .style({
-        // background: "#333333",
+        background: "#333333",
         foreground: "white",
         padding: [0, 1],
+        width: "100%",
       });
+
+    // Create message container and scrollable area once to maintain scroll state
+    this.messageContainer = VStack().style({
+      padding: [0, 1],
+    });
+
+    this.scrollableContent =
+      this.propsDefinition.height === "auto"
+        ? this.messageContainer
+        : Scrollable(this.messageContainer).style({
+            maxHeight: Math.max(1, (this.propsDefinition.height ?? 8) - 2),
+          });
 
     this.buildContent();
 
@@ -103,7 +118,7 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
       width: "100%",
     });
 
-    // Create message display
+    // Update message display content without recreating scrollable
     const messageNodes =
       visibleMessages.length > 0
         ? visibleMessages.map((msg, index) =>
@@ -116,26 +131,24 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
             }),
           ];
 
-    const messageContainer = VStack(...messageNodes).style({
-      padding: [0, 1],
-    });
-
-    // Create scrollable content area
-    const scrollableContent =
-      this.propsDefinition.height === "auto"
-        ? messageContainer
-        : Scrollable(messageContainer).style({
-            maxHeight: Math.max(1, (this.propsDefinition.height ?? 8) - 2),
-          });
+    // Update the existing message container's children to preserve scroll state
+    if (this.messageContainer) {
+      (this.messageContainer as any)._children = messageNodes;
+      this.messageContainer._invalidate();
+    }
 
     if (!this.inputField) {
       throw new Error("Input field not initialized");
     }
 
     // Build the complete console UI
+    if (!this.scrollableContent) {
+      throw new Error("Scrollable content not initialized");
+    }
+
     this.contentStack = VStack(
       header,
-      scrollableContent,
+      this.scrollableContent,
       this.inputField,
     ).style({
       background: "#222222",

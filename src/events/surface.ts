@@ -458,16 +458,34 @@ export class Surface {
         const x = parseInt(xStr, 10) - 1; // Convert to 0-based
         const y = parseInt(yStr, 10) - 1; // Convert to 0-based
 
-        // Check for scroll events (buttons 64, 65 are scroll up/down)
-        if (button === 64 || button === 65) {
+        // Check for scroll events (buttons 64-67 are scroll up/down/left/right)
+        if (button >= 64 && button <= 67) {
+          let deltaX = 0;
+          let deltaY = 0;
+
+          switch (button) {
+            case 64: // scroll up
+              deltaY = -1;
+              break;
+            case 65: // scroll down
+              deltaY = 1;
+              break;
+            case 66: // scroll left
+              deltaX = -1;
+              break;
+            case 67: // scroll right
+              deltaX = 1;
+              break;
+          }
+
           const scrollEvent: MouseEvent = {
             type: "Mouse",
             action: "scroll",
             x,
             y,
             scrollDelta: {
-              x: 0,
-              y: button === 64 ? -1 : 1,
+              x: deltaX,
+              y: deltaY,
             },
           };
           this.dispatch(scrollEvent);
@@ -604,9 +622,7 @@ export class Surface {
 
   private handleKeyPress(event: KeyPressEvent): boolean {
     const key = event.key.toLowerCase();
-    console.log(`[DEBUG] HandleKeyPress: "${key}", Key.Tab: "${Key.Tab}"`);
     if (key === Key.Tab) {
-      console.log("[DEBUG] Tab key - focusing next/prev");
       return event.shift ? this.focusPrevious() : this.focusNext();
     }
     if (key === Key.Escape) {
@@ -727,18 +743,11 @@ export class Surface {
     const { ctrl, shift, meta, alt } = event;
     const cmdOrCtrl = ctrl || meta;
 
-    // Debug logging
-    console.log(
-      `[DEBUG] Input key: "${key}", Key.Return: "${Key.Return}", Key.Backspace: "${Key.Backspace}", Key.Tab: "${Key.Tab}"`,
-    );
-
     switch (key) {
       case Key.Backspace:
-        console.log("[DEBUG] Backspace key handled");
         node.backspace();
         return true;
       case Key.Delete:
-        console.log("[DEBUG] Delete key handled");
         node.delete();
         return true;
 
@@ -806,12 +815,10 @@ export class Surface {
         return false;
 
       case Key.Return:
-        console.log("[DEBUG] Return key handled");
         node.submit();
         return true;
 
       default:
-        console.log(`[DEBUG] Unhandled key: "${key}"`);
         return false;
     }
   }
