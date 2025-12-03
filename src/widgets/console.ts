@@ -111,8 +111,10 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
 
     // Create header
     const header = HStack(
-      Text("Canto Console").style({ bold: true }),
-      Text(computed(() => `${messages.length} messages`)),
+      Text("Console").style({ bold: true }),
+      Text(computed(() => `${messages.length} messages`)).style({
+        faint: true,
+      }),
     ).style({
       background: "#333333",
       foreground: "white",
@@ -142,12 +144,12 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
               metadata.push(formatter.format(msg.timestamp));
             }
 
-            // Add file/line info if present
-            if (msg.file && msg.line) {
-              metadata.push(`${msg.file}:${msg.line}`);
-            } else if (msg.file) {
-              metadata.push(msg.file);
-            }
+            // // Add file/line info if present
+            // if (msg.file && msg.line) {
+            //   metadata.push(`${msg.file}:${msg.line}`);
+            // } else if (msg.file) {
+            //   metadata.push(msg.file);
+            // }
 
             // Color coding for different log levels
             const getLevelColor = (level?: ConsoleMessage["level"]): string => {
