@@ -37,7 +37,7 @@ const appContent = VStack(
 
 // Wrap content with console overlay
 const app = withConsole(appContent, {
-  consoleHeight: 12,
+  consoleHeight: 16,
   toggleKey: "`",
   initialVisible: false,
   maxMessages: 1000,
@@ -142,7 +142,6 @@ surface.onText((event: TextInputEvent, phase) => {
     // Toggle console with 'c' or backtick
     if (event.text === "c" || event.text === "`") {
       Console.toggle();
-      Console.log(`Console toggled ${Console.isVisible() ? "on" : "off"}`);
     }
 
     if (event.text === "q") {
@@ -172,11 +171,6 @@ surface.startRender({ cursor: { visibility: "hidden" } });
 
 // Auto-start the animation
 startAnimation();
-
-// Add some initial welcome messages
-Console.log("Console overlay example started!");
-Console.log("Press ` (backtick) or F12 to toggle this console");
-Console.log("Type 'help' for available commands");
 
 // Cleanup on exit
 process.on("SIGINT", () => {
