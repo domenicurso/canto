@@ -12,10 +12,18 @@ import type { PaintResult, Point, Size } from "../types";
 import type { Node } from "./node";
 import type { ContainerProps } from "./props";
 
+export interface ConsoleMessage {
+  content: string;
+  timestamp?: Date;
+  file?: string;
+  line?: number;
+  level?: "info" | "warn" | "error" | "debug";
+}
+
 export interface ConsoleProps extends ContainerProps {
   visible?: boolean | Signal<boolean>;
   height?: number | "auto";
-  messages?: string[] | Signal<string[]>;
+  messages?: ConsoleMessage[] | Signal<ConsoleMessage[]>;
   onInput?: (input: string) => void;
   placeholder?: string;
   maxMessages?: number;
@@ -23,7 +31,7 @@ export interface ConsoleProps extends ContainerProps {
 
 export class ConsoleNode extends BaseNode<ConsoleProps> {
   private isVisible: Signal<boolean>;
-  private messages: Signal<string[]>;
+  private messages: Signal<ConsoleMessage[]>;
   private inputValue: Signal<string>;
   private contentStack: Node | null = null;
   private inputField: Node | null = null;
@@ -42,7 +50,7 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
 
     this.messages =
       typeof props.messages === "object" && "get" in props.messages
-        ? (props.messages as Signal<string[]>)
+        ? (props.messages as Signal<ConsoleMessage[]>)
         : state(props.messages ?? []);
 
     this.inputValue = state("");
@@ -55,31 +63,27 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
     this.inputField = Input()
       .bind(this.inputValue)
       .props({
-        placeholder: this.propsDefinition.placeholder ?? "Enter command...",
+        placeholder: this.propsDefinition.placeholder ?? "enter a command…",
         onSubmit: (value: string) => {
           if (value.trim() && this.propsDefinition.onInput) {
             this.propsDefinition.onInput(value.trim());
           }
           this.inputValue.set("");
         },
-      })
-      .style({
-        background: "#333333",
-        foreground: "white",
-        padding: [0, 1],
-        width: "100%",
       });
 
     // Create message container and scrollable area once to maintain scroll state
     this.messageContainer = VStack().style({
       padding: [0, 1],
+      width: "100%",
     });
 
     this.scrollableContent =
       this.propsDefinition.height === "auto"
         ? this.messageContainer
         : Scrollable(this.messageContainer).style({
-            maxHeight: Math.max(1, (this.propsDefinition.height ?? 8) - 2),
+            height: Math.max(1, (this.propsDefinition.height ?? 8) - 2),
+            width: "100%",
           });
 
     this.buildContent();
@@ -116,20 +120,73 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
       padding: [0, 1],
       gap: 1,
       width: "100%",
+      distribute: "between",
     });
 
     // Update message display content without recreating scrollable
     const messageNodes =
       visibleMessages.length > 0
-        ? visibleMessages.map((msg, index) =>
-            Text(msg).key(`console-message-${index}`),
-          )
-        : [
-            Text("No messages").style({
-              foreground: "#888888",
-              italic: true,
-            }),
-          ];
+        ? visibleMessages.map((msg, index) => {
+            // Parse existing formatted message from GlobalConsoleManager
+            const content = msg.content;
+            const timestampMatch = content.match(
+              /^\[(\d{1,2}:\d{2}:\d{2} (?:AM|PM))\]/,
+            );
+            const levelMatch = content.match(/\] (INFO|ERROR|WARN|DEBUG):/);
+
+            let messageText = content;
+            const metadata = [];
+
+            // Extract timestamp if present in the message
+            if (timestampMatch) {
+              metadata.push(timestampMatch[1]);
+              messageText = messageText.replace(timestampMatch[0], "").trim();
+            } else if (msg.timestamp) {
+              metadata.push(msg.timestamp.toLocaleTimeString());
+            }
+
+            // Extract level if present in the message
+            if (levelMatch) {
+              const level = levelMatch[1];
+              if (level !== "INFO") {
+                metadata.push(level);
+              }
+              messageText = messageText
+                .replace(new RegExp(`\\] ${level}:`), "]:")
+                .replace(/^\]/, "")
+                .trim();
+            } else if (msg.level && msg.level !== "info") {
+              metadata.push(msg.level.toUpperCase());
+            }
+
+            // Add file/line info if present
+            if (msg.file && msg.line) {
+              metadata.push(`${msg.file}:${msg.line}`);
+            } else if (msg.file) {
+              metadata.push(msg.file);
+            }
+
+            if (metadata.length > 0) {
+              const metadataText = `[${metadata.join(" | ")}]`;
+              return HStack(
+                Text(messageText).style({ grow: 1 }),
+                Text(metadataText).style({
+                  faint: true,
+                  italic: true,
+                  foreground: "#888888",
+                  shrink: 0,
+                }),
+              )
+                .style({
+                  width: "100%",
+                  distribute: "between",
+                })
+                .key(`console-message-${index}`);
+            } else {
+              return Text(messageText).key(`console-message-${index}`);
+            }
+          })
+        : [Text("No messages").style({ faint: true, italic: true })];
 
     // Update the existing message container's children to preserve scroll state
     if (this.messageContainer) {
@@ -149,7 +206,12 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
     this.contentStack = VStack(
       header,
       this.scrollableContent,
-      this.inputField,
+      HStack(Text(">").style({ faint: true }), this.inputField).style({
+        background: "#333333",
+        foreground: "white",
+        paddingRight: 1,
+        width: "100%",
+      }),
     ).style({
       background: "#222222",
       foreground: "white",
@@ -163,9 +225,13 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
     this._children = [this.contentStack];
   }
 
-  addMessage(message: string): void {
+  addMessage(message: string | ConsoleMessage): void {
     const current = this.messages.get();
-    const newMessages = [...current, message];
+    const messageObj: ConsoleMessage =
+      typeof message === "string"
+        ? { content: message, timestamp: new Date() }
+        : message;
+    const newMessages = [...current, messageObj];
 
     // Trim messages if we exceed max
     if (newMessages.length > this.maxMessages) {

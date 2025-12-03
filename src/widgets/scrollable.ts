@@ -271,32 +271,41 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
     const size = super._measure(constraints, inherited);
     const style = this.getResolvedStyle();
 
-    // Measure child with unrestricted constraints to determine content size
+    // Calculate viewport dimensions
+    const viewportWidth = Math.max(
+      size.width - (style.padding.left + style.padding.right),
+      0,
+    );
+    const viewportHeight = Math.max(
+      size.height - (style.padding.top + style.padding.bottom),
+      0,
+    );
+
+    // First, measure child with viewport constraints to handle percentage widths correctly
     const child = this.childNode;
-    const unrestricted = {
+    const viewportConstraints = {
+      minWidth: 0,
+      minHeight: 0,
+      maxWidth: viewportWidth,
+      maxHeight: viewportHeight,
+    };
+
+    const viewportSize = child._measure(viewportConstraints, style);
+
+    // Then measure with unrestricted width to allow content to be wider
+    const unrestrictedConstraints = {
       minWidth: 0,
       minHeight: 0,
       maxWidth: Infinity,
       maxHeight: Infinity,
     };
 
-    // Create a modified inherited style that forces no size constraints
-    // This ensures the child and its descendants can expand to natural size
-    const unrestrictedInheritedStyle: ResolvedStyle = {
-      ...style,
-      width: "auto",
-      height: "auto",
-      minWidth: "none",
-      minHeight: "none",
-      maxWidth: "none",
-      maxHeight: "none",
-    };
+    const unrestrictedSize = child._measure(unrestrictedConstraints, style);
 
-    const childSize = child._measure(unrestricted, unrestrictedInheritedStyle);
-
+    // Use the larger of viewport size or natural content size
     this.contentSize = {
-      width: childSize.width,
-      height: childSize.height,
+      width: Math.max(viewportSize.width, unrestrictedSize.width),
+      height: Math.max(viewportSize.height, unrestrictedSize.height),
     };
 
     return size;
@@ -316,32 +325,33 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
 
     const child = this.childNode;
 
-    // Measure child with unrestricted constraints to get its natural size
-    const unrestricted = {
+    // First, measure child with viewport constraints for proper percentage width handling
+    const viewportConstraints = {
+      minWidth: 0,
+      minHeight: 0,
+      maxWidth: this.viewport.width,
+      maxHeight: this.viewport.height,
+    };
+
+    const viewportSize = child._measure(viewportConstraints, style);
+
+    // Then measure with unrestricted constraints to allow content to exceed viewport
+    const unrestrictedConstraints = {
       minWidth: 0,
       minHeight: 0,
       maxWidth: Infinity,
       maxHeight: Infinity,
     };
 
-    // Create unconstrained inherited style for content measurement
-    const unrestrictedInheritedStyle: ResolvedStyle = {
-      ...style,
-      width: "auto",
-      height: "auto",
-      minWidth: "none",
-      minHeight: "none",
-      maxWidth: "none",
-      maxHeight: "none",
+    const unrestrictedSize = child._measure(unrestrictedConstraints, style);
+
+    // Use the larger of viewport size or unrestricted size
+    const childSize = {
+      width: Math.max(viewportSize.width, unrestrictedSize.width),
+      height: Math.max(viewportSize.height, unrestrictedSize.height),
     };
 
-    const childSize = child._measure(unrestricted, unrestrictedInheritedStyle);
-
-    // Use the child's natural size as content size
-    this.contentSize = {
-      width: childSize.width,
-      height: childSize.height,
-    };
+    this.contentSize = childSize;
 
     // Only clamp scroll offset if it's now invalid (content shrunk)
     const maxX = Math.max(this.contentSize.width - this.viewport.width, 0);

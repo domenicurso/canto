@@ -11,7 +11,7 @@ import type {
   StackLayoutResult,
   StackMeasurement,
 } from "../layout";
-import type { FlowAxis, ResolvedStyle } from "../style";
+import type { DimensionToken, FlowAxis, ResolvedStyle } from "../style";
 import type { PaintResult, Point, Size } from "../types";
 import type { Node } from "./node";
 import type { ContainerProps } from "./props";
@@ -45,9 +45,51 @@ export abstract class StackNodeBase<
   _measure(constraints: Constraints, inherited: ResolvedStyle): Size {
     const style = this.resolveCurrentStyle(inherited);
     const axis = this.enforceFlow(style);
+
+    // Fix percentage width resolution when constraints have infinite maxWidth
+    let adjustedConstraints = constraints;
+    if (typeof style.width === "string" && style.width.endsWith("%")) {
+      if (!Number.isFinite(constraints.maxWidth)) {
+        // When maxWidth is infinite, percentage resolution fails
+        // Use "auto" sizing instead to let content determine the width
+        const adjustedStyle: ResolvedStyle = {
+          ...style,
+          width: "auto" as DimensionToken,
+        };
+        const prepared = prepareStackMeasurement(
+          axis,
+          constraints,
+          adjustedStyle,
+        );
+
+        // Measure children with auto sizing first
+        const childSizes: Size[] = [];
+        const childStyles: ResolvedStyle[] = [];
+        for (const child of this.children) {
+          const size = child._measure(prepared.innerConstraints, adjustedStyle);
+          childSizes.push(size);
+          const resolved = resolveNodeStyle(child) ?? adjustedStyle;
+          childStyles.push(resolved);
+        }
+
+        const autoMeasurement = finalizeStackMeasurement(
+          axis,
+          constraints,
+          adjustedStyle,
+          prepared.candidateSize,
+          childSizes,
+          childStyles,
+        );
+
+        this.measurement = autoMeasurement;
+        this.setOverflow(false);
+        return this.measurement.outerSize;
+      }
+    }
+
     const prepared: PreparedStackMeasurement = prepareStackMeasurement(
       axis,
-      constraints,
+      adjustedConstraints,
       style,
     );
 
