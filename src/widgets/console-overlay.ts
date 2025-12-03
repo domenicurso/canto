@@ -7,6 +7,7 @@ import type { Constraints } from "../layout";
 import type { Signal } from "../signals";
 import type { ResolvedStyle } from "../style";
 import type { PaintResult, Point, Size } from "../types";
+import type { ConsoleMessage } from "./console";
 import type { Node } from "./node";
 import type { ContainerProps } from "./props";
 
@@ -79,7 +80,7 @@ export class ConsoleOverlayNode extends BaseNode<ConsoleOverlayProps> {
     }
   }
 
-  addMessage(message: string): void {
+  addMessage(message: string | ConsoleMessage): void {
     this.console.addMessage(message);
   }
 
@@ -179,38 +180,103 @@ export class GlobalConsoleManager {
     this.overlay = overlay;
   }
 
+  private getStackInfo(): { file?: string; line?: number } {
+    try {
+      // Create an error to get stack trace
+      const error = new Error();
+      const stack = error.stack;
+      if (!stack) return {};
+
+      // Split stack into lines and find the caller (skip our internal methods)
+      const lines = stack.split("\n");
+      // Skip: Error constructor, this method, the calling log method
+      const callerLine = lines[3] || lines[2] || "";
+
+      // Parse different stack trace formats
+      // Chrome/V8: "    at functionName (file:///path/file.ts:line:col)"
+      // Firefox: "functionName@file:///path/file.ts:line:col"
+      let match =
+        callerLine.match(/at\s+.*?\((.+):(\d+):\d+\)/) ||
+        callerLine.match(/at\s+(.+):(\d+):\d+/) ||
+        callerLine.match(/@(.+):(\d+):\d+/);
+
+      if (match) {
+        const filePath = match[1] ?? "";
+        const line = parseInt(match[2] ?? "0", 10);
+
+        // Extract just the filename from the full path
+        const fileName = filePath.split("/").pop() || filePath;
+
+        return { file: fileName, line };
+      }
+    } catch (e) {
+      // Stack trace parsing failed, ignore
+    }
+    return {};
+  }
+
   log(message: string): void {
     if (this.overlay) {
-      const timestamp = new Date().toLocaleTimeString();
-      this.overlay.addMessage(`[${timestamp}] ${message}`);
+      const stackInfo = this.getStackInfo();
+      const consoleMessage: ConsoleMessage = {
+        content: message,
+        timestamp: new Date(),
+        level: "info",
+        ...stackInfo,
+      };
+      this.overlay.addMessage(consoleMessage);
     }
   }
 
   error(message: string): void {
     if (this.overlay) {
-      const timestamp = new Date().toLocaleTimeString();
-      this.overlay.addMessage(`[${timestamp}] ERROR: ${message}`);
+      const stackInfo = this.getStackInfo();
+      const consoleMessage: ConsoleMessage = {
+        content: message,
+        timestamp: new Date(),
+        level: "error",
+        ...stackInfo,
+      };
+      this.overlay.addMessage(consoleMessage);
     }
   }
 
   warn(message: string): void {
     if (this.overlay) {
-      const timestamp = new Date().toLocaleTimeString();
-      this.overlay.addMessage(`[${timestamp}] WARN: ${message}`);
+      const stackInfo = this.getStackInfo();
+      const consoleMessage: ConsoleMessage = {
+        content: message,
+        timestamp: new Date(),
+        level: "warn",
+        ...stackInfo,
+      };
+      this.overlay.addMessage(consoleMessage);
     }
   }
 
   info(message: string): void {
     if (this.overlay) {
-      const timestamp = new Date().toLocaleTimeString();
-      this.overlay.addMessage(`[${timestamp}] INFO: ${message}`);
+      const stackInfo = this.getStackInfo();
+      const consoleMessage: ConsoleMessage = {
+        content: message,
+        timestamp: new Date(),
+        level: "info",
+        ...stackInfo,
+      };
+      this.overlay.addMessage(consoleMessage);
     }
   }
 
   debug(message: string): void {
     if (this.overlay) {
-      const timestamp = new Date().toLocaleTimeString();
-      this.overlay.addMessage(`[${timestamp}] DEBUG: ${message}`);
+      const stackInfo = this.getStackInfo();
+      const consoleMessage: ConsoleMessage = {
+        content: message,
+        timestamp: new Date(),
+        level: "debug",
+        ...stackInfo,
+      };
+      this.overlay.addMessage(consoleMessage);
     }
   }
 

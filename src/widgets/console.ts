@@ -17,7 +17,7 @@ export interface ConsoleMessage {
   timestamp?: Date;
   file?: string;
   line?: number;
-  level?: "info" | "warn" | "error" | "debug";
+  level?: "info" | "warn" | "error" | "debug" | "success";
 }
 
 export interface ConsoleProps extends ContainerProps {
@@ -127,36 +127,19 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
     const messageNodes =
       visibleMessages.length > 0
         ? visibleMessages.map((msg, index) => {
-            // Parse existing formatted message from GlobalConsoleManager
-            const content = msg.content;
-            const timestampMatch = content.match(
-              /^\[(\d{1,2}:\d{2}:\d{2} (?:AM|PM))\]/,
-            );
-            const levelMatch = content.match(/\] (INFO|ERROR|WARN|DEBUG):/);
-
-            let messageText = content;
+            const messageText = msg.content;
             const metadata = [];
 
-            // Extract timestamp if present in the message
-            if (timestampMatch) {
-              metadata.push(timestampMatch[1]);
-              messageText = messageText.replace(timestampMatch[0], "").trim();
-            } else if (msg.timestamp) {
-              metadata.push(msg.timestamp.toLocaleTimeString());
-            }
+            // Add timestamp if present
+            if (msg.timestamp) {
+              const formatter = new Intl.DateTimeFormat("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: false,
+              });
 
-            // Extract level if present in the message
-            if (levelMatch) {
-              const level = levelMatch[1];
-              if (level !== "INFO") {
-                metadata.push(level);
-              }
-              messageText = messageText
-                .replace(new RegExp(`\\] ${level}:`), "]:")
-                .replace(/^\]/, "")
-                .trim();
-            } else if (msg.level && msg.level !== "info") {
-              metadata.push(msg.level.toUpperCase());
+              metadata.push(formatter.format(msg.timestamp));
             }
 
             // Add file/line info if present
@@ -166,10 +149,32 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
               metadata.push(msg.file);
             }
 
+            // Color coding for different log levels
+            const getLevelColor = (level?: ConsoleMessage["level"]): string => {
+              switch (level) {
+                case "error":
+                  return "red";
+                case "warn":
+                  return "yellow";
+                case "debug":
+                  return "blue";
+                case "success":
+                  return "green";
+                case "info":
+                default:
+                  return "white";
+              }
+            };
+
+            const levelColor = getLevelColor(msg.level);
+
             if (metadata.length > 0) {
-              const metadataText = `[${metadata.join(" | ")}]`;
+              const metadataText = `${metadata.join(" | ")}`;
               return HStack(
-                Text(messageText).style({ grow: 1 }),
+                Text(messageText).style({
+                  grow: 1,
+                  foreground: levelColor as any,
+                }),
                 Text(metadataText).style({
                   faint: true,
                   italic: true,
@@ -180,10 +185,15 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
                 .style({
                   width: "100%",
                   distribute: "between",
+                  gap: 2,
                 })
                 .key(`console-message-${index}`);
             } else {
-              return Text(messageText).key(`console-message-${index}`);
+              return Text(messageText)
+                .style({
+                  foreground: levelColor as any,
+                })
+                .key(`console-message-${index}`);
             }
           })
         : [Text("No messages").style({ faint: true, italic: true })];
@@ -225,6 +235,41 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
     this._children = [this.contentStack];
   }
 
+  private getStackInfo(): { file?: string; line?: number } {
+    try {
+      // Create an error to get stack trace
+      const error = new Error();
+      const stack = error.stack;
+      if (!stack) return {};
+
+      // Split stack into lines and find the caller (skip our internal methods)
+      const lines = stack.split("\n");
+      // Skip: Error constructor, this method, the calling log method
+      const callerLine = lines[3] || lines[2] || "";
+
+      // Parse different stack trace formats
+      // Chrome/V8: "    at functionName (file:///path/file.ts:line:col)"
+      // Firefox: "functionName@file:///path/file.ts:line:col"
+      let match =
+        callerLine.match(/at\s+.*?\((.+):(\d+):\d+\)/) ||
+        callerLine.match(/at\s+(.+):(\d+):\d+/) ||
+        callerLine.match(/@(.+):(\d+):\d+/);
+
+      if (match && match[1] && match[2]) {
+        const filePath = match[1];
+        const line = parseInt(match[2], 10);
+
+        // Extract just the filename from the full path
+        const fileName = filePath.split("/").pop() || filePath;
+
+        return { file: fileName, line };
+      }
+    } catch (e) {
+      // Stack trace parsing failed, ignore
+    }
+    return {};
+  }
+
   addMessage(message: string | ConsoleMessage): void {
     const current = this.messages.get();
     const messageObj: ConsoleMessage =
@@ -239,6 +284,72 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
     }
 
     this.messages.set(newMessages);
+  }
+
+  log(message: string): void {
+    const stackInfo = this.getStackInfo();
+    const consoleMessage: ConsoleMessage = {
+      content: message,
+      timestamp: new Date(),
+      level: "info",
+      ...stackInfo,
+    };
+    this.addMessage(consoleMessage);
+  }
+
+  info(message: string): void {
+    const stackInfo = this.getStackInfo();
+    const consoleMessage: ConsoleMessage = {
+      content: message,
+      timestamp: new Date(),
+      level: "info",
+      ...stackInfo,
+    };
+    this.addMessage(consoleMessage);
+  }
+
+  warn(message: string): void {
+    const stackInfo = this.getStackInfo();
+    const consoleMessage: ConsoleMessage = {
+      content: message,
+      timestamp: new Date(),
+      level: "warn",
+      ...stackInfo,
+    };
+    this.addMessage(consoleMessage);
+  }
+
+  error(message: string): void {
+    const stackInfo = this.getStackInfo();
+    const consoleMessage: ConsoleMessage = {
+      content: message,
+      timestamp: new Date(),
+      level: "error",
+      ...stackInfo,
+    };
+    this.addMessage(consoleMessage);
+  }
+
+  debug(message: string): void {
+    const stackInfo = this.getStackInfo();
+    const consoleMessage: ConsoleMessage = {
+      content: message,
+      timestamp: new Date(),
+      level: "debug",
+      ...stackInfo,
+    };
+    this.addMessage(consoleMessage);
+  }
+
+  success(message: string): void {
+    const stackInfo = this.getStackInfo();
+    const consoleMessage: ConsoleMessage = {
+      content: message,
+      timestamp: new Date(),
+      level: "success",
+      ...stackInfo,
+    };
+    this.addMessage(consoleMessage);
   }
 
   clearMessages(): void {
