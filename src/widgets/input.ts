@@ -282,8 +282,18 @@ export class InputNode extends BaseNode<InputProps> {
     this.cursorStateSignal.set(this.cursorStateSignal.get() + 1);
   }
 
+  private containsMouseSequence(text: string): boolean {
+    // Check for SGR mouse events or basic mouse events
+    return /\x1b\[<\d+;\d+;\d+[Mm]/.test(text) || /\x1b\[M.{3}/.test(text);
+  }
+
   insert(text: string): void {
     if (this.isDisabled() || !this.focused) {
+      return;
+    }
+
+    // Filter out mouse escape sequences
+    if (this.containsMouseSequence(text)) {
       return;
     }
 

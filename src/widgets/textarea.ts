@@ -96,10 +96,21 @@ export class TextareaNode extends BaseNode<TextareaProps> {
     this._invalidate();
   }
 
+  private containsMouseSequence(text: string): boolean {
+    // Check for SGR mouse events or basic mouse events
+    return /\x1b\[<\d+;\d+;\d+[Mm]/.test(text) || /\x1b\[M.{3}/.test(text);
+  }
+
   insert(text: string): void {
     if (this.isDisabled()) {
       return;
     }
+
+    // Filter out mouse escape sequences
+    if (this.containsMouseSequence(text)) {
+      return;
+    }
+
     const before = this.value.slice(0, this.cursor);
     const after = this.value.slice(this.cursor);
     const next = before + text + after;

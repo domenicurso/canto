@@ -39,6 +39,8 @@ export class Surface {
   private isUpdatingTrigger = false;
   private currentRenderOptions: RenderOptions | undefined;
   private terminalSize: { width: number; height: number };
+  private stdinBuffer = "";
+  private originalStdinData: ((data: Buffer) => void) | null = null;
   private handleTerminalResize = () => {
     if (!process.stdout.isTTY) {
       return;
@@ -319,15 +321,22 @@ export class Surface {
       return;
     }
 
-    // Set up stdin for keypress handling
-    readline.emitKeypressEvents(process.stdin);
+    // Set up raw mode and resume stdin
     if (process.stdin.isTTY) {
       process.stdin.setRawMode(true);
     }
     process.stdin.resume();
 
-    // Handle keypresses and forward to Surface
-    process.stdin.on("keypress", this.handleStdinKeypress.bind(this));
+    // Enable mouse events in terminal
+    if (process.stdout.isTTY) {
+      // Enable mouse tracking
+      process.stdout.write("\x1b[?1000h"); // Basic mouse tracking
+      process.stdout.write("\x1b[?1006h"); // SGR mouse mode
+    }
+
+    // Handle all raw stdin data manually
+    this.originalStdinData = this.handleRawStdinData.bind(this);
+    process.stdin.on("data", this.originalStdinData);
 
     this.stdinSetup = true;
 
@@ -341,11 +350,24 @@ export class Surface {
       return;
     }
 
+    // Disable mouse tracking
+    if (process.stdout.isTTY) {
+      process.stdout.write("\x1b[?1000l"); // Disable mouse tracking
+      process.stdout.write("\x1b[?1006l"); // Disable SGR mouse mode
+    }
+
     if (process.stdin.isTTY) {
       process.stdin.setRawMode(false);
     }
     process.stdin.pause();
-    process.stdin.removeAllListeners("keypress");
+
+    if (this.originalStdinData) {
+      process.stdin.removeListener("data", this.originalStdinData);
+      this.originalStdinData = null;
+    }
+
+    // Clear buffer
+    this.stdinBuffer = "";
 
     if (process.stdout.isTTY) {
       process.stdout.off("resize", this.handleTerminalResize);
@@ -363,63 +385,193 @@ export class Surface {
     this.isUpdatingTrigger = false;
   }
 
-  private handleStdinKeypress(str: string, key: any): void {
+  private handleRawStdinData(buffer: Buffer): void {
+    const data = buffer.toString();
+    this.stdinBuffer += data;
+
+    // Process complete sequences from buffer
+    this.processStdinBuffer();
+  }
+
+  private processStdinBuffer(): void {
+    let processed = 0;
+
+    while (processed < this.stdinBuffer.length) {
+      // Look for mouse escape sequences at current position
+      const remaining = this.stdinBuffer.slice(processed);
+
+      // Check for SGR mouse sequence: \x1b[<button;x;y[Mm]
+      const sgrMatch = remaining.match(/^(\x1b\[<\d+;\d+;\d+[Mm])/);
+      if (sgrMatch && sgrMatch[1]) {
+        const sequence = sgrMatch[1];
+        this.processMouseSequence(sequence);
+        processed += sequence.length;
+        continue;
+      }
+
+      // Check for basic mouse sequence: \x1b[M followed by 3 bytes
+      const basicMatch = remaining.match(/^(\x1b\[M.{3})/);
+      if (basicMatch && basicMatch[1]) {
+        const sequence = basicMatch[1];
+        // Skip basic mouse sequences for now since SGR is more reliable
+        processed += sequence.length;
+        continue;
+      }
+
+      // Check for other escape sequences (arrow keys, function keys, etc.)
+      const escapeMatch = remaining.match(/^(\x1b\[[\d;]*[A-Za-z])/);
+      if (escapeMatch && escapeMatch[1]) {
+        const sequence = escapeMatch[1];
+        this.processEscapeSequence(sequence);
+        processed += sequence.length;
+        continue;
+      }
+
+      // Check for single escape character followed by letter (Alt+key)
+      const altKeyMatch = remaining.match(/^(\x1b[a-zA-Z])/);
+      if (altKeyMatch && altKeyMatch[1]) {
+        const sequence = altKeyMatch[1];
+        this.processAltKey(sequence);
+        processed += sequence.length;
+        continue;
+      }
+
+      // Process single character
+      const char = this.stdinBuffer[processed];
+      if (char !== undefined) {
+        this.processSingleChar(char);
+      }
+      processed++;
+    }
+
+    // Clear processed data from buffer
+    this.stdinBuffer = this.stdinBuffer.slice(processed);
+  }
+
+  private processMouseSequence(sequence: string): void {
+    // Parse SGR mouse events (format: \x1b[<button;x;y;M/m)
+    const sgrMatch = sequence.match(/\x1b\[<(\d+);(\d+);(\d+)([Mm])/);
+    if (sgrMatch) {
+      const [, buttonStr, xStr, yStr, action] = sgrMatch;
+      if (buttonStr && xStr && yStr) {
+        const button = parseInt(buttonStr, 10);
+        const x = parseInt(xStr, 10) - 1; // Convert to 0-based
+        const y = parseInt(yStr, 10) - 1; // Convert to 0-based
+
+        // Check for scroll events (buttons 64, 65 are scroll up/down)
+        if (button === 64 || button === 65) {
+          const scrollEvent: MouseEvent = {
+            type: "Mouse",
+            action: "scroll",
+            x,
+            y,
+            scrollDelta: {
+              x: 0,
+              y: button === 64 ? -1 : 1,
+            },
+          };
+          this.dispatch(scrollEvent);
+        }
+      }
+    }
+  }
+
+  private processEscapeSequence(sequence: string): void {
+    // Parse common escape sequences
+    const keyMap: { [key: string]: string } = {
+      "\x1b[A": "arrowup",
+      "\x1b[B": "arrowdown",
+      "\x1b[C": "arrowright",
+      "\x1b[D": "arrowleft",
+      "\x1b[H": "home",
+      "\x1b[F": "end",
+      "\x1b[5~": "pageup",
+      "\x1b[6~": "pagedown",
+      "\x1b[2~": "insert",
+      "\x1b[3~": "delete",
+    };
+
+    const keyName = keyMap[sequence];
+    if (keyName) {
+      const event: KeyPressEvent = {
+        type: "KeyPress",
+        key: keyName,
+        ctrl: false,
+        shift: false,
+        alt: false,
+        meta: false,
+      };
+      this.dispatch(event);
+    }
+  }
+
+  private processAltKey(sequence: string): void {
+    const char = sequence.slice(1); // Remove escape character
+    const event: KeyPressEvent = {
+      type: "KeyPress",
+      key: char,
+      ctrl: false,
+      shift: false,
+      alt: true,
+      meta: false,
+    };
+    this.dispatch(event);
+  }
+
+  private processSingleChar(char: string): void {
+    const code = char.charCodeAt(0);
+
     // Handle Ctrl+C
-    if (key && key.ctrl && key.name === "c") {
+    if (code === 3) {
       this.cleanupStdin();
       process.stdout.write("\x1b[?25h"); // Show cursor
       process.exit(0);
     }
 
-    if (!key) {
-      return;
-    }
+    // Handle special control characters
+    if (code < 32) {
+      let keyName = "";
+      let ctrl = true;
 
-    // Special keys that should always be handled as KeyPressEvent
-    const specialKeys = new Set([
-      "backspace",
-      "delete",
-      "tab",
-      "escape",
-      "enter",
-      "return",
-      "left",
-      "right",
-      "up",
-      "down",
-      "home",
-      "end",
-      "pageup",
-      "pagedown",
-    ]);
+      switch (code) {
+        case 8: // Backspace
+          keyName = "backspace";
+          ctrl = false;
+          break;
+        case 9: // Tab
+          keyName = "tab";
+          ctrl = false;
+          break;
+        case 13: // Enter
+          keyName = "return";
+          ctrl = false;
+          break;
+        case 27: // Escape (standalone)
+          keyName = "escape";
+          ctrl = false;
+          break;
+        default:
+          // Other Ctrl+letter combinations
+          keyName = String.fromCharCode(code + 96); // Convert to letter
+          break;
+      }
 
-    // Map key names - readline uses 'left' not 'arrowleft'
-    let keyName = key.name;
-    if (keyName === "left") keyName = "arrowleft";
-    if (keyName === "right") keyName = "arrowright";
-    if (keyName === "up") keyName = "arrowup";
-    if (keyName === "down") keyName = "arrowdown";
-
-    // Check if this should be handled as a KeyPress event
-    const hasModifiers = key.ctrl || key.meta || key.alt;
-    const isSpecialKey = key.name && specialKeys.has(key.name);
-
-    if (isSpecialKey || hasModifiers) {
-      // Handle as KeyPressEvent for special keys or keys with modifiers
-      const event: KeyPressEvent = {
-        type: "KeyPress",
-        key: keyName || key.name || str || "",
-        ctrl: key.ctrl || false,
-        shift: key.shift || false,
-        alt: key.alt || false,
-        meta: key.meta || false,
-      };
-      this.dispatch(event);
-    } else if (str && str.length === 1 && str >= " " && str <= "~") {
-      // Handle printable characters as TextInputEvent (only when no modifiers)
+      if (keyName) {
+        const event: KeyPressEvent = {
+          type: "KeyPress",
+          key: keyName,
+          ctrl,
+          shift: false,
+          alt: false,
+          meta: false,
+        };
+        this.dispatch(event);
+      }
+    } else if (code >= 32 && code <= 126) {
+      // Printable character
       const event: TextInputEvent = {
         type: "TextInput",
-        text: str,
+        text: char,
       };
       this.dispatch(event);
     }
@@ -452,7 +604,9 @@ export class Surface {
 
   private handleKeyPress(event: KeyPressEvent): boolean {
     const key = event.key.toLowerCase();
+    console.log(`[DEBUG] HandleKeyPress: "${key}", Key.Tab: "${Key.Tab}"`);
     if (key === Key.Tab) {
+      console.log("[DEBUG] Tab key - focusing next/prev");
       return event.shift ? this.focusPrevious() : this.focusNext();
     }
     if (key === Key.Escape) {
@@ -469,6 +623,14 @@ export class Surface {
     }
     if (target instanceof TextareaNode) {
       return this.handleTextareaKey(target, event);
+    }
+    if (target instanceof ScrollableNode) {
+      return target.handleKeyPress(
+        event.key,
+        event.ctrl,
+        event.shift,
+        event.alt,
+      );
     }
     if (isActivationKey(event)) {
       target.triggerSubmit();
@@ -497,15 +659,60 @@ export class Surface {
     if (!isScrollEvent(event)) {
       return false;
     }
-    const target = this.focused;
-    if (target instanceof ScrollableNode) {
+
+    // Find scrollable node at mouse position
+    const scrollableNode = this.findScrollableAt(event.x, event.y);
+    if (scrollableNode) {
       const deltaX = event.scrollDelta?.x ?? 0;
       const deltaY = event.scrollDelta?.y ?? 0;
-      const step = target.getScrollStepValue();
-      target.scrollBy(deltaX * step, deltaY * step);
+      const step = scrollableNode.getScrollStepValue();
+      scrollableNode.scrollBy(deltaX * step, deltaY * step);
       return true;
     }
+
     return false;
+  }
+
+  private findScrollableAt(x: number, y: number): ScrollableNode | null {
+    return this.findScrollableInNode(this.root, x, y);
+  }
+
+  private findScrollableInNode(
+    node: Node,
+    x: number,
+    y: number,
+  ): ScrollableNode | null {
+    if (node instanceof ScrollableNode) {
+      const layout = (node as any).getLayoutRect?.();
+      if (layout && this.pointInRect(x, y, layout)) {
+        return node;
+      }
+    }
+
+    // Check children (traverse in topmost elements are checked first)
+    const children = (node as any).children || [];
+    for (let i = children.length - 1; i >= 0; i--) {
+      const child = children[i];
+      const result = this.findScrollableInNode(child, x, y);
+      if (result) {
+        return result;
+      }
+    }
+
+    return null;
+  }
+
+  private pointInRect(
+    x: number,
+    y: number,
+    rect: { x: number; y: number; width: number; height: number },
+  ): boolean {
+    return (
+      x >= rect.x &&
+      x < rect.x + rect.width &&
+      y >= rect.y &&
+      y < rect.y + rect.height
+    );
   }
 
   private handleResize(event: ResizeEvent): boolean {
@@ -520,11 +727,18 @@ export class Surface {
     const { ctrl, shift, meta, alt } = event;
     const cmdOrCtrl = ctrl || meta;
 
+    // Debug logging
+    console.log(
+      `[DEBUG] Input key: "${key}", Key.Return: "${Key.Return}", Key.Backspace: "${Key.Backspace}", Key.Tab: "${Key.Tab}"`,
+    );
+
     switch (key) {
       case Key.Backspace:
+        console.log("[DEBUG] Backspace key handled");
         node.backspace();
         return true;
       case Key.Delete:
+        console.log("[DEBUG] Delete key handled");
         node.delete();
         return true;
 
@@ -592,10 +806,12 @@ export class Surface {
         return false;
 
       case Key.Return:
+        console.log("[DEBUG] Return key handled");
         node.submit();
         return true;
 
       default:
+        console.log(`[DEBUG] Unhandled key: "${key}"`);
         return false;
     }
   }

@@ -68,10 +68,82 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
   private scrollOffsetY = 0;
   private scrollSubscriptionX: (() => void) | null = null;
   private scrollSubscriptionY: (() => void) | null = null;
+  private focused = false;
 
   constructor(child: Node) {
     super("Scrollable", [child], null);
     this.syncScrollProps();
+  }
+
+  override isFocusable(): boolean {
+    return true;
+  }
+
+  override focus(): void {
+    this.focused = true;
+    super.focus();
+  }
+
+  override blur(): void {
+    this.focused = false;
+    super.blur();
+  }
+
+  handleKeyPress(
+    key: string,
+    ctrl: boolean,
+    shift: boolean,
+    alt: boolean,
+  ): boolean {
+    if (!this.focused) {
+      return false;
+    }
+
+    const step = this.getScrollStep();
+    const fastStep = step * 5; // Fast scroll when holding shift
+
+    switch (key) {
+      case "arrowup":
+        this.scrollBy(0, shift ? -fastStep : -step);
+        return true;
+      case "arrowdown":
+        this.scrollBy(0, shift ? fastStep : step);
+        return true;
+      case "arrowleft":
+        this.scrollBy(shift ? -fastStep : -step, 0);
+        return true;
+      case "arrowright":
+        this.scrollBy(shift ? fastStep : step, 0);
+        return true;
+      case "pageup":
+        this.scrollBy(0, -Math.floor(this.viewport.height * 0.8));
+        return true;
+      case "pagedown":
+        this.scrollBy(0, Math.floor(this.viewport.height * 0.8));
+        return true;
+      case "home":
+        if (ctrl) {
+          this.setScroll(0, 0);
+        } else {
+          this.setScroll(0, this.scrollOffsetY);
+        }
+        return true;
+      case "end":
+        if (ctrl) {
+          this.setScroll(
+            Math.max(this.contentSize.width - this.viewport.width, 0),
+            Math.max(this.contentSize.height - this.viewport.height, 0),
+          );
+        } else {
+          this.setScroll(
+            Math.max(this.contentSize.width - this.viewport.width, 0),
+            this.scrollOffsetY,
+          );
+        }
+        return true;
+      default:
+        return false;
+    }
   }
 
   private get childNode(): Node {
@@ -288,6 +360,10 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
 
   isWheelScrollEnabled(): boolean {
     return this.isWheelEnabled();
+  }
+
+  isFocused(): boolean {
+    return this.focused;
   }
 }
 

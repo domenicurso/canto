@@ -18,6 +18,11 @@ export {
   Scrollable,
   Button,
   Image,
+  Console,
+  ConsoleOverlay,
+  withConsole,
+  globalConsole,
+  GlobalConsoleManager,
 } from "./src/widgets";
 export type {
   Node,
@@ -30,6 +35,8 @@ export type {
   ContainerProps,
   ImageProps,
   PropsMap,
+  ConsoleProps,
+  ConsoleOverlayProps,
 } from "./src/widgets";
 
 export { Renderer } from "./src/renderer";
