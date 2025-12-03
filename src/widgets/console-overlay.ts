@@ -29,7 +29,7 @@ export interface ConsoleOverlayProps extends ContainerProps {
 export class ConsoleOverlayNode extends BaseNode<ConsoleOverlayProps> {
   private console: ConsoleNode;
   private isConsoleVisible: Signal<boolean>;
-  private messages: Signal<string[]>;
+  private messages: Signal<ConsoleMessage[]>;
   private contentNode: Node;
   private surface: SurfaceLike | null = null;
 
@@ -266,7 +266,7 @@ export class GlobalConsoleManager {
       this.overlay.addMessage(consoleMessage);
     }
   }
-  
+
   success(message: string): void {
     if (this.overlay) {
       const stackInfo = this.getStackInfo();
