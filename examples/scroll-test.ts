@@ -18,7 +18,7 @@ const scrollX = state(0);
 
 // Create a lot of content to scroll through
 const lines: string[] = [];
-for (let i = 1; i <= 50; i++) {
+for (let i = 1; i <= 100; i++) {
   lines.push(
     `Line ${i.toString().padStart(2, "0")}: This is a long line of text that should extend beyond the typical terminal width to test horizontal scrolling functionality. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
   );
@@ -29,41 +29,30 @@ const scrollableContent = VStack(
   Text("=== SCROLLABLE CONTENT TEST ===").style({
     background: "blue",
     foreground: "white",
-    padding: [0, 1],
     bold: true,
   }),
   Text("Use mouse wheel or arrow keys to scroll").style({
     foreground: "yellow",
-    padding: [0, 1],
   }),
   Text("Shift+Arrow keys for faster scrolling").style({
     foreground: "yellow",
-    padding: [0, 1],
   }),
   Text("Page Up/Down for page scrolling").style({
     foreground: "yellow",
-    padding: [0, 1],
   }),
   Text(
     "Home/End for line start/end, Ctrl+Home/End for document start/end",
   ).style({
     foreground: "yellow",
-    padding: [0, 1],
   }),
   Text("---").style({ faint: true }),
   ...lines.map((line, index) =>
-    Text(line).style({
-      foreground: index % 2 === 0 ? "white" : "cyan",
-      // apply faint in groups of 2 where each group alternates
-      faint: index % 4 === 2 || index % 4 === 3,
-      padding: [0, 1],
-    }),
+    Text(line).style({ foreground: index % 2 === 0 ? "white" : "cyan" }),
   ),
   Text("---").style({ faint: true }),
   Text("=== END OF CONTENT ===").style({
     background: "red",
     foreground: "white",
-    padding: [0, 1],
     bold: true,
   }),
 ).style({ gap: 0 });
@@ -97,8 +86,6 @@ const appContent = VStack(
         scrollY.set(y);
         globalConsole.log(`Scrolled to: X=${x}, Y=${y}`);
       },
-      scrollStep: 2,
-      scrollWheelEnabled: true,
     })
     .style({
       background: "#222222",
