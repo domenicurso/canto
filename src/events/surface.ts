@@ -208,10 +208,19 @@ export class Surface {
   }
 
   render(options?: RenderOptions): RenderResult {
-    const result = this.renderer.render(
-      this.root,
-      options ?? { bounds: { mode: "auto" } },
-    );
+    // Override cursor visibility to always show cursor when input widget is focused
+    let renderOptions = options ?? { bounds: { mode: "auto" } };
+    if (this.focused && this.focused instanceof InputNode) {
+      renderOptions = {
+        ...renderOptions,
+        cursor: {
+          ...renderOptions.cursor,
+          visibility: "visible" as const,
+        },
+      };
+    }
+
+    const result = this.renderer.render(this.root, renderOptions);
 
     // Position cursor at focused input widget
     if (this.focused && this.focused instanceof InputNode) {
@@ -419,7 +428,7 @@ export class Surface {
       }
 
       // Check for other escape sequences (arrow keys, function keys, etc.)
-      const escapeMatch = remaining.match(/^(\x1b\[[\d;]*[A-Za-z])/);
+      const escapeMatch = remaining.match(/^(\x1b\[[\d;]*(?:[A-Za-z]|\d~))/);
       if (escapeMatch && escapeMatch[1]) {
         const sequence = escapeMatch[1];
         this.processEscapeSequence(sequence);
@@ -495,29 +504,125 @@ export class Surface {
   }
 
   private processEscapeSequence(sequence: string): void {
-    // Parse common escape sequences
-    const keyMap: { [key: string]: string } = {
-      "\x1b[A": "arrowup",
-      "\x1b[B": "arrowdown",
-      "\x1b[C": "arrowright",
-      "\x1b[D": "arrowleft",
-      "\x1b[H": "home",
-      "\x1b[F": "end",
-      "\x1b[5~": "pageup",
-      "\x1b[6~": "pagedown",
-      "\x1b[2~": "insert",
-      "\x1b[3~": "delete",
-    };
+    let keyName = "";
+    let ctrl = false;
+    let shift = false;
+    let alt = false;
+    let meta = false;
 
-    const keyName = keyMap[sequence];
+    // Handle modified sequences like \x1b[1;2A (Shift+Arrow), \x1b[2A, \x1b[1;5A (Ctrl+Arrow), etc.
+    const modifiedMatch = sequence.match(/^\x1b\[(?:1;)?(\d+)([A-Za-z]|\d+~)$/);
+    if (modifiedMatch) {
+      const modifierCode = parseInt(modifiedMatch[1] ?? "0", 10);
+      const keyCode = modifiedMatch[2];
+
+      // Decode modifier codes (based on ANSI standards)
+      switch (modifierCode) {
+        case 2:
+          shift = true;
+          break;
+        case 3:
+          alt = true;
+          break;
+        case 4:
+          shift = true;
+          alt = true;
+          break;
+        case 5:
+          ctrl = true;
+          break;
+        case 6:
+          shift = true;
+          ctrl = true;
+          break;
+        case 7:
+          alt = true;
+          ctrl = true;
+          break;
+        case 8:
+          shift = true;
+          alt = true;
+          ctrl = true;
+          break;
+      }
+
+      // Map key codes
+      switch (keyCode) {
+        case "A":
+          keyName = "arrowup";
+          break;
+        case "B":
+          keyName = "arrowdown";
+          break;
+        case "C":
+          keyName = "arrowright";
+          break;
+        case "D":
+          keyName = "arrowleft";
+          break;
+        case "H":
+          keyName = "home";
+          break;
+        case "F":
+          keyName = "end";
+          break;
+        case "5~":
+          keyName = "pageup";
+          break;
+        case "6~":
+          keyName = "pagedown";
+          break;
+        case "2~":
+          keyName = "insert";
+          break;
+        case "3~":
+          keyName = "delete";
+          break;
+      }
+    }
+    // Handle simple Shift+Arrow sequences (alternative format)
+    else if (sequence.match(/^\x1b\[[a-d]$/)) {
+      shift = true;
+      switch (sequence) {
+        case "\x1b[a":
+          keyName = "arrowup";
+          break;
+        case "\x1b[b":
+          keyName = "arrowdown";
+          break;
+        case "\x1b[c":
+          keyName = "arrowright";
+          break;
+        case "\x1b[d":
+          keyName = "arrowleft";
+          break;
+      }
+    }
+    // Handle basic unmodified sequences
+    else {
+      const keyMap: { [key: string]: string } = {
+        "\x1b[A": "arrowup",
+        "\x1b[B": "arrowdown",
+        "\x1b[C": "arrowright",
+        "\x1b[D": "arrowleft",
+        "\x1b[H": "home",
+        "\x1b[F": "end",
+        "\x1b[5~": "pageup",
+        "\x1b[6~": "pagedown",
+        "\x1b[2~": "insert",
+        "\x1b[3~": "delete",
+      };
+      keyName = keyMap[sequence] || "";
+    }
+
     if (keyName) {
       const event: KeyPressEvent = {
         type: "KeyPress",
         key: keyName,
-        ctrl: false,
-        shift: false,
-        alt: false,
-        meta: false,
+        ctrl,
+        shift,
+        alt,
+        meta,
       };
       this.dispatch(event);
     }
@@ -590,6 +695,17 @@ export class Surface {
       const event: TextInputEvent = {
         type: "TextInput",
         text: char,
+      };
+      this.dispatch(event);
+    } else if (code === 127) {
+      // DEL character (alternative backspace)
+      const event: KeyPressEvent = {
+        type: "KeyPress",
+        key: "backspace",
+        ctrl: false,
+        shift: false,
+        alt: false,
+        meta: false,
       };
       this.dispatch(event);
     }

@@ -7,13 +7,13 @@ export { Textarea, TextareaNode } from "./textarea";
 export { Scrollable, ScrollableNode } from "./scrollable";
 export { Button, ButtonNode } from "./button";
 export { Image, ImageNode } from "./image";
-export { Console, ConsoleNode } from "./console";
+export { Console as ConsoleInternal, ConsoleNode } from "./console";
 export {
   ConsoleOverlay,
   ConsoleOverlayNode,
   withConsole,
   GlobalConsoleManager,
-  globalConsole,
+  Console,
 } from "./console-overlay";
 export type {
   ContainerProps,

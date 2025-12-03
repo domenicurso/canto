@@ -169,7 +169,7 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
             const levelColor = getLevelColor(msg.level);
 
             if (metadata.length > 0) {
-              const metadataText = `${metadata.join(" | ")}`;
+              const metadataText = `${metadata.join(", ")}`;
               return HStack(
                 Text(messageText).style({
                   grow: 1,
@@ -284,72 +284,6 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
     }
 
     this.messages.set(newMessages);
-  }
-
-  log(message: string): void {
-    const stackInfo = this.getStackInfo();
-    const consoleMessage: ConsoleMessage = {
-      content: message,
-      timestamp: new Date(),
-      level: "info",
-      ...stackInfo,
-    };
-    this.addMessage(consoleMessage);
-  }
-
-  info(message: string): void {
-    const stackInfo = this.getStackInfo();
-    const consoleMessage: ConsoleMessage = {
-      content: message,
-      timestamp: new Date(),
-      level: "info",
-      ...stackInfo,
-    };
-    this.addMessage(consoleMessage);
-  }
-
-  warn(message: string): void {
-    const stackInfo = this.getStackInfo();
-    const consoleMessage: ConsoleMessage = {
-      content: message,
-      timestamp: new Date(),
-      level: "warn",
-      ...stackInfo,
-    };
-    this.addMessage(consoleMessage);
-  }
-
-  error(message: string): void {
-    const stackInfo = this.getStackInfo();
-    const consoleMessage: ConsoleMessage = {
-      content: message,
-      timestamp: new Date(),
-      level: "error",
-      ...stackInfo,
-    };
-    this.addMessage(consoleMessage);
-  }
-
-  debug(message: string): void {
-    const stackInfo = this.getStackInfo();
-    const consoleMessage: ConsoleMessage = {
-      content: message,
-      timestamp: new Date(),
-      level: "debug",
-      ...stackInfo,
-    };
-    this.addMessage(consoleMessage);
-  }
-
-  success(message: string): void {
-    const stackInfo = this.getStackInfo();
-    const consoleMessage: ConsoleMessage = {
-      content: message,
-      timestamp: new Date(),
-      level: "success",
-      ...stackInfo,
-    };
-    this.addMessage(consoleMessage);
   }
 
   clearMessages(): void {

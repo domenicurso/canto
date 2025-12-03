@@ -1,5 +1,5 @@
 import { effect, state } from "../signals";
-import { Console, ConsoleNode } from "./console";
+import { Console as ConsoleInternal, ConsoleNode } from "./console";
 import { BaseNode } from "./node";
 import { VStack } from "./stack";
 
@@ -44,7 +44,7 @@ export class ConsoleOverlayNode extends BaseNode<ConsoleOverlayProps> {
     this.propsDefinition = props;
 
     // Create the console
-    this.console = Console({
+    this.console = ConsoleInternal({
       visible: this.isConsoleVisible,
       height: props.consoleHeight ?? 8,
       messages: this.messages,
@@ -254,19 +254,6 @@ export class GlobalConsoleManager {
     }
   }
 
-  info(message: string): void {
-    if (this.overlay) {
-      const stackInfo = this.getStackInfo();
-      const consoleMessage: ConsoleMessage = {
-        content: message,
-        timestamp: new Date(),
-        level: "info",
-        ...stackInfo,
-      };
-      this.overlay.addMessage(consoleMessage);
-    }
-  }
-
   debug(message: string): void {
     if (this.overlay) {
       const stackInfo = this.getStackInfo();
@@ -274,6 +261,19 @@ export class GlobalConsoleManager {
         content: message,
         timestamp: new Date(),
         level: "debug",
+        ...stackInfo,
+      };
+      this.overlay.addMessage(consoleMessage);
+    }
+  }
+  
+  success(message: string): void {
+    if (this.overlay) {
+      const stackInfo = this.getStackInfo();
+      const consoleMessage: ConsoleMessage = {
+        content: message,
+        timestamp: new Date(),
+        level: "success",
         ...stackInfo,
       };
       this.overlay.addMessage(consoleMessage);
@@ -310,4 +310,4 @@ export class GlobalConsoleManager {
 }
 
 // Export a global instance
-export const globalConsole = new GlobalConsoleManager();
+export const Console = new GlobalConsoleManager();

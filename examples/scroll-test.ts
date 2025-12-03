@@ -121,7 +121,7 @@ const app = withConsole(appContent, {
 
     switch (trimmed) {
       case "help":
-        globalConsole.info("Available commands:");
+        globalConsole.log("Available commands:");
         globalConsole.log("  help - Show this help");
         globalConsole.log("  status - Show scroll status");
         globalConsole.log("  top - Scroll to top");
@@ -131,36 +131,36 @@ const app = withConsole(appContent, {
         break;
 
       case "status":
-        globalConsole.info(
+        globalConsole.log(
           `Current scroll position: X=${scrollX.get()}, Y=${scrollY.get()}`,
         );
         break;
 
       case "top":
         scrollY.set(0);
-        globalConsole.info("Scrolled to top");
+        globalConsole.log("Scrolled to top");
         break;
 
       case "bottom":
         scrollY.set(1000); // Will be clamped by scrollable
-        globalConsole.info("Scrolled to bottom");
+        globalConsole.log("Scrolled to bottom");
         break;
 
       case "center":
         scrollY.set(500); // Approximate center
-        globalConsole.info("Scrolled to center");
+        globalConsole.log("Scrolled to center");
         break;
 
       case "reset":
         scrollX.set(0);
         scrollY.set(0);
-        globalConsole.info("Scroll position reset");
+        globalConsole.log("Scroll position reset");
         break;
 
       default:
         if (trimmed) {
           globalConsole.error(`Unknown command: ${input}`);
-          globalConsole.info("Type 'help' for available commands");
+          globalConsole.log("Type 'help' for available commands");
         }
         break;
     }
@@ -199,7 +199,7 @@ surface.onKey((event: KeyPressEvent, phase) => {
 surface.startRender();
 
 // Initial messages
-globalConsole.info("Scroll test started!");
+globalConsole.log("Scroll test started!");
 globalConsole.log("Try scrolling with:");
 globalConsole.log("  • Mouse wheel (if supported)");
 globalConsole.log("  • Arrow keys (after pressing Tab to focus)");

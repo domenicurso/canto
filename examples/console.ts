@@ -1,6 +1,6 @@
 import {
   computed,
-  globalConsole,
+  Console,
   HStack,
   Key,
   Renderer,
@@ -40,68 +40,65 @@ const app = withConsole(appContent, {
   consoleHeight: 12,
   toggleKey: "`",
   initialVisible: false,
-  consolePlaceholder: "Enter command (help for options)...",
-  maxMessages: 50,
+  maxMessages: 1000,
   onConsoleInput: (input: string) => {
     const trimmed = input.trim().toLowerCase();
 
     switch (trimmed) {
       case "help":
-        globalConsole.info("Available commands:");
-        globalConsole.log("  help - Show this help message");
-        globalConsole.log("  clear - Clear console messages");
-        globalConsole.log("  start - Start counter animation");
-        globalConsole.log("  stop - Stop counter animation");
-        globalConsole.log("  reset - Reset counter to 0");
-        globalConsole.log("  status - Show current status");
-        globalConsole.log("  test - Add test messages");
+        Console.log("Available commands:");
+        Console.log("  help - Show this help message");
+        Console.log("  clear - Clear console messages");
+        Console.log("  start - Start counter animation");
+        Console.log("  stop - Stop counter animation");
+        Console.log("  reset - Reset counter to 0");
+        Console.log("  status - Show current status");
+        Console.log("  test - Add test messages");
         break;
 
       case "clear":
-        globalConsole.clear();
+        Console.clear();
         break;
 
       case "start":
         if (!intervalId) {
           startAnimation();
-          globalConsole.info("Counter animation started");
+          Console.log("Counter animation started");
         } else {
-          globalConsole.warn("Animation already running");
+          Console.warn("Animation already running");
         }
         break;
 
       case "stop":
         if (intervalId) {
           stopAnimation();
-          globalConsole.info("Counter animation stopped");
+          Console.log("Counter animation stopped");
         } else {
-          globalConsole.warn("Animation not running");
+          Console.warn("Animation not running");
         }
         break;
 
       case "reset":
         count.set(0);
-        globalConsole.info("Counter reset to 0");
+        Console.log("Counter reset to 0");
         break;
 
       case "status":
-        globalConsole.info(
-          `Counter: ${count.get()}, Running: ${intervalId !== null}`,
-        );
+        Console.log(`Counter: ${count.get()}, Running: ${intervalId !== null}`);
         break;
 
       case "test":
-        globalConsole.log("This is a log message");
-        globalConsole.info("This is an info message");
-        globalConsole.warn("This is a warning message");
-        globalConsole.error("This is an error message");
-        globalConsole.debug("This is a debug message");
+        Console.log("This is a log message");
+        Console.warn("This is a warning message");
+        Console.error("This is an error message");
+        Console.debug("This is a debug message");
+        Console.success("This is a success message");
         break;
 
       default:
         if (trimmed) {
-          globalConsole.error(`Unknown command: ${input}`);
-          globalConsole.info("Type 'help' for available commands");
+          Console.error(`Unknown command: ${input}`);
+          Console.log("Type 'help' for available commands");
         }
         break;
     }
@@ -112,7 +109,7 @@ const renderer = new Renderer();
 const surface = new Surface(app, renderer);
 
 // Register the overlay with global console manager
-globalConsole.setOverlay(app);
+Console.setOverlay(app);
 
 // Counter animation control
 let intervalId: Timer | null = null;
@@ -141,13 +138,11 @@ surface.onText((event: TextInputEvent, phase) => {
 
   // Only handle toggle keys when console is not visible
   // This prevents intercepting text input meant for the console input field
-  if (!globalConsole.isVisible()) {
+  if (!Console.isVisible()) {
     // Toggle console with 'c' or backtick
     if (event.text === "c" || event.text === "`") {
-      globalConsole.toggle();
-      globalConsole.log(
-        `Console toggled ${globalConsole.isVisible() ? "on" : "off"}`,
-      );
+      Console.toggle();
+      Console.log(`Console toggled ${Console.isVisible() ? "on" : "off"}`);
     }
 
     if (event.text === "q") {
@@ -162,13 +157,13 @@ surface.onKey((event: KeyPressEvent, phase) => {
 
   // Toggle with F12
   if (event.key === Key.F12) {
-    globalConsole.toggle();
+    Console.toggle();
     return;
   }
 
   // Hide console with Escape
   if (event.key === Key.Escape) {
-    globalConsole.hide();
+    Console.hide();
   }
 });
 
@@ -179,19 +174,9 @@ surface.startRender({ cursor: { visibility: "hidden" } });
 startAnimation();
 
 // Add some initial welcome messages
-globalConsole.info("Console overlay example started!");
-globalConsole.log("Press ` (backtick) or F12 to toggle this console");
-globalConsole.log("Type 'help' for available commands");
-
-// Demonstrate periodic logging
-let logCount = 0;
-setInterval(() => {
-  logCount++;
-  if (logCount % 50 === 0) {
-    // Every 5 seconds (50 * 100ms)
-    globalConsole.debug(`Periodic update #${logCount / 50}`);
-  }
-}, 100);
+Console.log("Console overlay example started!");
+Console.log("Press ` (backtick) or F12 to toggle this console");
+Console.log("Type 'help' for available commands");
 
 // Cleanup on exit
 process.on("SIGINT", () => {

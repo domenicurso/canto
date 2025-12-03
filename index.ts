@@ -21,7 +21,7 @@ export {
   Console,
   ConsoleOverlay,
   withConsole,
-  globalConsole,
+  Console as globalConsole,
   GlobalConsoleManager,
 } from "./src/widgets";
 export type {
