@@ -37,7 +37,7 @@ const app = VStack(
       scrollStep: 1,
     }),
 ).style({
-  padding: 2,
+  padding: [1, 2],
   gap: 1,
 });
 
