@@ -81,10 +81,14 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
     this.scrollableContent =
       this.propsDefinition.height === "auto"
         ? this.messageContainer
-        : Scrollable(this.messageContainer).style({
-            height: Math.max(1, (this.propsDefinition.height ?? 8) - 2),
-            width: "100%",
-          });
+        : Scrollable(this.messageContainer)
+            .style({
+              height: Math.max(1, (this.propsDefinition.height ?? 8) - 2),
+              width: "100%",
+              scrollbarBackground: "#222222",
+              scrollbarForeground: "#333333",
+            })
+            .props({ scrollbarEnabled: true });
 
     this.buildContent();
 

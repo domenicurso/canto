@@ -2,11 +2,11 @@
 import { HStack, Renderer, Scrollable, state, Surface, Text, VStack } from "..";
 
 const app = VStack(
-  Text("Scrollable Widget with Scrollbars Demo"),
-  Text("Use arrow keys to scroll, or focus and use mouse wheel"),
-  Text("Notice the scrollbars on the right and bottom edges"),
-  Text("Press Ctrl+C to exit"),
-  Text(""),
+  VStack(
+    Text("Scrollable Widget with Scrollbars Demo").style({ bold: true }),
+    Text("Use arrow keys to scroll, or focus and use mouse wheel"),
+    Text("Press Ctrl+C to exit").style({ faint: true, italic: true }),
+  ),
 
   // Create a scrollable container with limited size
   Scrollable(
@@ -15,7 +15,9 @@ const app = VStack(
       ...Array.from({ length: 20 }, (_, i) =>
         HStack(
           ...Array.from({ length: 10 }, (_, j) =>
-            Text(`Cell ${i + 1}-${j + 1}`).style({
+            Text(
+              `Cell ${(i + 1).toString().padStart(2, "0")}-${(j + 1).toString().padStart(2, "0")}`,
+            ).style({
               padding: 1,
               background: (i + j) % 2 === 0 ? "blue" : "green",
               foreground: "black",
@@ -28,6 +30,7 @@ const app = VStack(
     .style({
       width: 60, // Smaller than content width
       height: 15, // Smaller than content height
+      background: "black",
     })
     .props({
       scrollbarEnabled: true, // Enable scrollbars
