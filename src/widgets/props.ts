@@ -30,6 +30,7 @@ export interface ScrollableProps {
   onScroll?: (x: number, y: number) => void;
   scrollStep?: number;
   scrollWheelEnabled?: boolean;
+  scrollbarEnabled?: boolean;
 }
 
 export interface ButtonProps {

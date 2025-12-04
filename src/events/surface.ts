@@ -340,6 +340,7 @@ export class Surface {
     if (process.stdout.isTTY) {
       // Enable mouse tracking
       process.stdout.write("\x1b[?1000h"); // Basic mouse tracking
+      process.stdout.write("\x1b[?1002h"); // Button event tracking (enables drag)
       process.stdout.write("\x1b[?1006h"); // SGR mouse mode
     }
 
@@ -362,6 +363,7 @@ export class Surface {
     // Disable mouse tracking
     if (process.stdout.isTTY) {
       process.stdout.write("\x1b[?1000l"); // Disable mouse tracking
+      process.stdout.write("\x1b[?1002l"); // Disable button event tracking
       process.stdout.write("\x1b[?1006l"); // Disable SGR mouse mode
     }
 
@@ -498,6 +500,50 @@ export class Surface {
             },
           };
           this.dispatch(scrollEvent);
+        } else {
+          // Handle regular mouse events (press, release, move)
+          let mouseButton: "left" | "right" | "middle" | undefined;
+          let mouseAction: "press" | "release" | "move";
+
+          // Determine button
+          switch (button & 0x03) {
+            case 0:
+              mouseButton = "left";
+              break;
+            case 1:
+              mouseButton = "middle";
+              break;
+            case 2:
+              mouseButton = "right";
+              break;
+            default:
+              mouseButton = undefined;
+          }
+
+          // Determine action based on the M/m suffix and button modifiers
+          if (action === "M") {
+            // Press event
+            mouseAction = "press";
+          } else if (action === "m") {
+            // Release event
+            mouseAction = "release";
+          } else {
+            mouseAction = "move";
+          }
+
+          // Check for drag events (button + 32 indicates dragging)
+          if ((button & 32) !== 0) {
+            mouseAction = "move";
+          }
+
+          const mouseEvent: MouseEvent = {
+            type: "Mouse",
+            action: mouseAction,
+            button: mouseButton,
+            x,
+            y,
+          };
+          this.dispatch(mouseEvent);
         }
       }
     }
@@ -788,18 +834,28 @@ export class Surface {
   }
 
   private handleMouse(event: MouseEvent): boolean {
-    if (!isScrollEvent(event)) {
+    // Handle scroll events
+    if (isScrollEvent(event)) {
+      const scrollableNode = this.findScrollableAt(event.x, event.y);
+      if (scrollableNode) {
+        const deltaX = event.scrollDelta?.x ?? 0;
+        const deltaY = event.scrollDelta?.y ?? 0;
+        const step = scrollableNode.getScrollStepValue();
+        scrollableNode.scrollBy(deltaX * step, deltaY * step);
+        return true;
+      }
       return false;
     }
 
-    // Find scrollable node at mouse position
+    // Handle regular mouse events (press, release, move) for scrollbar dragging
     const scrollableNode = this.findScrollableAt(event.x, event.y);
     if (scrollableNode) {
-      const deltaX = event.scrollDelta?.x ?? 0;
-      const deltaY = event.scrollDelta?.y ?? 0;
-      const step = scrollableNode.getScrollStepValue();
-      scrollableNode.scrollBy(deltaX * step, deltaY * step);
-      return true;
+      return scrollableNode.handleMouseEvent({
+        action: event.action,
+        button: event.button,
+        x: event.x,
+        y: event.y,
+      });
     }
 
     return false;
