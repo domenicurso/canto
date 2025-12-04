@@ -12,9 +12,9 @@ const app = VStack(
   Scrollable(
     VStack(
       // Create content that's larger than the container
-      ...Array.from({ length: 20 }, (_, i) =>
+      ...Array.from({ length: 40 }, (_, i) =>
         HStack(
-          ...Array.from({ length: 10 }, (_, j) =>
+          ...Array.from({ length: 20 }, (_, j) =>
             Text(
               `Cell ${(i + 1).toString().padStart(2, "0")}-${(j + 1).toString().padStart(2, "0")}`,
             ).style({
