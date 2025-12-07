@@ -254,10 +254,20 @@ export abstract class BaseNode<TProps extends object = object> implements Node {
 
   abstract _paint(): PaintResult;
 
+  protected getAbsoluteZ(): number {
+    const ownZ = this.resolvedStyle?.zIndex ?? 0;
+    if (this.parent instanceof BaseNode) {
+      return this.parent.getAbsoluteZ() + ownZ;
+    }
+    return ownZ;
+  }
+
   protected paintChildren(): PaintResult {
+    const parentZ = this.getAbsoluteZ();
     const layered = this._children.map((child, index) => {
       const style = resolveNodeStyle(child);
-      const zIndex = style?.zIndex ?? 0;
+      const childOffset = style?.zIndex ?? 0;
+      const zIndex = parentZ + childOffset;
       return {
         zIndex,
         order: index,
@@ -274,9 +284,40 @@ export abstract class BaseNode<TProps extends object = object> implements Node {
 
     const spans: PaintResult["spans"] = [];
     const rects: PaintResult["rects"] = [];
+    let sequence = 0;
+
+    const nextOrder = (offset?: number): number => {
+      const base = sequence++;
+      if (offset === undefined) {
+        return base;
+      }
+      const finalOrder = base + offset;
+      if (finalOrder >= sequence) {
+        sequence = finalOrder + 1;
+      }
+      return finalOrder;
+    };
+
     for (const layer of layered) {
-      spans.push(...layer.result.spans);
-      rects.push(...layer.result.rects);
+      const layerZ = layer.zIndex;
+
+      for (const rect of layer.result.rects) {
+        const order = nextOrder(rect.order);
+        rects.push({
+          ...rect,
+          zIndex: (rect.zIndex ?? 0) + layerZ,
+          order,
+        });
+      }
+
+      for (const span of layer.result.spans) {
+        const order = nextOrder(span.order);
+        spans.push({
+          ...span,
+          zIndex: (span.zIndex ?? 0) + layerZ,
+          order,
+        });
+      }
     }
     return { spans, rects };
   }
