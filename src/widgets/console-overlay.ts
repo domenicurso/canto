@@ -73,7 +73,7 @@ export class ConsoleOverlayNode extends BaseNode<ConsoleOverlayProps> {
         VStack(this.contentNode, this.console).style({
           gap: 0,
           distribute: "between",
-          height: "100%"
+          height: "100%",
         }),
       ];
     } else {
@@ -276,6 +276,19 @@ export class GlobalConsoleManager {
         content: message,
         timestamp: new Date(),
         level: "success",
+        ...stackInfo,
+      };
+      this.overlay.addMessage(consoleMessage);
+    }
+  }
+
+  command(message: string): void {
+    if (this.overlay) {
+      const stackInfo = this.getStackInfo();
+      const consoleMessage: ConsoleMessage = {
+        content: message,
+        timestamp: new Date(),
+        level: "command",
         ...stackInfo,
       };
       this.overlay.addMessage(consoleMessage);

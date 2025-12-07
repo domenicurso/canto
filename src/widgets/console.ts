@@ -7,7 +7,7 @@ import { Text } from "./text";
 
 import type { Constraints } from "../layout";
 import type { Signal } from "../signals";
-import type { ResolvedStyle } from "../style";
+import type { Color, ResolvedStyle } from "../style";
 import type { PaintResult, Point, Size } from "../types";
 import type { Node } from "./node";
 import type { ContainerProps } from "./props";
@@ -17,7 +17,7 @@ export interface ConsoleMessage {
   timestamp?: Date;
   file?: string;
   line?: number;
-  level?: "info" | "warn" | "error" | "debug" | "success";
+  level?: "info" | "warn" | "error" | "debug" | "success" | "command";
 }
 
 export interface ConsoleProps extends ContainerProps {
@@ -65,8 +65,18 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
       .props({
         placeholder: this.propsDefinition.placeholder ?? "enter a command…",
         onSubmit: (value: string) => {
-          if (value.trim() && this.propsDefinition.onInput) {
-            this.propsDefinition.onInput(value.trim());
+          if (value.trim()) {
+            // Add the command to messages first with distinct styling
+            this.addMessage({
+              content: `> ${value.trim()}`,
+              timestamp: new Date(),
+              level: "command",
+            });
+
+            // Then execute the command if handler exists
+            if (this.propsDefinition.onInput) {
+              this.propsDefinition.onInput(value.trim());
+            }
           }
           this.inputValue.set("");
         },
@@ -116,7 +126,15 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
     // Create header
     const header = HStack(
       Text("Console").style({ bold: true }),
-      Text(computed(() => `${messages.length} messages`)).style({
+      Text(
+        computed(() => {
+          const msgs = this.messages.get();
+          const nonCommandCount = msgs.filter(
+            (msg) => msg.level !== "command",
+          ).length;
+          return `${nonCommandCount} messages`;
+        }),
+      ).style({
         faint: true,
       }),
     ).style({
@@ -156,7 +174,7 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
             // }
 
             // Color coding for different log levels
-            const getLevelColor = (level?: ConsoleMessage["level"]): string => {
+            const getLevelColor = (level?: ConsoleMessage["level"]): Color => {
               switch (level) {
                 case "error":
                   return "red";
@@ -166,6 +184,8 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
                   return "blue";
                 case "success":
                   return "green";
+                case "command":
+                  return "magenta";
                 case "info":
                 default:
                   return "white";
@@ -174,12 +194,19 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
 
             const levelColor = getLevelColor(msg.level);
 
+            // Special styling for command messages
+            const isCommand = msg.level === "command";
+            const textStyle = {
+              foreground: levelColor,
+              ...(isCommand && { italic: true }),
+            };
+
             if (metadata.length > 0) {
               const metadataText = `${metadata.join(", ")}`;
               return HStack(
                 Text(messageText).style({
                   grow: 1,
-                  foreground: levelColor as any,
+                  ...textStyle,
                 }),
                 Text(metadataText).style({
                   faint: true,
@@ -196,9 +223,7 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
                 .key(`console-message-${index}`);
             } else {
               return Text(messageText)
-                .style({
-                  foreground: levelColor as any,
-                })
+                .style(textStyle)
                 .key(`console-message-${index}`);
             }
           })
