@@ -29,11 +29,11 @@ const label1 = computed(() => `Data Point A: ${"#".repeat(count.get())}`);
 const label2 = computed(() => `Data Point B: ${"#".repeat(count.get() + 5)}`);
 
 const app = VStack(
-  Text("Live Data Feed")
-    .style({ background: "red", padding: [1, 2] }),
+  Text("Live Data Feed").style({ background: "red", padding: [1, 2] }),
   VStack(Text(label1), Text(label2)),
-  Text("Data Point B is always 5 more units than Point A")
-    .style({ italic: true }),
+  Text("Data Point B is always 5 more units than Point A").style({
+    italic: true,
+  }),
 ).style({ gap: 1 });
 
 const surface = new Surface(app, new Renderer());
