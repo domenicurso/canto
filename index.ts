@@ -23,6 +23,11 @@ export {
   withConsole,
   Console as globalConsole,
   GlobalConsoleManager,
+  Debug,
+  DebugPanel,
+  DebugOverlay,
+  withDebug,
+  GlobalDebugManager,
 } from "./src/widgets";
 export type {
   Node,
@@ -37,6 +42,9 @@ export type {
   PropsMap,
   ConsoleProps,
   ConsoleOverlayProps,
+  DebugPanelProps,
+  DebugOverlayProps,
+  DebugMetrics,
 } from "./src/widgets";
 
 export { Renderer } from "./src/renderer";

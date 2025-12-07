@@ -912,7 +912,7 @@ export class Surface {
 
   private handleInputKey(node: InputNode, event: KeyPressEvent): boolean {
     const key = event.key.toLowerCase();
-    const { ctrl, shift, meta, alt } = event;
+    const { ctrl, shift, meta } = event;
     const cmdOrCtrl = ctrl || meta;
 
     switch (key) {

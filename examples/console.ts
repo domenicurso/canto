@@ -1,6 +1,7 @@
 import {
   computed,
   Console,
+  Debug,
   HStack,
   Key,
   Renderer,
@@ -9,6 +10,7 @@ import {
   Text,
   VStack,
   withConsole,
+  withDebug,
 } from "..";
 
 import type { KeyPressEvent, TextInputEvent } from "..";
@@ -33,10 +35,14 @@ const appContent = VStack(
     Text("Press 'c', ` (backtick), or F12 to toggle console."),
     Text("Type 'help' in console for commands.").style({ bold: true }),
   ).style({ italic: true, gap: 1 }),
+  Text("Press 'd' or F3 to toggle debug panel.").style({
+    italic: true,
+    foreground: "cyan",
+  }),
 ).style({ gap: 1 });
 
-// Wrap content with console overlay
-const app = withConsole(appContent, {
+// Wrap content with console overlay first
+const consoleApp = withConsole(appContent, {
   consoleHeight: 16,
   toggleKey: "`",
   initialVisible: false,
@@ -54,6 +60,7 @@ const app = withConsole(appContent, {
         Console.log("  reset - Reset counter to 0");
         Console.log("  status - Show current status");
         Console.log("  test - Add test messages");
+        Console.log("  debug - Toggle debug panel");
         break;
 
       case "clear":
@@ -95,6 +102,11 @@ const app = withConsole(appContent, {
         Console.success("This is a success message");
         break;
 
+      case "debug":
+        Debug.toggle();
+        Console.log(`Debug panel ${Debug.isVisible() ? "shown" : "hidden"}`);
+        break;
+
       default:
         if (trimmed) {
           Console.error(`Unknown command: ${input}`);
@@ -105,11 +117,20 @@ const app = withConsole(appContent, {
   },
 });
 
+// Then wrap with debug overlay
+const app = withDebug(consoleApp, {
+  position: "bottom-right",
+  initialVisible: true,
+  updateInterval: 5000,
+  fpsWindow: 60,
+});
+
 const renderer = new Renderer();
 const surface = new Surface(app, renderer);
 
-// Register the overlay with global console manager
-Console.setOverlay(app);
+// Register the overlays with global managers
+Console.setOverlay(consoleApp);
+Debug.setOverlay(app);
 
 // Counter animation control
 let intervalId: Timer | null = null;
@@ -130,7 +151,7 @@ function stopAnimation() {
 }
 
 // Set surface reference for focus management
-app.setSurface(surface);
+consoleApp.setSurface(surface);
 
 // Handle text input for console toggle (regular letters)
 surface.onText((event: TextInputEvent, phase) => {
@@ -144,6 +165,10 @@ surface.onText((event: TextInputEvent, phase) => {
       Console.toggle();
     }
 
+    if (event.text === "d") {
+      Debug.toggle();
+    }
+
     if (event.text === "q") {
       process.exit(0);
     }
@@ -154,9 +179,15 @@ surface.onText((event: TextInputEvent, phase) => {
 surface.onKey((event: KeyPressEvent, phase) => {
   if (phase !== "pre") return;
 
-  // Toggle with F12
+  // Toggle console with F12
   if (event.key === Key.F12) {
     Console.toggle();
+    return;
+  }
+
+  // Toggle debug panel with F3
+  if (event.key === Key.F3) {
+    Debug.toggle();
     return;
   }
 
@@ -165,6 +196,26 @@ surface.onKey((event: KeyPressEvent, phase) => {
     Console.hide();
   }
 });
+
+// Custom render loop that feeds stats to debug panel
+let isUpdatingStats = false;
+const originalRender = surface.render.bind(surface);
+surface.render = function (options) {
+  const result = originalRender(options);
+
+  // Prevent recursive calls during stats update
+  if (!isUpdatingStats) {
+    isUpdatingStats = true;
+    Debug.updateRenderStats({
+      cellsWritten: result.stats.cellsWritten,
+      cellsSkipped: result.stats.cellsSkipped,
+      renderTime: result.stats.renderTime,
+    });
+    isUpdatingStats = false;
+  }
+
+  return result;
+};
 
 // Start rendering
 surface.startRender({ cursor: { visibility: "hidden" } });

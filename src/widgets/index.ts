@@ -15,6 +15,14 @@ export {
   GlobalConsoleManager,
   Console,
 } from "./console-overlay";
+export { DebugPanel, DebugPanelNode } from "./debug-panel";
+export {
+  DebugOverlay,
+  DebugOverlayNode,
+  withDebug,
+  GlobalDebugManager,
+  Debug,
+} from "./debug-overlay";
 export type {
   ContainerProps,
   InputProps,
@@ -27,3 +35,5 @@ export type {
 } from "./props";
 export type { ConsoleProps } from "./console";
 export type { ConsoleOverlayProps } from "./console-overlay";
+export type { DebugPanelProps, DebugMetrics } from "./debug-panel";
+export type { DebugOverlayProps } from "./debug-overlay";
