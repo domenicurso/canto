@@ -476,12 +476,45 @@ export class Renderer {
   }
 
   private buildCells(paint: PaintResult): Map<string, Cell> {
-    const cells = new Map<string, Cell>();
+    type LayeredCell = {
+      char: string;
+      style: StyleSnapshot;
+      zIndex: number;
+      order: number;
+    };
+
+    const layered = new Map<string, LayeredCell>();
+
+    const writeCell = (
+      x: number,
+      y: number,
+      char: string,
+      style: StyleSnapshot,
+      zIndex: number | undefined,
+      order: number | undefined,
+    ): void => {
+      const key = `${x},${y}`;
+      const existing = layered.get(key);
+      const nextZ = zIndex ?? 0;
+      const nextOrder = order ?? 0;
+      if (
+        !existing ||
+        nextZ > existing.zIndex ||
+        (nextZ === existing.zIndex && nextOrder >= existing.order)
+      ) {
+        layered.set(key, {
+          char,
+          style,
+          zIndex: nextZ,
+          order: nextOrder,
+        });
+      }
+    };
+
     for (const rect of paint.rects) {
-      const style = rect.style;
       for (let y = rect.y; y < rect.y + rect.height; y++) {
         for (let x = rect.x; x < rect.x + rect.width; x++) {
-          cells.set(`${x},${y}`, { char: " ", style });
+          writeCell(x, y, " ", rect.style, rect.zIndex, rect.order);
         }
       }
     }
@@ -494,10 +527,14 @@ export class Renderer {
         }
         const x = span.x + i;
         const y = span.y;
-        cells.set(`${x},${y}`, { char, style: span.style });
+        writeCell(x, y, char, span.style, span.zIndex, span.order);
       }
     }
 
+    const cells = new Map<string, Cell>();
+    for (const [key, value] of layered) {
+      cells.set(key, { char: value.char, style: value.style });
+    }
     return cells;
   }
 }

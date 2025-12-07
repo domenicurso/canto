@@ -46,6 +46,8 @@ function clipSpan(span: Span, viewport: LayoutRect): Span | null {
     y: span.y,
     text,
     style: span.style,
+    zIndex: span.zIndex,
+    order: span.order,
   };
 }
 
@@ -60,6 +62,8 @@ function clipRect(rect: Rect, viewport: LayoutRect): Rect | null {
     width: intersection.width,
     height: intersection.height,
     style: rect.style,
+    zIndex: rect.zIndex,
+    order: rect.order,
   };
 }
 

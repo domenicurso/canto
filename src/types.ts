@@ -16,6 +16,8 @@ export interface Rect {
   width: number;
   height: number;
   style: StyleSnapshot;
+  zIndex?: number;
+  order?: number;
 }
 
 export interface LayoutRect {
@@ -30,6 +32,8 @@ export interface Span {
   y: number;
   text: string;
   style: StyleSnapshot;
+  zIndex?: number;
+  order?: number;
 }
 
 export interface PaintResult {
