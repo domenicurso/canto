@@ -4,6 +4,7 @@ import { BaseNode } from "./node";
 import { Scrollable } from "./scrollable";
 import { HStack, VStack } from "./stack";
 import { Text } from "./text";
+import { resolveAxisSize } from "./style-utils";
 
 import type { Constraints } from "../layout";
 import type { Signal } from "../signals";
@@ -343,27 +344,72 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
   }
 
   _measure(constraints: Constraints, inherited: ResolvedStyle): Size {
+    const style = this.resolveCurrentStyle(inherited);
     if (!this.isVisible.get()) {
       return { width: 0, height: 0 };
     }
 
+    const padding = style.padding;
+    const horizontalPadding = padding.left + padding.right;
+    const verticalPadding = padding.top + padding.bottom;
+
+    const innerConstraints: Constraints = {
+      minWidth: Math.max(0, constraints.minWidth - horizontalPadding),
+      maxWidth: Number.isFinite(constraints.maxWidth)
+        ? Math.max(0, constraints.maxWidth - horizontalPadding)
+        : constraints.maxWidth,
+      minHeight: Math.max(0, constraints.minHeight - verticalPadding),
+      maxHeight: Number.isFinite(constraints.maxHeight)
+        ? Math.max(0, constraints.maxHeight - verticalPadding)
+        : constraints.maxHeight,
+    };
+
+    let childSize: Size = { width: 0, height: 0 };
     if (this.contentStack) {
-      return this.contentStack._measure(constraints, inherited);
+      childSize = this.contentStack._measure(innerConstraints, style);
+    } else {
+      const fallbackHeight =
+        this.propsDefinition.height === "auto"
+          ? Math.min(this.messages.get().length + 2, innerConstraints.maxHeight)
+          : Math.min(
+              this.propsDefinition.height ?? 8,
+              innerConstraints.maxHeight,
+            );
+      const fallbackWidth = Number.isFinite(innerConstraints.maxWidth)
+        ? innerConstraints.maxWidth
+        : constraints.maxWidth;
+      childSize = {
+        width: Math.max(fallbackWidth, innerConstraints.minWidth, 0),
+        height: Math.max(fallbackHeight, 0),
+      };
     }
 
-    // Fallback size
-    const height =
-      this.propsDefinition.height === "auto"
-        ? Math.min(this.messages.get().length + 2, constraints.maxHeight)
-        : Math.min(this.propsDefinition.height ?? 8, constraints.maxHeight);
+    const intrinsicWidth = childSize.width + horizontalPadding;
+    const intrinsicHeight = childSize.height + verticalPadding;
 
-    return {
-      width: constraints.maxWidth,
-      height,
-    };
+    const width = resolveAxisSize(
+      style.width,
+      style.minWidth,
+      style.maxWidth,
+      intrinsicWidth,
+      constraints.minWidth,
+      constraints.maxWidth,
+    );
+
+    const height = resolveAxisSize(
+      style.height,
+      style.minHeight,
+      style.maxHeight,
+      intrinsicHeight,
+      constraints.minHeight,
+      constraints.maxHeight,
+    );
+
+    return { width, height };
   }
 
   _layout(origin: Point, size: Size): void {
+    const style = this.getResolvedStyle();
     this.updateLayoutRect(origin, size);
 
     if (!this.isVisible.get()) {
@@ -372,7 +418,16 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
     }
 
     if (this.contentStack) {
-      this.contentStack._layout(origin, size);
+      const padding = style.padding;
+      const childOrigin = {
+        x: origin.x + padding.left,
+        y: origin.y + padding.top,
+      };
+      const childSize = {
+        width: Math.max(size.width - (padding.left + padding.right), 0),
+        height: Math.max(size.height - (padding.top + padding.bottom), 0),
+      };
+      this.contentStack._layout(childOrigin, childSize);
     }
 
     this.dirty = false;
@@ -383,11 +438,19 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
       return { spans: [], rects: [] };
     }
 
-    if (this.contentStack) {
-      return this.contentStack._paint();
+    const result = this.paintChildren();
+    const style = this.getResolvedStyle();
+    if (style.background !== null) {
+      const layout = this.getLayoutRect();
+      result.rects.unshift({
+        x: layout.x,
+        y: layout.y,
+        width: layout.width,
+        height: layout.height,
+        style: this.getStyleSnapshot(),
+      });
     }
-
-    return { spans: [], rects: [] };
+    return result;
   }
 }
 

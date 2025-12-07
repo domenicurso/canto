@@ -10,6 +10,7 @@ import type {
   PreparedStackMeasurement,
   StackLayoutResult,
   StackMeasurement,
+  StackMeasuredChild,
 } from "../layout";
 import type { DimensionToken, FlowAxis, ResolvedStyle } from "../style";
 import type { PaintResult, Point, Size } from "../types";
@@ -63,13 +64,11 @@ export abstract class StackNodeBase<
         );
 
         // Measure children with auto sizing first
-        const childSizes: Size[] = [];
-        const childStyles: ResolvedStyle[] = [];
+        const childItems: StackMeasuredChild[] = [];
         for (const child of this.children) {
           const size = child._measure(prepared.innerConstraints, adjustedStyle);
-          childSizes.push(size);
           const resolved = resolveNodeStyle(child) ?? adjustedStyle;
-          childStyles.push(resolved);
+          childItems.push({ intrinsicSize: size, style: resolved });
         }
 
         const autoMeasurement = finalizeStackMeasurement(
@@ -77,8 +76,7 @@ export abstract class StackNodeBase<
           constraints,
           adjustedStyle,
           prepared.candidateSize,
-          childSizes,
-          childStyles,
+          childItems,
         );
 
         this.measurement = autoMeasurement;
@@ -93,14 +91,12 @@ export abstract class StackNodeBase<
       style,
     );
 
-    const childSizes: Size[] = [];
-    const childStyles: ResolvedStyle[] = [];
+    const childItems: StackMeasuredChild[] = [];
 
     for (const child of this.children) {
       const size = child._measure(prepared.innerConstraints, style);
-      childSizes.push(size);
       const resolved = resolveNodeStyle(child) ?? style;
-      childStyles.push(resolved);
+      childItems.push({ intrinsicSize: size, style: resolved });
     }
 
     this.measurement = finalizeStackMeasurement(
@@ -108,8 +104,7 @@ export abstract class StackNodeBase<
       constraints,
       style,
       prepared.candidateSize,
-      childSizes,
-      childStyles,
+      childItems,
     );
     this.setOverflow(false);
     return this.measurement.outerSize;

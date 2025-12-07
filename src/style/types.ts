@@ -31,6 +31,13 @@ export type DimensionToken =
 
 export type DimensionLimitToken = DimensionToken | "none";
 
+export type PositionMode = "static" | "absolute";
+
+export type Inset =
+  | number
+  | [number, number]
+  | [number, number, number, number];
+
 export type Padding =
   | number
   | [number, number]
@@ -77,6 +84,14 @@ export interface StyleMap {
   grow?: StyleValue<number>;
   shrink?: StyleValue<number>;
 
+  position?: StyleValue<PositionMode>;
+  inset?: StyleValue<Inset>;
+  top?: StyleValue<number | null>;
+  right?: StyleValue<number | null>;
+  bottom?: StyleValue<number | null>;
+  left?: StyleValue<number | null>;
+  zIndex?: StyleValue<number>;
+
   textWrap?: StyleValue<TextWrap>;
 
   scrollX?: StyleValue<boolean>;
@@ -120,6 +135,12 @@ export interface ResolvedStyle extends StyleSnapshot {
   scrollY: boolean;
   scrollbarBackground: Color | null;
   scrollbarForeground: Color | null;
+  position: PositionMode;
+  top: number | null;
+  right: number | null;
+  bottom: number | null;
+  left: number | null;
+  zIndex: number;
 }
 
 export const DEFAULT_STYLE_SNAPSHOT: StyleSnapshot = {

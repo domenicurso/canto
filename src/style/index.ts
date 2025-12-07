@@ -7,6 +7,8 @@ export type {
   FlowAxis,
   FlowDistribution,
   FlowItemDistribution,
+  Inset,
+  PositionMode,
   Padding,
   ResolvedStyle,
   StyleMap,
