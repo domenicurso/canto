@@ -3,8 +3,8 @@ import { Input } from "./input";
 import { BaseNode } from "./node";
 import { Scrollable } from "./scrollable";
 import { HStack, VStack } from "./stack";
-import { Text } from "./text";
 import { resolveAxisSize } from "./style-utils";
+import { Text } from "./text";
 
 import type { Constraints } from "../layout";
 import type { Signal } from "../signals";
@@ -94,7 +94,8 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
         ? this.messageContainer
         : Scrollable(this.messageContainer)
             .style({
-              height: Math.max(1, (this.propsDefinition.height ?? 8) - 2),
+              height: "100%",
+              maxHeight: Math.max(1, (this.propsDefinition.height ?? 8) - 2),
               width: "100%",
               scrollbarBackground: "#222222",
               scrollbarForeground: "#333333",

@@ -29,7 +29,7 @@ const card = Stack(
   Text(badgeLabel).style({
     position: "absolute",
     top: 0,
-    right: 2,
+    right: 0,
     background: "yellow",
     foreground: "black",
     padding: [0, 1],
@@ -37,8 +37,8 @@ const card = Stack(
   }),
   Text("Pinned to bottom-left").style({
     position: "absolute",
-    bottom: 1,
-    left: 2,
+    bottom: -1,
+    left: -2,
     background: "brightBlue",
     foreground: "black",
     padding: [0, 1],
@@ -54,7 +54,7 @@ const card = Stack(
     zIndex: 3,
   }),
 ).style({
-  width: 42,
+  width: 40,
   height: 12,
   padding: [1, 2],
   gap: 1,
