@@ -31,7 +31,6 @@ process.stdin.on("data", (data) => {
   console.log(`Bytes: [${Array.from(buffer).join(", ")}]`);
 
   // Try to identify common sequences
-  const hex = buffer.toString("hex");
   let description = "Unknown";
 
   if (buffer.length === 1) {
