@@ -1,7 +1,8 @@
 import { effect, state } from "../signals";
 import { Console as ConsoleInternal, ConsoleNode } from "./console";
 import { BaseNode } from "./node";
-import { VStack } from "./stack";
+import { Stack, VStack } from "./stack";
+import { resolveAxisSize } from "./style-utils";
 
 import type { Constraints } from "../layout";
 import type { Signal } from "../signals";
@@ -65,21 +66,29 @@ export class ConsoleOverlayNode extends BaseNode<ConsoleOverlayProps> {
   }
 
   private updateChildren(): void {
-    const isVisible = this.isConsoleVisible.get();
+    this._children = [this.buildLayeredTree()];
+  }
 
-    if (isVisible) {
-      // When console is visible, stack content above console
-      this._children = [
-        VStack(this.contentNode, this.console).style({
-          gap: 0,
-          distribute: "between",
-          height: "100%",
-        }),
-      ];
-    } else {
-      // When console is hidden, just show content
-      this._children = [this.contentNode];
+  private buildLayeredTree(): Node {
+    if (!this.isConsoleVisible.get()) {
+      return this.contentNode;
     }
+
+    const consoleWrapper = VStack(this.console).style({
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: "100%",
+      gap: 0,
+      background: "#111111",
+      zIndex: 1,
+    });
+
+    return Stack(this.contentNode, consoleWrapper).style({
+      width: "100%",
+      height: "100%",
+    });
   }
 
   addMessage(message: string | ConsoleMessage): void {
@@ -132,19 +141,67 @@ export class ConsoleOverlayNode extends BaseNode<ConsoleOverlayProps> {
   }
 
   _measure(constraints: Constraints, inherited: ResolvedStyle): Size {
+    const style = this.resolveCurrentStyle(inherited);
+    const padding = style.padding;
+    const horizontalPadding = padding.left + padding.right;
+    const verticalPadding = padding.top + padding.bottom;
+
+    const innerConstraints: Constraints = {
+      minWidth: Math.max(0, constraints.minWidth - horizontalPadding),
+      maxWidth: Number.isFinite(constraints.maxWidth)
+        ? Math.max(0, constraints.maxWidth - horizontalPadding)
+        : constraints.maxWidth,
+      minHeight: Math.max(0, constraints.minHeight - verticalPadding),
+      maxHeight: Number.isFinite(constraints.maxHeight)
+        ? Math.max(0, constraints.maxHeight - verticalPadding)
+        : constraints.maxHeight,
+    };
+
     const child = this._children[0];
-    if (child) {
-      return child._measure(constraints, inherited);
-    }
-    return { width: 0, height: 0 };
+    const childSize = child
+      ? child._measure(innerConstraints, style)
+      : { width: 0, height: 0 };
+
+    const intrinsicWidth = childSize.width + horizontalPadding;
+    const intrinsicHeight = childSize.height + verticalPadding;
+
+    const width = resolveAxisSize(
+      style.width,
+      style.minWidth,
+      style.maxWidth,
+      intrinsicWidth,
+      constraints.minWidth,
+      constraints.maxWidth,
+    );
+
+    const height = resolveAxisSize(
+      style.height,
+      style.minHeight,
+      style.maxHeight,
+      intrinsicHeight,
+      constraints.minHeight,
+      constraints.maxHeight,
+    );
+
+    return { width, height };
   }
 
   _layout(origin: Point, size: Size): void {
+    const style = this.getResolvedStyle();
     this.updateLayoutRect(origin, size);
 
     const child = this._children[0];
     if (child) {
-      child._layout(origin, size);
+      const padding = style.padding;
+      const childOrigin = {
+        x: origin.x + padding.left,
+        y: origin.y + padding.top,
+      };
+      const childSize = {
+        width: Math.max(size.width - (padding.left + padding.right), 0),
+        height: Math.max(size.height - (padding.top + padding.bottom), 0),
+      };
+      child._layout(childOrigin, childSize);
     }
 
     this.dirty = false;
@@ -152,10 +209,19 @@ export class ConsoleOverlayNode extends BaseNode<ConsoleOverlayProps> {
 
   _paint(): PaintResult {
     const child = this._children[0];
-    if (child) {
-      return child._paint();
+    const result = child ? child._paint() : { spans: [], rects: [] };
+    const style = this.getResolvedStyle();
+    if (style.background !== null) {
+      const layout = this.getLayoutRect();
+      result.rects.unshift({
+        x: layout.x,
+        y: layout.y,
+        width: layout.width,
+        height: layout.height,
+        style: this.getStyleSnapshot(),
+      });
     }
-    return { spans: [], rects: [] };
+    return result;
   }
 }
 

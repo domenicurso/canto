@@ -255,12 +255,28 @@ export abstract class BaseNode<TProps extends object = object> implements Node {
   abstract _paint(): PaintResult;
 
   protected paintChildren(): PaintResult {
+    const layered = this._children.map((child, index) => {
+      const style = resolveNodeStyle(child);
+      const zIndex = style?.zIndex ?? 0;
+      return {
+        zIndex,
+        order: index,
+        result: child._paint(),
+      };
+    });
+
+    layered.sort((a, b) => {
+      if (a.zIndex === b.zIndex) {
+        return a.order - b.order;
+      }
+      return a.zIndex - b.zIndex;
+    });
+
     const spans: PaintResult["spans"] = [];
     const rects: PaintResult["rects"] = [];
-    for (const child of this._children) {
-      const result = child._paint();
-      spans.push(...result.spans);
-      rects.push(...result.rects);
+    for (const layer of layered) {
+      spans.push(...layer.result.spans);
+      rects.push(...layer.result.rects);
     }
     return { spans, rects };
   }

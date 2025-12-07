@@ -9,6 +9,8 @@ import type {
   DimensionToken,
   FlowAxis,
   FlowDistribution,
+  Inset,
+  PositionMode,
   ResolvedStyle,
   StyleMap,
   StyleSnapshot,
@@ -49,6 +51,15 @@ function createInheritedStyle(inherited: ResolvedStyle): ResolvedStyle {
   return base;
 }
 
+function resetPositioning(style: ResolvedStyle): void {
+  style.position = "static";
+  style.top = null;
+  style.right = null;
+  style.bottom = null;
+  style.left = null;
+  style.zIndex = 0;
+}
+
 export function createDefaultStyle(): ResolvedStyle {
   return {
     ...cloneSnapshot(DEFAULT_STYLE_SNAPSHOT),
@@ -70,6 +81,12 @@ export function createDefaultStyle(): ResolvedStyle {
     scrollY: false,
     scrollbarBackground: null,
     scrollbarForeground: null,
+    position: "static",
+    top: null,
+    right: null,
+    bottom: null,
+    left: null,
+    zIndex: 0,
   };
 }
 
@@ -116,6 +133,47 @@ export function expandPadding(
     }
   }
   throw new Error("Invalid padding value");
+}
+
+function expandInset(value: Inset): BoxPadding {
+  const normalize = (input: number): number => {
+    if (!Number.isFinite(input)) {
+      throw new Error("Invalid inset value");
+    }
+    return Math.floor(input);
+  };
+
+  if (typeof value === "number") {
+    return {
+      top: normalize(value),
+      right: normalize(value),
+      bottom: normalize(value),
+      left: normalize(value),
+    };
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 2) {
+      const [vertical, horizontal] = value;
+      return {
+        top: normalize(vertical),
+        right: normalize(horizontal),
+        bottom: normalize(vertical),
+        left: normalize(horizontal),
+      };
+    }
+    if (value.length === 4) {
+      const [top, right, bottom, left] = value;
+      return {
+        top: normalize(top),
+        right: normalize(right),
+        bottom: normalize(bottom),
+        left: normalize(left),
+      };
+    }
+  }
+
+  throw new Error("Invalid inset value");
 }
 
 export function resolvePadding(style: ResolvedStyle, map: StyleMap): void {
@@ -252,6 +310,48 @@ function sanitizeNonNegative(value: unknown): number | undefined {
   return value < 0 ? 0 : value;
 }
 
+function sanitizePosition(
+  value: unknown,
+  fallback: PositionMode,
+): PositionMode {
+  if (value === "static" || value === "absolute") {
+    return value;
+  }
+  return fallback;
+}
+
+function sanitizeZIndex(value: unknown, fallback: number): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.floor(value);
+  }
+  if (typeof value === "string") {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) {
+      return Math.floor(numeric);
+    }
+  }
+  return fallback;
+}
+
+function sanitizeOffsetValue(value: unknown): number | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === null) {
+    return null;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.floor(value);
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) {
+      return Math.floor(numeric);
+    }
+  }
+  return undefined;
+}
+
 export function resolveStyle(
   inherited: ResolvedStyle | undefined,
   map?: StyleMap,
@@ -259,11 +359,48 @@ export function resolveStyle(
   const base = inherited
     ? createInheritedStyle(inherited)
     : createDefaultStyle();
+  if (inherited) {
+    resetPositioning(base);
+  }
   if (!map) {
     return base;
   }
 
   resolvePadding(base, map);
+
+  if ("inset" in map && map.inset !== undefined) {
+    const rawInset = unwrap(map.inset);
+    if (rawInset !== undefined && rawInset !== null) {
+      const expanded = expandInset(rawInset as Inset);
+      base.top = expanded.top;
+      base.right = expanded.right;
+      base.bottom = expanded.bottom;
+      base.left = expanded.left;
+    }
+  }
+
+  const assignOffset = (
+    key: "top" | "right" | "bottom" | "left",
+    raw: unknown,
+  ) => {
+    const normalized = sanitizeOffsetValue(raw);
+    if (normalized !== undefined) {
+      base[key] = normalized;
+    }
+  };
+
+  if ("top" in map && map.top !== undefined) {
+    assignOffset("top", unwrap(map.top));
+  }
+  if ("right" in map && map.right !== undefined) {
+    assignOffset("right", unwrap(map.right));
+  }
+  if ("bottom" in map && map.bottom !== undefined) {
+    assignOffset("bottom", unwrap(map.bottom));
+  }
+  if ("left" in map && map.left !== undefined) {
+    assignOffset("left", unwrap(map.left));
+  }
 
   if ("foreground" in map) {
     const value = unwrap(map.foreground);
@@ -384,6 +521,13 @@ export function resolveStyle(
   if ("scrollbarForeground" in map) {
     const value = unwrap(map.scrollbarForeground);
     base.scrollbarForeground = value ?? null;
+  }
+
+  if ("position" in map) {
+    base.position = sanitizePosition(unwrap(map.position), base.position);
+  }
+  if ("zIndex" in map) {
+    base.zIndex = sanitizeZIndex(unwrap(map.zIndex), base.zIndex);
   }
 
   return base;

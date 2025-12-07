@@ -23,7 +23,7 @@ import type { Constraints } from "./constraints";
 type SizeKey = "width" | "height";
 type PointKey = "x" | "y";
 
-interface StackMeasuredChild {
+export interface StackMeasuredChild {
   intrinsicSize: Size;
   style: ResolvedStyle;
 }
@@ -54,7 +54,7 @@ export interface StackLayoutItem {
 }
 
 export interface StackLayoutResult {
-  items: StackLayoutItem[];
+  items: (StackLayoutItem | null)[];
   overflow: number;
   freeSpace: number;
 }
@@ -139,13 +139,18 @@ export function finalizeStackMeasurement(
   constraints: Constraints,
   style: ResolvedStyle,
   candidateSize: Size,
-  childSizes: readonly Size[],
-  childStyles: readonly ResolvedStyle[],
+  childItems: readonly StackMeasuredChild[],
 ): StackMeasurement {
-  const gapTotal = style.gap * Math.max(childSizes.length - 1, 0);
   const sizeKey = SIZE_KEYS[axis];
-  const flowSizes = childSizes.map((size) => size[sizeKey.flow]);
-  const crossSizes = childSizes.map((size) => size[sizeKey.cross]);
+  const layoutItems = childItems.filter(
+    (item) => item.style.position !== "absolute",
+  );
+  const gapTotal = style.gap * Math.max(layoutItems.length - 1, 0);
+
+  const flowSizes = layoutItems.map((item) => item.intrinsicSize[sizeKey.flow]);
+  const crossSizes = layoutItems.map(
+    (item) => item.intrinsicSize[sizeKey.cross],
+  );
 
   const intrinsicInnerFlow =
     flowSizes.reduce((acc, value) => acc + value, 0) + gapTotal;
@@ -213,11 +218,6 @@ export function finalizeStackMeasurement(
     height: Math.max(outerSize.height - verticalPadding, 0),
   };
 
-  const items: StackMeasuredChild[] = childSizes.map((size, index) => ({
-    intrinsicSize: size,
-    style: childStyles[index] ?? style,
-  }));
-
   return {
     axis,
     padding: { ...style.padding },
@@ -230,7 +230,10 @@ export function finalizeStackMeasurement(
     intrinsicOuterSize,
     intrinsicInnerFlow,
     intrinsicInnerCross,
-    items,
+    items: childItems.map((item) => ({
+      intrinsicSize: { ...item.intrinsicSize },
+      style: item.style,
+    })),
   };
 }
 
@@ -673,6 +676,79 @@ function computeCrossOffset(
   return alignOffset(innerCross, size, align);
 }
 
+function layoutAbsoluteChild(
+  origin: Point,
+  measurement: StackMeasurement,
+  child: StackMeasuredChild,
+): StackLayoutItem {
+  const innerOrigin = {
+    x: origin.x + measurement.padding.left,
+    y: origin.y + measurement.padding.top,
+  };
+
+  const horizontal = resolveAbsoluteAxis(
+    measurement.innerSize.width,
+    child.style.left,
+    child.style.right,
+    child.intrinsicSize.width,
+  );
+  const vertical = resolveAbsoluteAxis(
+    measurement.innerSize.height,
+    child.style.top,
+    child.style.bottom,
+    child.intrinsicSize.height,
+  );
+
+  return {
+    origin: {
+      x: innerOrigin.x + horizontal.offset,
+      y: innerOrigin.y + vertical.offset,
+    },
+    size: {
+      width: horizontal.size,
+      height: vertical.size,
+    },
+  };
+}
+
+function resolveAbsoluteAxis(
+  available: number,
+  leading: number | null,
+  trailing: number | null,
+  desired: number,
+): { offset: number; size: number } {
+  const hasLeading = leading !== null && leading !== undefined;
+  const hasTrailing = trailing !== null && trailing !== undefined;
+  const finiteAvailable = Number.isFinite(available);
+
+  let size = Math.max(0, Math.floor(desired));
+  if (!Number.isFinite(size)) {
+    size = 0;
+  }
+
+  if (finiteAvailable) {
+    const boundedAvailable = Math.max(0, Math.floor(available));
+    if (hasLeading && hasTrailing) {
+      size = Math.max(0, boundedAvailable - ((leading ?? 0) + (trailing ?? 0)));
+    } else if (size > boundedAvailable) {
+      size = boundedAvailable;
+    }
+  }
+
+  let offset = 0;
+  if (hasLeading) {
+    offset = leading ?? 0;
+  } else if (hasTrailing && finiteAvailable) {
+    offset = Math.floor(available - (trailing ?? 0) - size);
+  }
+
+  if (!Number.isFinite(offset)) {
+    offset = 0;
+  }
+
+  return { offset, size };
+}
+
 export function layoutStack(
   origin: Point,
   measurement: StackMeasurement,
@@ -680,6 +756,17 @@ export function layoutStack(
   const axis = measurement.axis;
   const sizeKey = SIZE_KEYS[axis];
   const pointKey = POINT_KEYS[axis];
+
+  const positioned = measurement.items.map((item, index) => ({
+    item,
+    index,
+  }));
+  const staticItems = positioned.filter(
+    ({ item }) => item.style.position !== "absolute",
+  );
+  const absoluteItems = positioned.filter(
+    ({ item }) => item.style.position === "absolute",
+  );
 
   const innerFlowSize = measurement.innerSize[sizeKey.flow];
   const innerCrossSize = measurement.innerSize[sizeKey.cross];
@@ -690,10 +777,10 @@ export function layoutStack(
     origin[pointKey.cross] +
     (axis === "x" ? measurement.padding.top : measurement.padding.left);
 
-  const flowMetrics = measurement.items.map((item) =>
+  const flowMetrics = staticItems.map(({ item }) =>
     computeFlowMetrics(axis, item, innerFlowSize),
   );
-  const crossMetrics = measurement.items.map((item) =>
+  const crossMetrics = staticItems.map(({ item }) =>
     computeCrossMetrics(axis, item, innerCrossSize),
   );
 
@@ -729,13 +816,15 @@ export function layoutStack(
     measurement.gap,
   );
 
-  const items: StackLayoutItem[] = [];
+  const frames: (StackLayoutItem | null)[] = new Array(
+    measurement.items.length,
+  ).fill(null);
   let cursor = baseFlowOrigin + distribution.startOffset;
 
-  for (let i = 0; i < measurement.items.length; i++) {
+  for (let i = 0; i < staticItems.length; i++) {
     const flow = flowMetrics[i]!;
     const cross = crossMetrics[i]!;
-    const item = measurement.items[i]!;
+    const entry = staticItems[i]!;
     const align = cross.align;
 
     const crossOffset = computeCrossOffset(align, innerCrossSize, cross.size);
@@ -750,16 +839,22 @@ export function layoutStack(
         ? { x: cursor, y: baseCrossOrigin + crossOffset }
         : { x: baseCrossOrigin + crossOffset, y: cursor };
 
-    items.push({ origin: point, size });
+    frames[entry.index] = { origin: point, size };
 
     cursor += flow.size;
-    if (i < measurement.items.length - 1) {
+    if (i < staticItems.length - 1) {
       cursor += measurement.gap + (distribution.gapAugment[i] ?? 0);
     }
   }
 
+  if (absoluteItems.length > 0) {
+    for (const entry of absoluteItems) {
+      frames[entry.index] = layoutAbsoluteChild(origin, measurement, entry.item);
+    }
+  }
+
   return {
-    items,
+    items: frames,
     overflow,
     freeSpace: Math.max(freeSpace, 0),
   };

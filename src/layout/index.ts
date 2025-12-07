@@ -9,6 +9,7 @@ export {
 export type {
   PreparedStackMeasurement,
   StackMeasurement,
+  StackMeasuredChild,
   StackLayoutItem,
   StackLayoutResult,
 } from "./stack";
