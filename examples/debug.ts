@@ -1,4 +1,4 @@
-import { computed, Renderer, state, Surface, Text, VStack } from "..";
+import { computed, Console, Renderer, state, Surface, Text, VStack } from "..";
 
 const counter = state(0);
 
@@ -43,8 +43,4 @@ setInterval(() => {
   counter.set((counter.get() + 1) % 1000);
 }, 100);
 
-console.log("Debug Panel Example");
-console.log("- Debug panel is automatically available in every Surface");
-console.log("- Press F3 to toggle debug panel");
-console.log("- Press F12 to toggle console");
-console.log("- Press 'q' to quit");
+// Console.log("test log")

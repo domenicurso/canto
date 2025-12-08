@@ -25,7 +25,7 @@ const inputWidget = Input()
     foreground: "yellow",
     width: "hug",
     shrink: 1,
-    minWidth: 1,
+    minWidth: 5,
   });
 
 const app = VStack(
@@ -47,7 +47,7 @@ const app = VStack(
         foreground: "red",
         paddingLeft: 1,
         shrink: 0,
-        width: "hug",
+        width: "auto",
       })
       .unless(computed(() => error.get() === ""))
       .unless(isComplete),

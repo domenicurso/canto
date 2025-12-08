@@ -10,6 +10,7 @@ const app = VStack(
   Text("Live Data Feed with Console").style({
     background: "red",
     padding: [1, 2],
+    width: 10,
   }),
   VStack(Text(label1), Text(label2)).style({
     background: "#4ACFFF",
@@ -58,16 +59,10 @@ surface.onText((event, phase) => {
 surface.startRender({ cursor: { visibility: "hidden" } });
 
 // Auto-start the animation
-// startAnimation();
+startAnimation();
 
 // Cleanup on exit
 process.on("SIGINT", () => {
   stopAnimation();
   process.exit(0);
 });
-
-console.log("Console Example with Built-in Debug Panel");
-console.log("- Console and debug panels are automatically available");
-console.log("- Press F12 to toggle console");
-console.log("- Press F3 to toggle debug panel");
-console.log("- Type 'help' in console for available commands");

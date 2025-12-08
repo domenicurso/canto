@@ -1,4 +1,5 @@
-import { alignOffset, wrapText } from "../layout";
+import { alignOffset } from "../layout";
+import { wrapText } from "../layout/textwrap";
 import { BaseNode } from "./node";
 import {
   horizontalAlignFromDistribute,
@@ -46,15 +47,38 @@ export class TextNode extends BaseNode<TextProps> {
     const horizontalPadding = padding.left + padding.right;
     const verticalPadding = padding.top + padding.bottom;
 
-    const availableContentWidth = constraints.maxWidth - horizontalPadding;
-    const wrapWidth = Number.isFinite(availableContentWidth)
-      ? Math.max(Math.floor(availableContentWidth), 1)
-      : undefined;
-
     const content = this.resolveContent();
 
-    if (wrapWidth !== undefined && wrapWidth > 0) {
-      this.lines = wrapText(content, wrapWidth, style.textWrap);
+    // Calculate the target width for wrapping by considering all constraints
+    let targetContentWidth: number | undefined;
+
+    // Start with container constraints
+    let maxWidth = constraints.maxWidth;
+
+    // Apply style maxWidth constraint
+    if (style.maxWidth !== "none" && typeof style.maxWidth === "number") {
+      maxWidth = Math.min(maxWidth, style.maxWidth);
+    }
+
+    // If we have an explicit width, use that but still respect maxWidth
+    if (style.width !== "auto") {
+      const explicitWidth = typeof style.width === "number" ? style.width : 0;
+      const constrainedWidth = Number.isFinite(maxWidth)
+        ? Math.min(explicitWidth, maxWidth)
+        : explicitWidth;
+      targetContentWidth = Math.max(constrainedWidth - horizontalPadding, 1);
+    } else if (Number.isFinite(maxWidth)) {
+      targetContentWidth = Math.max(maxWidth - horizontalPadding, 1);
+    }
+
+    // Wrap the text using the target width
+    if (targetContentWidth !== undefined && targetContentWidth > 0) {
+      this.lines = wrapText(
+        content,
+        Math.floor(targetContentWidth),
+        style.textWrap,
+        style.lineClamp,
+      );
     } else {
       const fallbackLines = content.split(/\r?\n/);
       this.lines = fallbackLines.length > 0 ? fallbackLines : [""];

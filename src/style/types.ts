@@ -93,6 +93,7 @@ export interface StyleMap {
   zIndex?: StyleValue<number>;
 
   textWrap?: StyleValue<TextWrap>;
+  lineClamp?: StyleValue<number | null>;
 
   scrollX?: StyleValue<boolean>;
   scrollY?: StyleValue<boolean>;
@@ -131,6 +132,7 @@ export interface ResolvedStyle extends StyleSnapshot {
   grow?: number;
   shrink?: number;
   textWrap: TextWrap;
+  lineClamp: number | null;
   scrollX: boolean;
   scrollY: boolean;
   scrollbarBackground: Color | null;

@@ -176,7 +176,12 @@ export class TextareaNode extends BaseNode<TextareaProps> {
     const content = this.value.length > 0 ? this.value : this.getPlaceholder();
 
     if (wrapWidth !== undefined && wrapWidth > 0) {
-      this.lines = wrapText(content, wrapWidth, style.textWrap);
+      this.lines = wrapText(
+        content,
+        wrapWidth,
+        style.textWrap,
+        style.lineClamp,
+      );
     } else {
       const fallback = content.split(/\r?\n/);
       this.lines = fallback.length > 0 ? fallback : [""];

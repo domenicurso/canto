@@ -23,8 +23,8 @@ const app = VStack(
     Text(`${message}:`).style({ foreground: "cyan" }),
     Text(selectedValue).style({ foreground: "yellow" }).when(isComplete),
   ).style({ gap: 1 }),
-  Text("  ↑/↓ to navigate, Enter to select")
-    .style({ faint: true })
+  Text("↑/↓ to navigate, Enter to select")
+    .style({ faint: true, padding: [0, 2] })
     .unless(isComplete),
   VStack(
     ...choices.map((choice, index) =>

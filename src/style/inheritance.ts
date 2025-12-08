@@ -48,6 +48,7 @@ function createInheritedStyle(inherited: ResolvedStyle): ResolvedStyle {
   base.underline = inherited.underline;
   base.faint = inherited.faint;
   base.textWrap = inherited.textWrap;
+  base.lineClamp = inherited.lineClamp;
   return base;
 }
 
@@ -76,7 +77,8 @@ export function createDefaultStyle(): ResolvedStyle {
     align: "start",
     grow: undefined,
     shrink: undefined,
-    textWrap: "none",
+    textWrap: "word",
+    lineClamp: null,
     scrollX: false,
     scrollY: false,
     scrollbarBackground: null,
@@ -300,6 +302,20 @@ function sanitizeWrap(value: unknown, fallback: TextWrap): TextWrap {
   return fallback;
 }
 
+function sanitizeLineClamp(
+  value: unknown,
+  fallback: number | null,
+): number | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const num = Number(value);
+  if (Number.isInteger(num) && num > 0) {
+    return num;
+  }
+  return fallback;
+}
+
 function sanitizeNonNegative(value: unknown): number | undefined {
   if (typeof value !== "number") {
     return undefined;
@@ -501,6 +517,9 @@ export function resolveStyle(
   }
   if ("textWrap" in map) {
     base.textWrap = sanitizeWrap(unwrap(map.textWrap), base.textWrap);
+  }
+  if ("lineClamp" in map) {
+    base.lineClamp = sanitizeLineClamp(unwrap(map.lineClamp), base.lineClamp);
   }
   if ("scrollX" in map) {
     const value = unwrap(map.scrollX);

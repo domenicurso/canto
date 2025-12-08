@@ -1,4 +1,3 @@
-import { clamp } from "./constraints";
 import {
   clampDimension,
   parseFraction,
@@ -11,7 +10,6 @@ import {
 import type {
   BoxPadding,
   CrossAlignment,
-  DimensionLimitToken,
   DimensionToken,
   FlowAxis,
   FlowDistribution,
@@ -107,11 +105,15 @@ export function prepareStackMeasurement(
     style.width,
     constraints.minWidth,
     constraints.maxWidth,
+    style.minWidth,
+    style.maxWidth,
   );
   const heightCandidate = resolveOuterDimensionCandidate(
     style.height,
     constraints.minHeight,
     constraints.maxHeight,
+    style.minHeight,
+    style.maxHeight,
   );
 
   const horizontalPadding = paddingAlongAxis(style.padding, "x");
@@ -849,7 +851,11 @@ export function layoutStack(
 
   if (absoluteItems.length > 0) {
     for (const entry of absoluteItems) {
-      frames[entry.index] = layoutAbsoluteChild(origin, measurement, entry.item);
+      frames[entry.index] = layoutAbsoluteChild(
+        origin,
+        measurement,
+        entry.item,
+      );
     }
   }
 

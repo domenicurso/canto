@@ -40,27 +40,58 @@ export function resolveOuterDimensionCandidate(
   token: DimensionToken,
   min: number,
   max: number,
+  styleMin?: DimensionLimitToken,
+  styleMax?: DimensionLimitToken,
 ): number {
   const upper = Number.isFinite(max) ? max : Infinity;
+
+  // Apply style's own max constraint to limit the effective max
+  let effectiveMax = max;
+  if (
+    styleMax !== undefined &&
+    styleMax !== "none" &&
+    typeof styleMax === "number"
+  ) {
+    effectiveMax = Number.isFinite(max) ? Math.min(max, styleMax) : styleMax;
+  }
+
+  // Apply style's own min constraint to raise the effective min
+  let effectiveMin = min;
+  if (
+    styleMin !== undefined &&
+    styleMin !== "none" &&
+    typeof styleMin === "number"
+  ) {
+    effectiveMin = Math.max(min, styleMin);
+  }
+
+  const effectiveUpper = Number.isFinite(effectiveMax)
+    ? effectiveMax
+    : Infinity;
+
   if (typeof token === "number") {
-    return clamp(Math.max(0, Math.floor(token)), min, max);
+    return clamp(Math.max(0, Math.floor(token)), effectiveMin, effectiveMax);
   }
   if (typeof token === "string") {
     if (token === "hug" || token === "auto" || token === "lock") {
-      return clamp(upper, min, max);
+      return clamp(effectiveUpper, effectiveMin, effectiveMax);
     }
     if (token === "fill" || token.endsWith("fr")) {
-      return clamp(upper, min, max);
+      return clamp(effectiveUpper, effectiveMin, effectiveMax);
     }
     if (token.endsWith("%")) {
-      if (Number.isFinite(upper)) {
+      if (Number.isFinite(effectiveUpper)) {
         const percentage = parsePercent(token as `${number}%`);
-        return clamp(safeFloor(upper * percentage), min, max);
+        return clamp(
+          safeFloor(effectiveUpper * percentage),
+          effectiveMin,
+          effectiveMax,
+        );
       }
-      return clamp(min, min, max);
+      return clamp(effectiveMin, effectiveMin, effectiveMax);
     }
   }
-  return clamp(upper, min, max);
+  return clamp(effectiveUpper, effectiveMin, effectiveMax);
 }
 
 export function resolveLimitValue(
