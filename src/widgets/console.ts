@@ -1,5 +1,5 @@
 import { computed, effect, state } from "../signals";
-import { Input } from "./input";
+import { Input, InputNode } from "./input";
 import { BaseNode } from "./node";
 import { Scrollable } from "./scrollable";
 import { HStack, VStack } from "./stack";
@@ -18,16 +18,18 @@ export interface ConsoleMessage {
   timestamp?: Date;
   file?: string;
   line?: number;
-  level?: "info" | "warn" | "error" | "debug" | "success" | "command";
+  level?:
+    | "info"
+    | "warn"
+    | "error"
+    | "debug"
+    | "success"
+    | "command"
+    | "result";
 }
 
 export interface ConsoleProps extends ContainerProps {
-  visible?: boolean | Signal<boolean>;
-  height?: number | "auto";
-  messages?: ConsoleMessage[] | Signal<ConsoleMessage[]>;
   onInput?: (input: string) => void;
-  placeholder?: string;
-  maxMessages?: number;
 }
 
 export class ConsoleNode extends BaseNode<ConsoleProps> {
@@ -39,32 +41,31 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
   private messageContainer: Node | null = null;
   private scrollableContent: Node | null = null;
   private maxMessages: number;
-
+  private replContext: Record<string, any> = {};
+  private constVariables: Set<string> = new Set();
+  private commandHistory: string[] = [];
+  private historyIndex: number = -1;
+  private capturedOutput: string[] = [];
   constructor(props: ConsoleProps = {}) {
     super("Stack", []); // Use Stack as the base type
 
-    // Initialize signals
-    this.isVisible =
-      typeof props.visible === "object" && "get" in props.visible
-        ? (props.visible as Signal<boolean>)
-        : state(props.visible ?? true);
-
-    this.messages =
-      typeof props.messages === "object" && "get" in props.messages
-        ? (props.messages as Signal<ConsoleMessage[]>)
-        : state(props.messages ?? []);
-
+    // Initialize signals with defaults
+    this.isVisible = state(true);
+    this.messages = state([]);
     this.inputValue = state("");
-    this.maxMessages = props.maxMessages ?? 100;
+    this.maxMessages = 500;
 
     // Set props
     this.propsDefinition = props;
+
+    // Set up stdout capture
+    this.setupStdoutCapture();
 
     // Create input field once to maintain focus
     this.inputField = Input()
       .bind(this.inputValue)
       .props({
-        placeholder: this.propsDefinition.placeholder ?? "enter a command…",
+        placeholder: "type…",
         onSubmit: (value: string) => {
           if (value.trim()) {
             // Add the command to messages first with distinct styling
@@ -74,10 +75,17 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
               level: "command",
             });
 
-            // Then execute the command if handler exists
-            if (this.propsDefinition.onInput) {
-              this.propsDefinition.onInput(value.trim());
+            // Add to command history
+            this.commandHistory.push(value.trim());
+            if (this.commandHistory.length > 50) {
+              this.commandHistory.shift();
             }
+
+            // Reset history index
+            this.historyIndex = -1;
+
+            // Handle REPL evaluation
+            this.handleReplInput(value.trim());
           }
           this.inputValue.set("");
         },
@@ -89,18 +97,15 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
       width: "100%",
     });
 
-    this.scrollableContent =
-      this.propsDefinition.height === "auto"
-        ? this.messageContainer
-        : Scrollable(this.messageContainer)
-            .style({
-              height: "100%",
-              maxHeight: Math.max(1, (this.propsDefinition.height ?? 8) - 2),
-              width: "100%",
-              scrollbarBackground: "#222222",
-              scrollbarForeground: "#333333",
-            })
-            .props({ scrollbarEnabled: true });
+    this.scrollableContent = Scrollable(this.messageContainer)
+      .style({
+        height: "100%",
+        maxHeight: Math.max(1, 16 - 2),
+        width: "100%",
+        scrollbarBackground: "#222222",
+        scrollbarForeground: "#333333",
+      })
+      .props({ scrollbarEnabled: true });
 
     this.buildContent();
 
@@ -188,6 +193,8 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
                   return "green";
                 case "command":
                   return "magenta";
+                case "result":
+                  return "cyan";
                 case "info":
                 default:
                   return "white";
@@ -259,48 +266,314 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
       background: "#222222",
       foreground: "white",
       gap: 0,
-      ...(this.propsDefinition.height !== "auto" && {
-        height: this.propsDefinition.height ?? 8,
-      }),
       width: "100%",
     });
 
     this._children = [this.contentStack];
   }
 
-  private getStackInfo(): { file?: string; line?: number } {
-    try {
-      // Create an error to get stack trace
-      const error = new Error();
-      const stack = error.stack;
-      if (!stack) return {};
+  private setupStdoutCapture(): void {
+    console.log = (...args: any[]) => {
+      // Capture the output
+      const output = args
+        .map((arg) =>
+          typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg),
+        )
+        .join(" ");
+      this.capturedOutput.push(output);
+    };
+  }
 
-      // Split stack into lines and find the caller (skip our internal methods)
-      const lines = stack.split("\n");
-      // Skip: Error constructor, this method, the calling log method
-      const callerLine = lines[3] || lines[2] || "";
+  public handleReplInput(input: string): void {
+    const trimmedInput = input.trim();
 
-      // Parse different stack trace formats
-      // Chrome/V8: "    at functionName (file:///path/file.ts:line:col)"
-      // Firefox: "functionName@file:///path/file.ts:line:col"
-      let match =
-        callerLine.match(/at\s+.*?\((.+):(\d+):\d+\)/) ||
-        callerLine.match(/at\s+(.+):(\d+):\d+/) ||
-        callerLine.match(/@(.+):(\d+):\d+/);
-
-      if (match && match[1] && match[2]) {
-        const filePath = match[1];
-        const line = parseInt(match[2], 10);
-
-        // Extract just the filename from the full path
-        const fileName = filePath.split("/").pop() || filePath;
-
-        return { file: fileName, line };
-      }
-    } catch (e) {
-      // Stack trace parsing failed, ignore
+    // Handle special commands
+    if (this.handleSpecialCommands(trimmedInput)) {
+      return;
     }
-    return {};
+
+    // Check for variable redeclaration and const reassignment
+    const validationError = this.validateVariableUsage(trimmedInput);
+    if (validationError) {
+      this.addMessage({
+        content: `Error: ${validationError}`,
+        timestamp: new Date(),
+        level: "error",
+      });
+      return;
+    }
+
+    // Clear captured output before execution
+    this.capturedOutput = [];
+
+    // Handle JavaScript evaluation
+    try {
+      // Convert const/let to var for global scope persistence
+      let modifiedInput = trimmedInput
+        .replace(/\bconst\s+/g, "var ")
+        .replace(/\blet\s+/g, "var ");
+
+      // Create context setup code
+      const contextKeys = Object.keys(this.replContext);
+      const contextValues = contextKeys.map((key) => this.replContext[key]);
+      const contextSetup = contextKeys
+        .map((key) => `var ${key} = arguments[${contextKeys.indexOf(key)}];`)
+        .join("\n");
+
+      const func = new Function(
+        ...contextKeys,
+        `
+        ${contextSetup}
+        try {
+          const result = eval(${JSON.stringify(modifiedInput)});
+          return { success: true, result };
+        } catch (error) {
+          return { success: false, error: error.message };
+        }
+      `,
+      );
+
+      const evaluation = func(...contextValues);
+
+      // Extract new variables from the modified input
+      if (evaluation.success) {
+        this.extractVariablesFromModifiedInput(
+          modifiedInput,
+          contextKeys,
+          contextValues,
+          trimmedInput, // Pass original input to track const declarations
+        );
+      }
+
+      // Display any captured stdout first
+      if (this.capturedOutput.length > 0) {
+        this.capturedOutput.forEach((output) => {
+          this.addMessage({
+            content: output,
+            timestamp: new Date(),
+            level: "info",
+          });
+        });
+      }
+
+      if (evaluation.success) {
+        const result = evaluation.result;
+
+        // Store the result in the special variable _
+        this.replContext._ = result;
+
+        // Display the result only if it's not undefined
+        if (result !== undefined) {
+          let resultStr = "";
+          if (result === null) {
+            resultStr = "null";
+          } else if (typeof result === "string") {
+            resultStr = `"${result}"`;
+          } else if (typeof result === "object") {
+            try {
+              resultStr = JSON.stringify(result, null, 2);
+            } catch {
+              resultStr = result.toString();
+            }
+          } else {
+            resultStr = String(result);
+          }
+
+          this.addMessage({
+            content: resultStr,
+            timestamp: new Date(),
+            level: "result",
+          });
+        }
+      } else {
+        this.addMessage({
+          content: `Error: ${evaluation.error}`,
+          timestamp: new Date(),
+          level: "error",
+        });
+      }
+    } catch (error) {
+      this.addMessage({
+        content: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        timestamp: new Date(),
+        level: "error",
+      });
+    }
+  }
+
+  private handleSpecialCommands(input: string): boolean {
+    switch (input.toLowerCase()) {
+      case "clear":
+        this.clearMessages();
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  private extractVariablesFromModifiedInput(
+    modifiedInput: string,
+    contextKeys: string[],
+    contextValues: any[],
+    originalInput: string,
+  ): void {
+    // Extract variable names from var declarations and assignments
+    const varMatches = modifiedInput.match(
+      /\bvar\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/g,
+    );
+    const assignmentMatches = modifiedInput.match(
+      /\b([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=/g,
+    );
+
+    const allVariableNames = new Set<string>();
+
+    if (varMatches) {
+      varMatches.forEach((match) => {
+        const varName = match.replace(/\bvar\s+/, "");
+        allVariableNames.add(varName);
+      });
+    }
+
+    if (assignmentMatches) {
+      assignmentMatches.forEach((match) => {
+        const varName = match.replace(/\s*=/, "");
+        allVariableNames.add(varName);
+      });
+    }
+
+    // Extract values for these variables
+    allVariableNames.forEach((varName) => {
+      try {
+        const contextSetup = contextKeys
+          .map((key) => `var ${key} = arguments[${contextKeys.indexOf(key)}];`)
+          .join("\n");
+
+        const func = new Function(
+          ...contextKeys,
+          `
+          ${contextSetup}
+          try {
+            eval(${JSON.stringify(modifiedInput)});
+            return typeof ${varName} !== 'undefined' ? ${varName} : undefined;
+          } catch {
+            return undefined;
+          }
+        `,
+        );
+
+        const value = func(...contextValues);
+        if (value !== undefined) {
+          this.replContext[varName] = value;
+
+          // Track const variables from original input
+          if (originalInput.includes(`const ${varName}`)) {
+            this.constVariables.add(varName);
+          }
+        }
+      } catch {
+        // If we can't extract the value, that's okay
+      }
+    });
+  }
+
+  private navigateHistory(direction: "up" | "down"): void {
+    if (this.commandHistory.length === 0) {
+      return;
+    }
+
+    if (direction === "up") {
+      if (this.historyIndex === -1) {
+        this.historyIndex = this.commandHistory.length - 1;
+      } else if (this.historyIndex > 0) {
+        this.historyIndex--;
+      }
+    } else if (direction === "down") {
+      if (this.historyIndex < this.commandHistory.length - 1) {
+        this.historyIndex++;
+      } else {
+        this.historyIndex = -1;
+        this.inputValue.set("");
+        return;
+      }
+    }
+
+    if (
+      this.historyIndex >= 0 &&
+      this.historyIndex < this.commandHistory.length
+    ) {
+      const command = this.commandHistory[this.historyIndex];
+      if (command) {
+        this.inputValue.set(command);
+        // Move cursor to end of input
+        if (this.inputField instanceof InputNode) {
+          this.inputField.moveCursorToEnd();
+        }
+      }
+    }
+  }
+
+  // Handle keyboard events for the console input
+  public handleKeyPress(
+    key: string,
+    ctrl?: boolean,
+    shift?: boolean,
+    alt?: boolean,
+  ): boolean {
+    const keyLower = key.toLowerCase();
+
+    // Handle arrow key history navigation
+    if (keyLower === "arrowup") {
+      this.navigateHistory("up");
+      return true; // Prevent default behavior
+    } else if (keyLower === "arrowdown") {
+      this.navigateHistory("down");
+      return true; // Prevent default behavior
+    }
+
+    return false; // Allow default behavior for other keys
+  }
+
+  // Check if this console's input is currently focused
+  public isInputFocused(): boolean {
+    if (this.inputField && this.inputField instanceof InputNode) {
+      return this.inputField.isFocused();
+    }
+    return false;
+  }
+
+  private validateVariableUsage(input: string): string | null {
+    // Check for variable redeclarations
+    const varDeclMatches = input.match(
+      /\b(?:var|let|const)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/g,
+    );
+    if (varDeclMatches) {
+      for (const match of varDeclMatches) {
+        const varName = match.replace(/\b(?:var|let|const)\s+/, "");
+        if (this.replContext.hasOwnProperty(varName)) {
+          return `Identifier '${varName}' has already been declared`;
+        }
+      }
+    }
+
+    // Check for const reassignment
+    const assignmentMatches = input.match(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=/g);
+    if (assignmentMatches) {
+      for (const match of assignmentMatches) {
+        const varName = match.replace(/\s*=/, "");
+        // Skip if this is a declaration (handled above)
+        if (
+          !input.includes(`var ${varName}`) &&
+          !input.includes(`let ${varName}`) &&
+          !input.includes(`const ${varName}`)
+        ) {
+          if (this.constVariables.has(varName)) {
+            return `Assignment to constant`;
+          }
+        }
+      }
+    }
+
+    return null;
   }
 
   addMessage(message: string | ConsoleMessage): void {
@@ -369,13 +642,7 @@ export class ConsoleNode extends BaseNode<ConsoleProps> {
     if (this.contentStack) {
       childSize = this.contentStack._measure(innerConstraints, style);
     } else {
-      const fallbackHeight =
-        this.propsDefinition.height === "auto"
-          ? Math.min(this.messages.get().length + 2, innerConstraints.maxHeight)
-          : Math.min(
-              this.propsDefinition.height ?? 8,
-              innerConstraints.maxHeight,
-            );
+      const fallbackHeight = Math.min(8, innerConstraints.maxHeight);
       const fallbackWidth = Number.isFinite(innerConstraints.maxWidth)
         ? innerConstraints.maxWidth
         : constraints.maxWidth;

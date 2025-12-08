@@ -15,6 +15,7 @@ import type { ContainerProps } from "./props";
 // Forward declaration for Surface type
 interface SurfaceLike {
   focus(node: Node): void;
+  use(middleware: (event: any, next: () => boolean) => boolean): () => void;
 }
 
 export interface ConsoleOverlayProps extends ContainerProps {
@@ -25,7 +26,6 @@ export interface ConsoleOverlayProps extends ContainerProps {
 export class ConsoleOverlayNode extends BaseNode<ConsoleOverlayProps> {
   private console: ConsoleNode;
   private isConsoleVisible: Signal<boolean>;
-  private messages: Signal<ConsoleMessage[]>;
   private contentNode: Node;
   private surface: SurfaceLike | null = null;
 
@@ -34,20 +34,11 @@ export class ConsoleOverlayNode extends BaseNode<ConsoleOverlayProps> {
 
     this.contentNode = props.content;
     this.isConsoleVisible = state(false);
-    this.messages = state([]);
-
     // Set props
     this.propsDefinition = props;
 
     // Create the console
-    this.console = ConsoleInternal({
-      visible: this.isConsoleVisible,
-      height: 16,
-      messages: this.messages,
-      onInput: props.onConsoleInput,
-      placeholder: "Enter command...",
-      maxMessages: 1000,
-    });
+    this.console = ConsoleInternal({});
 
     this.updateChildren();
 
@@ -62,6 +53,31 @@ export class ConsoleOverlayNode extends BaseNode<ConsoleOverlayProps> {
 
   private updateChildren(): void {
     this._children = [this.buildLayeredTree()];
+  }
+
+  public handleKeyPress(
+    key: string,
+    ctrl?: boolean,
+    shift?: boolean,
+    alt?: boolean,
+  ): boolean {
+    // Only handle keys if console is visible and input is focused
+    if (!this.isVisible() || !this.console.isInputFocused()) {
+      return false;
+    }
+
+    const keyLower = key.toLowerCase();
+
+    // Handle arrow key history navigation
+    if (keyLower === "arrowup") {
+      this.console.handleKeyPress(key, ctrl, shift, alt);
+      return true; // Prevent default behavior
+    } else if (keyLower === "arrowdown") {
+      this.console.handleKeyPress(key, ctrl, shift, alt);
+      return true; // Prevent default behavior
+    }
+
+    return false; // Allow default behavior for other keys
   }
 
   private buildLayeredTree(): Node {
@@ -123,6 +139,26 @@ export class ConsoleOverlayNode extends BaseNode<ConsoleOverlayProps> {
 
   setSurface(surface: SurfaceLike): void {
     this.surface = surface;
+
+    // Add middleware to intercept keyboard events
+    surface.use((event, next) => {
+      if (
+        event.type === "KeyPress" &&
+        this.isVisible() &&
+        this.console.isInputFocused()
+      ) {
+        const handled = this.handleKeyPress(
+          event.key,
+          event.ctrl,
+          event.shift,
+          event.alt,
+        );
+        if (handled) {
+          return true; // Event was handled, don't continue
+        }
+      }
+      return next(); // Continue with default handling
+    });
   }
 
   private focusConsoleInput(): void {
@@ -291,6 +327,25 @@ export class GlobalConsoleManager {
     }
   }
 
+  // Method to execute JavaScript directly
+  eval(code: string): void {
+    if (this.overlay) {
+      // Add the command as if it was typed
+      this.overlay.addMessage({
+        content: `> ${code}`,
+        timestamp: new Date(),
+        level: "command",
+      });
+
+      // The console will handle the actual evaluation
+      // We just need to trigger the input handler
+      const console = (this.overlay as any).console;
+      if (console && console.handleReplInput) {
+        console.handleReplInput(code);
+      }
+    }
+  }
+
   error(message: string): void {
     if (this.overlay) {
       const stackInfo = this.getStackInfo();
@@ -382,6 +437,11 @@ export class GlobalConsoleManager {
 
   isVisible(): boolean {
     return this.overlay?.isVisible() ?? false;
+  }
+
+  // Execute JavaScript code programmatically
+  execute(code: string): void {
+    this.eval(code);
   }
 }
 

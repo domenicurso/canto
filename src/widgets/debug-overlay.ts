@@ -16,8 +16,6 @@ export interface DebugOverlayProps extends ContainerProps {
   content: Node;
   position?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
   initialVisible?: boolean;
-  updateInterval?: number;
-  fpsWindow?: number;
 }
 
 export class DebugOverlayNode extends BaseNode<DebugOverlayProps> {
@@ -38,8 +36,6 @@ export class DebugOverlayNode extends BaseNode<DebugOverlayProps> {
     this.debugPanel = DebugPanel({
       visible: this.isDebugVisible,
       position: props.position ?? "bottom-right",
-      updateInterval: props.updateInterval,
-      fpsWindow: props.fpsWindow,
     });
 
     this.updateChildren();
@@ -74,14 +70,6 @@ export class DebugOverlayNode extends BaseNode<DebugOverlayProps> {
       width: "100%",
       height: "100%",
     });
-  }
-
-  updateRenderStats(stats: {
-    cellsWritten: number;
-    cellsSkipped: number;
-    renderTime: number;
-  }): void {
-    this.debugPanel.updateRenderStats(stats);
   }
 
   toggleDebug(): void {
@@ -215,16 +203,6 @@ export class GlobalDebugManager {
 
   setOverlay(overlay: DebugOverlayNode): void {
     this.overlay = overlay;
-  }
-
-  updateRenderStats(stats: {
-    cellsWritten: number;
-    cellsSkipped: number;
-    renderTime: number;
-  }): void {
-    if (this.overlay) {
-      this.overlay.updateRenderStats(stats);
-    }
   }
 
   toggle(): void {

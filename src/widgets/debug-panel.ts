@@ -164,7 +164,7 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
     });
 
     this.contentStack = VStack(metricsDisplay).style({
-      background: "#1a1a1a",
+      background: "#222222",
       foreground: "white",
       width: "hug",
     });
