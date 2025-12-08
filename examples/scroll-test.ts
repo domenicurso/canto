@@ -18,7 +18,7 @@ const scrollX = state(0);
 
 // Create a lot of content to scroll through
 const lines: string[] = [];
-for (let i = 1; i <= 100; i++) {
+for (let i = 1; i <= 30; i++) {
   lines.push(
     `Line ${i.toString().padStart(2, "0")}: This is a long line of text that should extend beyond the typical terminal width to test horizontal scrolling functionality. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
   );
@@ -100,58 +100,54 @@ const appContent = VStack(
 ).style({ gap: 1, padding: 1 });
 
 // Wrap with console
-const app = withConsole(appContent, {
-  consoleHeight: 8,
-  initialVisible: false,
-  onConsoleInput: (input: string) => {
-    const trimmed = input.trim().toLowerCase();
+const app = withConsole(appContent, (input: string) => {
+  const trimmed = input.trim().toLowerCase();
 
-    switch (trimmed) {
-      case "help":
-        globalConsole.log("Available commands:");
-        globalConsole.log("  help - Show this help");
-        globalConsole.log("  status - Show scroll status");
-        globalConsole.log("  top - Scroll to top");
-        globalConsole.log("  bottom - Scroll to bottom");
-        globalConsole.log("  center - Scroll to center");
-        globalConsole.log("  reset - Reset scroll position");
-        break;
+  switch (trimmed) {
+    case "help":
+      globalConsole.log("Available commands:");
+      globalConsole.log("  help - Show this help");
+      globalConsole.log("  status - Show scroll status");
+      globalConsole.log("  top - Scroll to top");
+      globalConsole.log("  bottom - Scroll to bottom");
+      globalConsole.log("  center - Scroll to center");
+      globalConsole.log("  reset - Reset scroll position");
+      break;
 
-      case "status":
-        globalConsole.log(
-          `Current scroll position: X=${scrollX.get()}, Y=${scrollY.get()}`,
-        );
-        break;
+    case "status":
+      globalConsole.log(
+        `Current scroll position: X=${scrollX.get()}, Y=${scrollY.get()}`,
+      );
+      break;
 
-      case "top":
-        scrollY.set(0);
-        globalConsole.log("Scrolled to top");
-        break;
+    case "top":
+      scrollY.set(0);
+      globalConsole.log("Scrolled to top");
+      break;
 
-      case "bottom":
-        scrollY.set(1000); // Will be clamped by scrollable
-        globalConsole.log("Scrolled to bottom");
-        break;
+    case "bottom":
+      scrollY.set(1000); // Will be clamped by scrollable
+      globalConsole.log("Scrolled to bottom");
+      break;
 
-      case "center":
-        scrollY.set(500); // Approximate center
-        globalConsole.log("Scrolled to center");
-        break;
+    case "center":
+      scrollY.set(500); // Approximate center
+      globalConsole.log("Scrolled to center");
+      break;
 
-      case "reset":
-        scrollX.set(0);
-        scrollY.set(0);
-        globalConsole.log("Scroll position reset");
-        break;
+    case "reset":
+      scrollX.set(0);
+      scrollY.set(0);
+      globalConsole.log("Scroll position reset");
+      break;
 
-      default:
-        if (trimmed) {
-          globalConsole.error(`Unknown command: ${input}`);
-          globalConsole.log("Type 'help' for available commands");
-        }
-        break;
-    }
-  },
+    default:
+      if (trimmed) {
+        globalConsole.error(`Unknown command: ${input}`);
+        globalConsole.log("Type 'help' for available commands");
+      }
+      break;
+  }
 });
 
 const renderer = new Renderer();

@@ -58,7 +58,7 @@ surface.onText((event, phase) => {
 surface.startRender({ cursor: { visibility: "hidden" } });
 
 // Auto-start the animation
-startAnimation();
+// startAnimation();
 
 // Cleanup on exit
 process.on("SIGINT", () => {
