@@ -1,70 +1,50 @@
-import {
-  computed,
-  DebugPanel,
-  HStack,
-  Renderer,
-  state,
-  Surface,
-  Text,
-  VStack,
-} from "..";
+import { computed, Renderer, state, Surface, Text, VStack } from "..";
 
 const counter = state(0);
-const debugVisible = state(false);
-
-// Create debug panel
-const debugPanel = DebugPanel({
-  visible: debugVisible,
-  position: "top-right",
-});
 
 // Simple content with animation to generate render activity
-const appContent = VStack(
+// Debug panel is automatically added by Surface
+const app = VStack(
   Text("Debug Panel Test").style({
     background: "blue",
-    foreground: "black",
+    foreground: "white",
     padding: [1, 2],
     bold: true,
   }),
   Text(computed(() => `Counter: ${counter.get()}`)).style({
     foreground: "green",
   }),
-  Text("Press 'd' to toggle debug panel.").style({
-    foreground: "yellow",
-  }),
-  Text("Press 'q' to quit.").style({
-    foreground: "red",
-  }),
-).style({ gap: 1, padding: 1 });
-
-// Main app with debug panel overlay
-const app = HStack(appContent.style({ grow: 1 }), debugPanel).style({
-  width: "100%",
-  height: "100%",
-});
+  VStack(
+    Text("Built-in Debug & Console:").style({ bold: true, foreground: "cyan" }),
+    Text("• Press F3 to toggle debug panel"),
+    Text("• Press F12 to toggle console"),
+    Text("• Type 'help' in console for commands"),
+    Text("• Press 'q' to quit"),
+  ).style({ italic: true, gap: 0, foreground: "yellow" }),
+).style({ gap: 1, padding: 2 });
 
 const renderer = new Renderer();
 const surface = new Surface(app, renderer);
 
-// Handle input
+// Simple quit handler - debug and console are handled automatically by Surface
 surface.onText((event, phase) => {
   if (phase !== "pre") return;
 
-  switch (event.text) {
-    case "d":
-    case "D":
-      debugPanel.toggle();
-      break;
-    case "q":
-    case "Q":
-      process.exit(0);
+  if (event.text === "q" || event.text === "Q") {
+    process.exit(0);
   }
 });
 
-// Start rendering - the Surface will automatically find and update debug panels
+// Start rendering - Surface automatically includes debug and console panels
 surface.startRender({ cursor: { visibility: "hidden" } });
 
 // Animation to generate render activity
 setInterval(() => {
   counter.set((counter.get() + 1) % 1000);
 }, 100);
+
+console.log("Debug Panel Example");
+console.log("- Debug panel is automatically available in every Surface");
+console.log("- Press F3 to toggle debug panel");
+console.log("- Press F12 to toggle console");
+console.log("- Press 'q' to quit");

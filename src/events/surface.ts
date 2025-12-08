@@ -1,9 +1,18 @@
 import readline from "readline";
 
 import { Renderer } from "../renderer";
-import { effect } from "../signals";
+import { effect, state } from "../signals";
 import { addGlobalSignalChangeListener, StateSignal } from "../signals/core";
-import { BaseNode, InputNode, ScrollableNode, TextareaNode } from "../widgets";
+import {
+  BaseNode,
+  Console,
+  ConsoleOverlayNode,
+  InputNode,
+  ScrollableNode,
+  Stack,
+  TextareaNode,
+  withConsole,
+} from "../widgets";
 import { DebugPanelNode } from "../widgets/debug-panel";
 import { AsyncChannel, EventBus } from "./bus";
 import { collectFocusableNodes } from "./focus";
@@ -42,6 +51,10 @@ export class Surface {
   private terminalSize: { width: number; height: number };
   private stdinBuffer = "";
   private originalStdinData: ((data: Buffer) => void) | null = null;
+  private debugPanel: DebugPanelNode;
+  private consoleOverlay: ConsoleOverlayNode | null = null;
+  private debugVisible = state(false);
+  private wrappedRoot: Node;
   private handleTerminalResize = () => {
     if (!process.stdout.isTTY) {
       return;
@@ -61,7 +74,38 @@ export class Surface {
   };
 
   constructor(root: Node, renderer: Renderer) {
-    this.root = root;
+    // Create debug panel
+    this.debugPanel = new DebugPanelNode({
+      visible: this.debugVisible,
+      position: "top-right",
+    });
+    this.debugPanel.style({
+      position: "absolute",
+      top: 0,
+      right: 0,
+      zIndex: 100,
+    });
+
+    // Wrap root with console overlay
+    const consoleWrapped = withConsole(
+      root,
+      this.handleConsoleInput.bind(this),
+    );
+
+    // Store reference to console overlay and register with global manager
+    this.consoleOverlay = consoleWrapped;
+    Console.setOverlay(consoleWrapped);
+
+    // Set surface reference for focus management
+    consoleWrapped.setSurface(this);
+
+    // Create final wrapped root with debug panel overlay
+    this.wrappedRoot = Stack(consoleWrapped, this.debugPanel).style({
+      width: "100%",
+      height: "100%",
+    });
+
+    this.root = this.wrappedRoot;
     this.renderer = renderer;
     this.terminalSize = this.renderer.getSize();
     this.refreshFocusables();
@@ -226,7 +270,11 @@ export class Surface {
   render(options?: RenderOptions): RenderResult {
     // Override cursor visibility to always show cursor when input widget is focused
     let renderOptions = options ?? { bounds: { mode: "auto" } };
-    if (this.focused && this.focused instanceof InputNode) {
+    if (
+      this.focused &&
+      (this.focused instanceof InputNode ||
+        this.focused instanceof TextareaNode)
+    ) {
       renderOptions = {
         ...renderOptions,
         cursor: {
@@ -465,6 +513,15 @@ export class Surface {
         continue;
       }
 
+      // Check for function key sequences (F1-F4): \x1bO followed by letter
+      const functionKeyMatch = remaining.match(/^(\x1bO[A-Za-z])/);
+      if (functionKeyMatch && functionKeyMatch[1]) {
+        const sequence = functionKeyMatch[1];
+        this.processEscapeSequence(sequence);
+        processed += sequence.length;
+        continue;
+      }
+
       // Check for single escape character followed by letter (Alt+key)
       const altKeyMatch = remaining.match(/^(\x1b[a-zA-Z])/);
       if (altKeyMatch && altKeyMatch[1]) {
@@ -584,7 +641,8 @@ export class Surface {
     let meta = false;
 
     // Handle modified sequences like \x1b[1;2A (Shift+Arrow), \x1b[2A, \x1b[1;5A (Ctrl+Arrow), etc.
-    const modifiedMatch = sequence.match(/^\x1b\[(?:1;)?(\d+)([A-Za-z]|\d+~)$/);
+    // Only match single digit modifier codes (2-8) to avoid capturing F key sequences like \x1b[24~
+    const modifiedMatch = sequence.match(/^\x1b\[(?:1;)?([2-8])([A-Za-z])$/);
     if (modifiedMatch) {
       const modifierCode = parseInt(modifiedMatch[1] ?? "0", 10);
       const keyCode = modifiedMatch[2];
@@ -684,6 +742,19 @@ export class Surface {
         "\x1b[6~": "pagedown",
         "\x1b[2~": "insert",
         "\x1b[3~": "delete",
+        // F keys
+        "\x1bOP": "f1",
+        "\x1bOQ": "f2",
+        "\x1bOR": "f3",
+        "\x1bOS": "f4",
+        "\x1b[15~": "f5",
+        "\x1b[17~": "f6",
+        "\x1b[18~": "f7",
+        "\x1b[19~": "f8",
+        "\x1b[20~": "f9",
+        "\x1b[21~": "f10",
+        "\x1b[23~": "f11",
+        "\x1b[24~": "f12",
       };
       keyName = keyMap[sequence] || "";
     }
@@ -815,9 +886,31 @@ export class Surface {
       return event.shift ? this.focusPrevious() : this.focusNext();
     }
     if (key === Key.Escape) {
+      // Hide console first if it's visible, otherwise blur
+      if (Console.isVisible()) {
+        Console.hide();
+        return true;
+      }
       this.blur();
       return true;
     }
+
+    // Handle built-in debug and console key bindings
+    if (key === Key.F3) {
+      this.debugPanel.toggle();
+      return true;
+    }
+    if (key === Key.F12) {
+      if (this.consoleOverlay) {
+        Console.toggle();
+        // Focus the console input after opening
+        if (Console.isVisible()) {
+          this.refresh();
+        }
+      }
+      return true;
+    }
+
     const target = this.focused;
     if (!target) {
       return false;
@@ -845,7 +938,7 @@ export class Surface {
   }
 
   private handleTextInput(event: TextInputEvent): boolean {
-    const target = this.focused;
+    const target = this.focused as any;
     if (!target) {
       return false;
     }
@@ -1058,5 +1151,36 @@ export class Surface {
     }
 
     return panels;
+  }
+
+  private handleConsoleInput(input: string): void {
+    const trimmed = input.trim().toLowerCase();
+
+    switch (trimmed) {
+      case "help":
+        Console.log("Available commands:");
+        Console.log("  help - Show this help message");
+        Console.log("  clear - Clear console messages");
+        Console.log("  debug - Toggle debug panel");
+        break;
+
+      case "clear":
+        Console.clear();
+        break;
+
+      case "debug":
+        this.debugPanel.toggle();
+        Console.log(
+          `Debug panel ${this.debugPanel.isDebugVisible() ? "shown" : "hidden"}`,
+        );
+        break;
+
+      default:
+        if (trimmed) {
+          Console.error(`Unknown command: ${input}`);
+          Console.log("Type 'help' for available commands");
+        }
+        break;
+    }
   }
 }

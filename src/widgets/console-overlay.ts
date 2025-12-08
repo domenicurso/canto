@@ -19,12 +19,7 @@ interface SurfaceLike {
 
 export interface ConsoleOverlayProps extends ContainerProps {
   content: Node;
-  consoleHeight?: number | "auto";
-  toggleKey?: string;
-  initialVisible?: boolean;
   onConsoleInput?: (input: string) => void;
-  consolePlaceholder?: string;
-  maxMessages?: number;
 }
 
 export class ConsoleOverlayNode extends BaseNode<ConsoleOverlayProps> {
@@ -38,7 +33,7 @@ export class ConsoleOverlayNode extends BaseNode<ConsoleOverlayProps> {
     super("Stack", []);
 
     this.contentNode = props.content;
-    this.isConsoleVisible = state(props.initialVisible ?? false);
+    this.isConsoleVisible = state(false);
     this.messages = state([]);
 
     // Set props
@@ -47,11 +42,11 @@ export class ConsoleOverlayNode extends BaseNode<ConsoleOverlayProps> {
     // Create the console
     this.console = ConsoleInternal({
       visible: this.isConsoleVisible,
-      height: props.consoleHeight ?? 8,
+      height: 16,
       messages: this.messages,
       onInput: props.onConsoleInput,
-      placeholder: props.consolePlaceholder,
-      maxMessages: props.maxMessages,
+      placeholder: "Enter command...",
+      maxMessages: 1000,
     });
 
     this.updateChildren();
@@ -232,11 +227,11 @@ export function ConsoleOverlay(props: ConsoleOverlayProps): ConsoleOverlayNode {
 // Convenience function to wrap any content with console overlay
 export function withConsole(
   content: Node,
-  options: Omit<ConsoleOverlayProps, "content"> = {},
+  onConsoleInput?: (input: string) => void,
 ): ConsoleOverlayNode {
   return new ConsoleOverlayNode({
     content,
-    ...options,
+    onConsoleInput,
   });
 }
 
