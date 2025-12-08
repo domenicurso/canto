@@ -1,24 +1,36 @@
 import {
   computed,
   Console,
-  Debug,
+  DebugPanel,
   HStack,
   Key,
   Renderer,
+  Stack,
   state,
   Surface,
   Text,
   VStack,
   withConsole,
-  withDebug,
 } from "..";
 
 import type { KeyPressEvent, TextInputEvent } from "..";
 
 const count = state(0);
+const debugVisible = state(false);
 
 const label1 = computed(() => `Data Point A: ${"#".repeat(count.get())}`);
 const label2 = computed(() => `Data Point B: ${"#".repeat(count.get() * 1.4)}`);
+
+// Create debug panel with absolute positioning
+const debugPanel = DebugPanel({
+  visible: debugVisible,
+  position: "top-right",
+}).style({
+  position: "absolute",
+  top: 0,
+  right: 0,
+  zIndex: 100,
+});
 
 // Main application content
 const appContent = VStack(
@@ -103,8 +115,10 @@ const consoleApp = withConsole(appContent, {
         break;
 
       case "debug":
-        Debug.toggle();
-        Console.log(`Debug panel ${Debug.isVisible() ? "shown" : "hidden"}`);
+        debugPanel.toggle();
+        Console.log(
+          `Debug panel ${debugPanel.isDebugVisible() ? "shown" : "hidden"}`,
+        );
         break;
 
       default:
@@ -117,20 +131,17 @@ const consoleApp = withConsole(appContent, {
   },
 });
 
-// Then wrap with debug overlay
-const app = withDebug(consoleApp, {
-  position: "bottom-right",
-  initialVisible: true,
-  updateInterval: 5000,
-  fpsWindow: 60,
+// Main app with absolutely positioned debug panel overlay
+const app = Stack(consoleApp, debugPanel).style({
+  width: "100%",
+  height: "100%",
 });
 
 const renderer = new Renderer();
 const surface = new Surface(app, renderer);
 
-// Register the overlays with global managers
+// Register the console overlay with global manager
 Console.setOverlay(consoleApp);
-Debug.setOverlay(app);
 
 // Counter animation control
 let intervalId: Timer | null = null;
@@ -166,7 +177,7 @@ surface.onText((event: TextInputEvent, phase) => {
     }
 
     if (event.text === "d") {
-      Debug.toggle();
+      debugPanel.toggle();
     }
 
     if (event.text === "q") {
@@ -187,7 +198,7 @@ surface.onKey((event: KeyPressEvent, phase) => {
 
   // Toggle debug panel with F3
   if (event.key === Key.F3) {
-    Debug.toggle();
+    debugPanel.toggle();
     return;
   }
 
@@ -197,27 +208,7 @@ surface.onKey((event: KeyPressEvent, phase) => {
   }
 });
 
-// Custom render loop that feeds stats to debug panel
-let isUpdatingStats = false;
-const originalRender = surface.render.bind(surface);
-surface.render = function (options) {
-  const result = originalRender(options);
-
-  // Prevent recursive calls during stats update
-  if (!isUpdatingStats) {
-    isUpdatingStats = true;
-    Debug.updateRenderStats({
-      cellsWritten: result.stats.cellsWritten,
-      cellsSkipped: result.stats.cellsSkipped,
-      renderTime: result.stats.renderTime,
-    });
-    isUpdatingStats = false;
-  }
-
-  return result;
-};
-
-// Start rendering
+// Start rendering - the Surface will automatically find and update debug panels
 surface.startRender({ cursor: { visibility: "hidden" } });
 
 // Auto-start the animation

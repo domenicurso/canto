@@ -4,6 +4,7 @@ import { Renderer } from "../renderer";
 import { effect } from "../signals";
 import { addGlobalSignalChangeListener, StateSignal } from "../signals/core";
 import { BaseNode, InputNode, ScrollableNode, TextareaNode } from "../widgets";
+import { DebugPanelNode } from "../widgets/debug-panel";
 import { AsyncChannel, EventBus } from "./bus";
 import { collectFocusableNodes } from "./focus";
 import { isActivationKey } from "./keyboard";
@@ -65,6 +66,21 @@ export class Surface {
     this.terminalSize = this.renderer.getSize();
     this.refreshFocusables();
     this.setupStdin();
+
+    // Set up automatic cleanup on process termination
+    process.on("SIGINT", () => {
+      this.dispose();
+      process.exit(0);
+    });
+
+    process.on("SIGTERM", () => {
+      this.dispose();
+      process.exit(0);
+    });
+
+    process.on("exit", () => {
+      this.cleanupStdin();
+    });
   }
 
   refresh(): void {
@@ -220,7 +236,18 @@ export class Surface {
       };
     }
 
+    // Notify debug panels that render is starting
+    const debugPanels = this.findDebugPanels(this.root);
+    for (const panel of debugPanels) {
+      panel.onRenderStart();
+    }
+
     const result = this.renderer.render(this.root, renderOptions);
+
+    // Notify debug panels that render is complete
+    for (const panel of debugPanels) {
+      panel.onRenderComplete(result.stats);
+    }
 
     // Position cursor at focused input widget
     if (this.focused && this.focused instanceof InputNode) {
@@ -1016,5 +1043,20 @@ export class Surface {
       default:
         return false;
     }
+  }
+
+  private findDebugPanels(node: Node): DebugPanelNode[] {
+    const panels: DebugPanelNode[] = [];
+
+    if (node instanceof DebugPanelNode) {
+      panels.push(node);
+    }
+
+    // Recursively search children
+    for (const child of node.children) {
+      panels.push(...this.findDebugPanels(child));
+    }
+
+    return panels;
   }
 }

@@ -1,40 +1,50 @@
 import {
   computed,
-  Debug,
+  DebugPanel,
+  HStack,
   Renderer,
   state,
   Surface,
   Text,
   VStack,
-  withDebug,
 } from "..";
 
 const counter = state(0);
+const debugVisible = state(false);
 
-// Simple content with minimal animation
+// Create debug panel
+const debugPanel = DebugPanel({
+  visible: debugVisible,
+  position: "top-right",
+});
+
+// Simple content with animation to generate render activity
 const appContent = VStack(
-  Text("Minimal Debug Test").style({
+  Text("Debug Panel Test").style({
     background: "blue",
-    foreground: "white",
+    foreground: "black",
     padding: [1, 2],
     bold: true,
   }),
-  Text(computed(() => `Counter: ${counter.get()}`)),
-  Text("Press 'd' to toggle debug panel."),
-  Text("Press 'q' to quit."),
-).style({ gap: 1, padding: 2 });
+  Text(computed(() => `Counter: ${counter.get()}`)).style({
+    foreground: "green",
+  }),
+  Text("Press 'd' to toggle debug panel.").style({
+    foreground: "yellow",
+  }),
+  Text("Press 'q' to quit.").style({
+    foreground: "red",
+  }),
+).style({ gap: 1, padding: 1 });
 
-// Wrap content with debug overlay
-const app = withDebug(appContent, {
-  position: "bottom-right",
-  initialVisible: true,
+// Main app with debug panel overlay
+const app = HStack(appContent.style({ grow: 1 }), debugPanel).style({
+  width: "100%",
+  height: "100%",
 });
 
 const renderer = new Renderer();
 const surface = new Surface(app, renderer);
-
-// Register the overlay with global debug manager
-Debug.setOverlay(app);
 
 // Handle input
 surface.onText((event, phase) => {
@@ -42,37 +52,19 @@ surface.onText((event, phase) => {
 
   switch (event.text) {
     case "d":
-      Debug.toggle();
+    case "D":
+      debugPanel.toggle();
       break;
     case "q":
+    case "Q":
       process.exit(0);
   }
 });
 
-// Simple render override to feed stats - but only call once per render
-let isUpdatingStats = false;
-const originalRender = surface.render.bind(surface);
-surface.render = function (options) {
-  const result = originalRender(options);
-
-  // Prevent recursive calls during stats update
-  if (!isUpdatingStats) {
-    isUpdatingStats = true;
-    Debug.updateRenderStats({
-      cellsWritten: result.stats.cellsWritten,
-      cellsSkipped: result.stats.cellsSkipped,
-      renderTime: result.stats.renderTime,
-    });
-    isUpdatingStats = false;
-  }
-
-  return result;
-};
-
-// Start rendering
+// Start rendering - the Surface will automatically find and update debug panels
 surface.startRender({ cursor: { visibility: "hidden" } });
 
-// Simple animation to generate render activity (slow to prevent issues)
+// Animation to generate render activity
 setInterval(() => {
-  counter.set((counter.get() + 1) % 100);
-}, 1000);
+  counter.set((counter.get() + 1) % 1000);
+}, 100);

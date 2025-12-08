@@ -1,4 +1,4 @@
-import { computed, effect, state } from "../signals";
+import { computed, state } from "../signals";
 import { BaseNode } from "./node";
 import { HStack, VStack } from "./stack";
 import { resolveAxisSize } from "./style-utils";
@@ -13,19 +13,24 @@ import type { ContainerProps } from "./props";
 
 export interface DebugMetrics {
   fps: number;
-  cellsWritten: number;
-  cellsSkipped: number;
+  avgFps: number;
+  frameTime: number;
+  avgFrameTime: number;
+  frameCount: number;
+  overallTime: number;
+  avgOverallTime: number;
   renderTime: number;
-  totalFrames: number;
   avgRenderTime: number;
-  maxRenderTime: number;
-  minRenderTime: number;
+  stdoutTime: number;
+  avgStdoutTime: number;
+  cellsWritten: number;
+  avgCellsWritten: number;
+  cellsSkipped: number;
+  avgCellsSkipped: number;
 }
 
 export interface DebugPanelProps extends ContainerProps {
   visible?: boolean | Signal<boolean>;
-  updateInterval?: number; // How often to update metrics display (ms)
-  fpsWindow?: number; // Number of frames to average FPS over
   position?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
 }
 
@@ -34,16 +39,17 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
   private metrics: Signal<DebugMetrics>;
   private contentStack: Node | null = null;
   private frameTimestamps: number[] = [];
+  private frameTimes: number[] = [];
   private renderTimes: number[] = [];
-  private frameCount: number = 0;
-  private fpsWindow: number;
-  private updateInterval: number;
-  private lastUpdateTime: number = 0;
+  private cellsWrittenHistory: number[] = [];
+  private cellsSkippedHistory: number[] = [];
+  private lastRenderStart: number = 0;
+  private isRendering: boolean = false;
+  private pendingUpdate: boolean = false;
 
   constructor(props: DebugPanelProps = {}) {
     super("Stack", []);
 
-    // Initialize signals
     this.isVisible =
       typeof props.visible === "object" && "get" in props.visible
         ? (props.visible as Signal<boolean>)
@@ -51,30 +57,42 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
 
     this.metrics = state({
       fps: 0,
-      cellsWritten: 0,
-      cellsSkipped: 0,
+      avgFps: 0,
+      frameTime: 0,
+      avgFrameTime: 0,
+      frameCount: 0,
+      overallTime: 0,
+      avgOverallTime: 0,
       renderTime: 0,
-      totalFrames: 0,
       avgRenderTime: 0,
-      maxRenderTime: 0,
-      minRenderTime: 0,
+      stdoutTime: 0,
+      avgStdoutTime: 0,
+      cellsWritten: 0,
+      avgCellsWritten: 0,
+      cellsSkipped: 0,
+      avgCellsSkipped: 0,
     });
 
-    this.fpsWindow = props.fpsWindow ?? 60;
-    this.updateInterval = props.updateInterval ?? 100; // Update display every 100ms
     this.propsDefinition = props;
-
     this.buildContent();
 
-    // React to visibility changes only (not metrics to avoid infinite loop)
-    effect(() => {
-      this.isVisible.get();
-      this.updateChildren();
-      this._invalidate();
-    });
+    // React to visibility changes
+    if (typeof props.visible === "object" && "get" in props.visible) {
+      this.styleSubscriptions.push(
+        this.isVisible.subscribe(() => {
+          this.updateChildren();
+          this._invalidate();
+        }),
+      );
+    }
   }
 
   private updateChildren(): void {
+    // Prevent updates during rendering to avoid infinite recursion
+    if (this.isRendering) {
+      return;
+    }
+
     if (!this.isVisible.get()) {
       this._children = [];
       this.contentStack = null;
@@ -83,188 +101,238 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
     }
   }
 
-  // Removed automatic update loop to prevent stack overflow
-
-  private updateDisplayMetrics(): void {
-    const current = this.metrics.get();
-
-    // Calculate FPS from recent render times
-    const fps = this.calculateFPS();
-
-    // Calculate average render time
-    const avgRenderTime =
-      this.renderTimes.length > 0
-        ? this.renderTimes.reduce((a, b) => a + b, 0) / this.renderTimes.length
-        : 0;
-
-    // Calculate min/max render times
-    const maxRenderTime =
-      this.renderTimes.length > 0 ? Math.max(...this.renderTimes) : 0;
-    const minRenderTime =
-      this.renderTimes.length > 0 ? Math.min(...this.renderTimes) : 0;
-
-    this.metrics.set({
-      ...current,
-      fps: Math.round(fps * 10) / 10, // Round to 1 decimal
-      avgRenderTime: Math.round(avgRenderTime * 100) / 100, // Round to 2 decimals
-      maxRenderTime: Math.round(maxRenderTime * 100) / 100,
-      minRenderTime: Math.round(minRenderTime * 100) / 100,
-    });
-  }
-
-  private calculateFPS(): number {
-    // Simple FPS: clean up old timestamps and count what's left
-    const now = performance.now();
-    const oneSecondAgo = now - 1000;
-
-    // Remove timestamps older than 1 second
-    while (
-      this.frameTimestamps.length > 0 &&
-      this.frameTimestamps[0] < oneSecondAgo
-    ) {
-      this.frameTimestamps.shift();
-    }
-
-    // The number of timestamps in the last second = FPS
-    return this.frameTimestamps.length;
-  }
-
   private buildContent(): void {
-    // Create metrics display with reactive computed text content
-    const metricsDisplay = VStack(
-      Text("Debug Panel").style({
-        bold: true,
-        foreground: "cyan",
-        underline: true,
-      }),
-      Text(
-        computed(() => {
-          const m = this.metrics.get();
-          return `FPS: ${m.fps}`;
-        }),
+    if (!this.isVisible.get() || this.isRendering) return;
+
+    // Get current metrics once to avoid reactivity during render
+    const m = this.metrics.get();
+
+    const metricsDisplay = HStack(
+      // Labels column
+      VStack(
+        Text("Debug Info").style({ bold: true, italic: true }), // Header spacer
+        Text("Frames drawn").style({ faint: true }),
+        Text("Frames per second").style({ faint: true }),
+        Text("Frame interval").style({ faint: true }),
+        Text("Overal frame time").style({ faint: true }),
+        Text("Render time").style({ faint: true }),
+        Text("Stdout time").style({ faint: true }),
+        Text("Cells drawn").style({ faint: true }),
       ).style({
-        foreground: computed(() => {
-          const m = this.metrics.get();
-          return m.fps < 5 ? "red" : m.fps < 10 ? "yellow" : "green";
-        }),
+        width: 20,
+        shrink: 0,
+        gap: 0,
       }),
-      Text(
-        computed(() => {
-          const m = this.metrics.get();
-          return `Frames: ${m.totalFrames}`;
-        }),
+
+      // Current values column
+      VStack(
+        Text("Current").style({ faint: true, bold: true }),
+        Text(`${m.frameCount}`),
+        Text(`${m.fps.toFixed(1)}`),
+        Text(`${m.frameTime.toFixed(1)}ms`),
+        Text(`${m.overallTime.toFixed(2)}ms`),
+        Text(`${m.renderTime.toFixed(2)}ms`),
+        Text(`${m.stdoutTime.toFixed(2)}ms`),
+        Text(`${m.cellsWritten}w/${m.cellsSkipped}s`),
       ).style({
-        foreground: "white",
+        width: 12,
+        shrink: 0,
+        gap: 0,
       }),
-      Text(
-        computed(() => {
-          const m = this.metrics.get();
-          return `Cells: ${m.cellsWritten}w / ${m.cellsSkipped}s`;
-        }),
+
+      // Average values column
+      VStack(
+        Text("Average").style({ faint: true, bold: true }),
+        Text("-").style({ faint: true }),
+        Text(`${m.avgFps.toFixed(1)}`),
+        Text(`${m.avgFrameTime.toFixed(1)}ms`),
+        Text(`${m.avgOverallTime.toFixed(2)}ms`),
+        Text(`${m.avgRenderTime.toFixed(2)}ms`),
+        Text(`${m.avgStdoutTime.toFixed(2)}ms`),
+        Text(
+          `${Math.round(m.avgCellsWritten)}w/${Math.round(m.avgCellsSkipped)}s`,
+        ),
       ).style({
-        foreground: "blue",
+        width: 12,
+        shrink: 0,
+        gap: 0,
       }),
-      HStack(
-        Text("Render:").style({ foreground: "white", shrink: 0 }),
-        Text(
-          computed(() => {
-            const m = this.metrics.get();
-            return `${m.renderTime.toFixed(2)}ms`;
-          }),
-        ).style({
-          foreground: computed(() => {
-            const m = this.metrics.get();
-            return m.renderTime > 16 ? "red" : "green";
-          }),
-          grow: 1,
-        }),
-      ).style({ gap: 1, width: "100%" }),
-      HStack(
-        Text("Avg:").style({ foreground: "white", shrink: 0 }),
-        Text(
-          computed(() => {
-            const m = this.metrics.get();
-            return `${m.avgRenderTime.toFixed(2)}ms`;
-          }),
-        ).style({
-          foreground: "brightBlack",
-          grow: 1,
-        }),
-      ).style({ gap: 1, width: "100%" }),
-      HStack(
-        Text("Min:").style({ foreground: "white", shrink: 0 }),
-        Text(
-          computed(() => {
-            const m = this.metrics.get();
-            return `${m.minRenderTime.toFixed(2)}ms`;
-          }),
-        ).style({
-          foreground: "green",
-          grow: 1,
-        }),
-      ).style({ gap: 1, width: "100%" }),
-      HStack(
-        Text("Max:").style({ foreground: "white", shrink: 0 }),
-        Text(
-          computed(() => {
-            const m = this.metrics.get();
-            return `${m.maxRenderTime.toFixed(2)}ms`;
-          }),
-        ).style({
-          foreground: "red",
-          grow: 1,
-        }),
-      ).style({ gap: 1, width: "100%" }),
     ).style({
-      gap: 0,
-      width: "100%",
+      width: "hug",
+      gap: 1,
       padding: [0, 1],
     });
 
     this.contentStack = VStack(metricsDisplay).style({
       background: "#1a1a1a",
       foreground: "white",
-      width: 24,
+      width: "hug",
     });
 
     this._children = [this.contentStack];
   }
 
-  updateRenderStats(stats: {
+  /**
+   * Called by Surface before each render starts
+   */
+  onRenderStart(): void {
+    this.isRendering = true;
+    this.lastRenderStart = performance.now();
+  }
+
+  /**
+   * Called by Surface after each render completes with the render stats
+   */
+  onRenderComplete(stats: {
     cellsWritten: number;
     cellsSkipped: number;
     renderTime: number;
   }): void {
-    const current = this.metrics.get();
+    this.isRendering = false;
+
+    // Defer metrics update to avoid recursion during paint
+    if (!this.pendingUpdate) {
+      this.pendingUpdate = true;
+      setTimeout(() => {
+        this.updateMetrics(stats);
+        this.pendingUpdate = false;
+        // Rebuild content with new metrics
+        if (this.isVisible.get()) {
+          this.buildContent();
+          this._invalidate();
+        }
+      }, 0);
+    }
+  }
+
+  private updateMetrics(stats: {
+    cellsWritten: number;
+    cellsSkipped: number;
+    renderTime: number;
+  }): void {
     const now = performance.now();
+    const current = this.metrics.get();
 
-    this.frameCount++;
+    // Calculate total frame time (from start to completion)
+    const totalFrameTime = now - this.lastRenderStart;
 
-    // Track frame timestamps for FPS calculation (don't limit by window)
+    // Track metrics
     this.frameTimestamps.push(now);
-
-    // Track render times for performance metrics
+    this.frameTimes.push(totalFrameTime);
     this.renderTimes.push(stats.renderTime);
-    if (this.renderTimes.length > this.fpsWindow) {
+    this.cellsWrittenHistory.push(stats.cellsWritten);
+    this.cellsSkippedHistory.push(stats.cellsSkipped);
+
+    // Keep only last 60 measurements for rolling averages
+    if (this.frameTimestamps.length > 60) {
+      this.frameTimestamps.shift();
+      this.frameTimes.shift();
       this.renderTimes.shift();
+      this.cellsWrittenHistory.shift();
+      this.cellsSkippedHistory.shift();
     }
 
-    // Update metrics
-    this.metrics.set({
-      ...current,
-      cellsWritten: stats.cellsWritten,
-      cellsSkipped: stats.cellsSkipped,
-      renderTime: stats.renderTime,
-      totalFrames: this.frameCount,
-    });
+    // Current frame metrics
+    const currentFps = this.calculateCurrentFPS();
+    const currentFrameTime =
+      this.frameTimestamps.length > 1
+        ? this.frameTimestamps[this.frameTimestamps.length - 1]! -
+          this.frameTimestamps[this.frameTimestamps.length - 2]!
+        : 0;
+    const currentStdoutTime = Math.max(0, totalFrameTime - stats.renderTime);
 
-    // Update display metrics only - don't trigger rebuild during render
-    this.updateDisplayMetrics();
+    // Calculate rolling averages
+    const avgFps = this.calculateAverageFPS();
+    const avgFrameTime = this.calculateAverageFrameInterval();
+    const avgOverallTime =
+      this.frameTimes.length > 0
+        ? this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length
+        : 0;
+    const avgRenderTime =
+      this.renderTimes.length > 0
+        ? this.renderTimes.reduce((a, b) => a + b, 0) / this.renderTimes.length
+        : 0;
+    const avgStdoutTime = Math.max(0, avgOverallTime - avgRenderTime);
+    const avgCellsWritten =
+      this.cellsWrittenHistory.length > 0
+        ? this.cellsWrittenHistory.reduce((a, b) => a + b, 0) /
+          this.cellsWrittenHistory.length
+        : 0;
+    const avgCellsSkipped =
+      this.cellsSkippedHistory.length > 0
+        ? this.cellsSkippedHistory.reduce((a, b) => a + b, 0) /
+          this.cellsSkippedHistory.length
+        : 0;
+
+    this.metrics.set({
+      fps: currentFps,
+      avgFps,
+      frameTime: currentFrameTime,
+      avgFrameTime,
+      frameCount: current.frameCount + 1,
+      overallTime: totalFrameTime,
+      avgOverallTime,
+      renderTime: stats.renderTime,
+      avgRenderTime,
+      stdoutTime: currentStdoutTime,
+      avgStdoutTime,
+      cellsWritten: stats.cellsWritten,
+      avgCellsWritten,
+      cellsSkipped: stats.cellsSkipped,
+      avgCellsSkipped,
+    });
+  }
+
+  private calculateCurrentFPS(): number {
+    if (this.frameTimestamps.length < 2) return 0;
+
+    // Calculate FPS based on last few frame intervals for more stable current reading
+    const intervals: number[] = [];
+    const count = Math.min(10, this.frameTimestamps.length - 1); // Last 10 intervals
+
+    for (
+      let i = this.frameTimestamps.length - count;
+      i < this.frameTimestamps.length;
+      i++
+    ) {
+      if (i > 0) {
+        const interval =
+          this.frameTimestamps[i]! - this.frameTimestamps[i - 1]!;
+        intervals.push(interval);
+      }
+    }
+
+    if (intervals.length === 0) return 0;
+
+    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    return avgInterval > 0 ? 1000 / avgInterval : 0;
+  }
+
+  private calculateAverageFPS(): number {
+    if (this.frameTimestamps.length < 2) return 0;
+
+    // Calculate average FPS over all recorded intervals
+    const avgInterval = this.calculateAverageFrameInterval();
+    return avgInterval > 0 ? 1000 / avgInterval : 0;
+  }
+
+  private calculateAverageFrameInterval(): number {
+    if (this.frameTimestamps.length < 2) return 0;
+
+    // Calculate average time between frames
+    const intervals: number[] = [];
+    for (let i = 1; i < this.frameTimestamps.length; i++) {
+      const interval = this.frameTimestamps[i]! - this.frameTimestamps[i - 1]!;
+      intervals.push(interval);
+    }
+
+    if (intervals.length === 0) return 0;
+
+    return intervals.reduce((a, b) => a + b, 0) / intervals.length;
   }
 
   toggle(): void {
-    const current = this.isVisible.get();
-    this.isVisible.set(!current);
+    this.isVisible.set(!this.isVisible.get());
   }
 
   show(): void {
@@ -280,18 +348,27 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
   }
 
   reset(): void {
-    this.frameCount = 0;
     this.frameTimestamps = [];
+    this.frameTimes = [];
     this.renderTimes = [];
+    this.cellsWrittenHistory = [];
+    this.cellsSkippedHistory = [];
     this.metrics.set({
       fps: 0,
-      cellsWritten: 0,
-      cellsSkipped: 0,
+      avgFps: 0,
+      frameTime: 0,
+      avgFrameTime: 0,
+      frameCount: 0,
+      overallTime: 0,
+      avgOverallTime: 0,
       renderTime: 0,
-      totalFrames: 0,
       avgRenderTime: 0,
-      maxRenderTime: 0,
-      minRenderTime: 0,
+      stdoutTime: 0,
+      avgStdoutTime: 0,
+      cellsWritten: 0,
+      avgCellsWritten: 0,
+      cellsSkipped: 0,
+      avgCellsSkipped: 0,
     });
   }
 
