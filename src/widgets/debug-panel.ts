@@ -216,13 +216,13 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
     renderProcessingTime: number;
     stdoutTime: number;
   }): void {
-    const now = performance.now();
     const current = this.metrics.get();
 
-    // Calculate total frame time (from start to completion)
-    const totalFrameTime = now - this.lastRenderStart;
+    // Use the renderer's total time as the overall frame time
+    const totalFrameTime = stats.renderTime;
 
     // Track metrics
+    const now = performance.now();
     this.frameTimestamps.push(now);
     this.frameTimes.push(totalFrameTime);
     this.renderTimes.push(stats.renderTime);

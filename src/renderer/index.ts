@@ -241,7 +241,6 @@ export class Renderer {
    */
   render(root: Node, options: RenderOptions): RenderResult {
     const overallStart = performance.now();
-    const renderStart = performance.now();
     const bounds = options.bounds ?? { mode: "auto" };
     const cursorBehavior = options.cursor?.behavior ?? "after";
     const cursorVisibility = options.cursor?.visibility ?? "visible";
@@ -297,6 +296,8 @@ export class Renderer {
       }
     }
 
+    // Start timing the actual render processing (layout, paint, buildCells)
+    const renderStart = performance.now();
     root._layout(context.origin, layoutSize);
     const paint = root._paint();
     const cells = this.buildCells(paint);
