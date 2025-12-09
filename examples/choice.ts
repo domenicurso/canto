@@ -59,10 +59,6 @@ const app = VStack(
     .props({
       scrollX,
       scrollY,
-      onScroll: (x: number, y: number) => {
-        scrollX.set(x);
-        scrollY.set(y);
-      },
       scrollWheelEnabled: false,
     })
     .style({ height: 4 })
