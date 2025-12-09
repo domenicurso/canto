@@ -1,5 +1,4 @@
 import { batch, state } from "../signals";
-import { BaseNode } from "./node";
 import { StackNodeBase } from "./stack";
 
 import type { Constraints } from "../layout";
