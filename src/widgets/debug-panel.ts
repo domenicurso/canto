@@ -114,7 +114,7 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
         Text("Frames drawn").style({ faint: true }),
         Text("Frames per second").style({ faint: true }),
         Text("Frame interval").style({ faint: true }),
-        Text("Overal frame time").style({ faint: true }),
+        Text("Overall frame time").style({ faint: true }),
         Text("Render time").style({ faint: true }),
         Text("Stdout time").style({ faint: true }),
         Text("Cells drawn").style({ faint: true }),
