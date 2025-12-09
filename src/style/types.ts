@@ -56,49 +56,92 @@ export type TextWrap = "none" | "word" | "char";
 
 export type StyleValue<T> = T | Signal<T>;
 
+export type ForegroundStyle = StyleValue<Color | null>;
+export type BackgroundStyle = StyleValue<Color | null>;
+export type BoldStyle = StyleValue<boolean>;
+export type ItalicStyle = StyleValue<boolean>;
+export type UnderlineStyle = StyleValue<boolean>;
+export type FaintStyle = StyleValue<boolean>;
+
+export type PaddingStyle = StyleValue<Padding>;
+export type PaddingTopStyle = StyleValue<number>;
+export type PaddingRightStyle = StyleValue<number>;
+export type PaddingBottomStyle = StyleValue<number>;
+export type PaddingLeftStyle = StyleValue<number>;
+
+export type WidthStyle = StyleValue<DimensionToken>;
+export type HeightStyle = StyleValue<DimensionToken>;
+export type MinWidthStyle = StyleValue<DimensionLimitToken>;
+export type MinHeightStyle = StyleValue<DimensionLimitToken>;
+export type MaxWidthStyle = StyleValue<DimensionLimitToken>;
+export type MaxHeightStyle = StyleValue<DimensionLimitToken>;
+
+export type FlowStyle = StyleValue<FlowAxis>;
+export type GapStyle = StyleValue<number>;
+export type DistributeStyle = StyleValue<FlowDistribution>;
+export type AlignStyle = StyleValue<CrossAlignment>;
+export type GrowStyle = StyleValue<number>;
+export type ShrinkStyle = StyleValue<number>;
+
+export type PositionStyle = StyleValue<PositionMode>;
+export type InsetStyle = StyleValue<Inset>;
+export type TopStyle = StyleValue<number | null>;
+export type RightStyle = StyleValue<number | null>;
+export type BottomStyle = StyleValue<number | null>;
+export type LeftStyle = StyleValue<number | null>;
+export type ZIndexStyle = StyleValue<number>;
+
+export type TextWrapStyle = StyleValue<TextWrap>;
+export type LineClampStyle = StyleValue<number | null>;
+
+export type ScrollXStyle = StyleValue<boolean>;
+export type ScrollYStyle = StyleValue<boolean>;
+export type ScrollbarBackgroundStyle = StyleValue<Color | null>;
+export type ScrollbarForegroundStyle = StyleValue<Color | null>;
+
 export interface StyleMap {
-  foreground?: StyleValue<Color | null>;
-  background?: StyleValue<Color | null>;
-  bold?: StyleValue<boolean>;
-  italic?: StyleValue<boolean>;
-  underline?: StyleValue<boolean>;
-  faint?: StyleValue<boolean>;
+  foreground?: ForegroundStyle;
+  background?: BackgroundStyle;
+  bold?: BoldStyle;
+  italic?: ItalicStyle;
+  underline?: UnderlineStyle;
+  faint?: FaintStyle;
 
-  padding?: StyleValue<Padding>;
-  paddingTop?: StyleValue<number>;
-  paddingRight?: StyleValue<number>;
-  paddingBottom?: StyleValue<number>;
-  paddingLeft?: StyleValue<number>;
+  padding?: PaddingStyle;
+  paddingTop?: PaddingTopStyle;
+  paddingRight?: PaddingRightStyle;
+  paddingBottom?: PaddingBottomStyle;
+  paddingLeft?: PaddingLeftStyle;
 
-  width?: StyleValue<DimensionToken>;
-  height?: StyleValue<DimensionToken>;
-  minWidth?: StyleValue<DimensionLimitToken>;
-  minHeight?: StyleValue<DimensionLimitToken>;
-  maxWidth?: StyleValue<DimensionLimitToken>;
-  maxHeight?: StyleValue<DimensionLimitToken>;
+  width?: WidthStyle;
+  height?: HeightStyle;
+  minWidth?: MinWidthStyle;
+  minHeight?: MinHeightStyle;
+  maxWidth?: MaxWidthStyle;
+  maxHeight?: MaxHeightStyle;
 
-  flow?: StyleValue<FlowAxis>;
-  gap?: StyleValue<number>;
-  distribute?: StyleValue<FlowDistribution>;
-  align?: StyleValue<CrossAlignment>;
-  grow?: StyleValue<number>;
-  shrink?: StyleValue<number>;
+  flow?: FlowStyle;
+  gap?: GapStyle;
+  distribute?: DistributeStyle;
+  align?: AlignStyle;
+  grow?: GrowStyle;
+  shrink?: ShrinkStyle;
 
-  position?: StyleValue<PositionMode>;
-  inset?: StyleValue<Inset>;
-  top?: StyleValue<number | null>;
-  right?: StyleValue<number | null>;
-  bottom?: StyleValue<number | null>;
-  left?: StyleValue<number | null>;
-  zIndex?: StyleValue<number>;
+  position?: PositionStyle;
+  inset?: InsetStyle;
+  top?: TopStyle;
+  right?: RightStyle;
+  bottom?: BottomStyle;
+  left?: LeftStyle;
+  zIndex?: ZIndexStyle;
 
-  textWrap?: StyleValue<TextWrap>;
-  lineClamp?: StyleValue<number | null>;
+  textWrap?: TextWrapStyle;
+  lineClamp?: LineClampStyle;
 
-  scrollX?: StyleValue<boolean>;
-  scrollY?: StyleValue<boolean>;
-  scrollbarBackground?: StyleValue<Color | null>;
-  scrollbarForeground?: StyleValue<Color | null>;
+  scrollX?: ScrollXStyle;
+  scrollY?: ScrollYStyle;
+  scrollbarBackground?: ScrollbarBackgroundStyle;
+  scrollbarForeground?: ScrollbarForegroundStyle;
 }
 
 export interface BoxPadding {

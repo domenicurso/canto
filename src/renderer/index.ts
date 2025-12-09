@@ -180,6 +180,8 @@ export interface RenderResult {
     cellsWritten: number;
     cellsSkipped: number;
     renderTime: number;
+    renderProcessingTime: number;
+    stdoutTime: number;
   };
 }
 
@@ -238,7 +240,8 @@ export class Renderer {
    * ```
    */
   render(root: Node, options: RenderOptions): RenderResult {
-    const start = performance.now();
+    const overallStart = performance.now();
+    const renderStart = performance.now();
     const bounds = options.bounds ?? { mode: "auto" };
     const cursorBehavior = options.cursor?.behavior ?? "after";
     const cursorVisibility = options.cursor?.visibility ?? "visible";
@@ -297,6 +300,8 @@ export class Renderer {
     root._layout(context.origin, layoutSize);
     const paint = root._paint();
     const cells = this.buildCells(paint);
+    const renderEnd = performance.now();
+    const renderProcessingTime = renderEnd - renderStart;
     this.buffer.bounds = {
       x: context.origin.x,
       y: context.origin.y,
@@ -304,6 +309,7 @@ export class Renderer {
       height: layoutSize.height,
     };
 
+    const stdoutStart = performance.now();
     const diff = diffCells(this.buffer.cells, cells);
     this.buffer.cells.clear();
     for (const [key, cell] of cells.entries()) {
@@ -312,9 +318,13 @@ export class Renderer {
 
     // Write diff to terminal
     for (const write of diff.writes) {
+      // let now = performance.now();
+      // let i = 0;
+      // while (performance.now() - now < 10) {
+      //   i++;
+      // }
       if (write.cell) {
         const styleAnsi = styleToAnsi(write.cell.style);
-        // Move cursor to position, apply styling, write character, then reset
         this.terminal.write(
           `\x1b[${write.y + 1};${write.x + 1}H${styleAnsi}${write.cell.char}${resetAnsi()}`,
         );
@@ -324,6 +334,10 @@ export class Renderer {
           `\x1b[${write.y + 1};${write.x + 1}H${resetAnsi()} ${resetAnsi()}`,
         );
       }
+      // const output = this.terminal.flush();
+      // if (output) {
+      //   process.stdout.write(output);
+      // }
     }
 
     // Position cursor based on cursor behavior
@@ -361,7 +375,9 @@ export class Renderer {
       style: cloneSnapshot(DEFAULT_STYLE_SNAPSHOT),
     };
 
-    const end = performance.now();
+    const stdoutEnd = performance.now();
+    const stdoutTime = stdoutEnd - stdoutStart;
+    const overallEnd = performance.now();
     return {
       bounds: {
         used: usedRect,
@@ -370,7 +386,9 @@ export class Renderer {
       stats: {
         cellsWritten: diff.writes.length,
         cellsSkipped: diff.skips,
-        renderTime: end - start,
+        renderTime: overallEnd - overallStart,
+        renderProcessingTime,
+        stdoutTime,
       },
     };
   }

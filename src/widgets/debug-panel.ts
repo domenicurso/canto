@@ -41,6 +41,8 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
   private frameTimestamps: number[] = [];
   private frameTimes: number[] = [];
   private renderTimes: number[] = [];
+  private renderProcessingTimes: number[] = [];
+  private stdoutTimes: number[] = [];
   private cellsWrittenHistory: number[] = [];
   private cellsSkippedHistory: number[] = [];
   private lastRenderStart: number = 0;
@@ -114,7 +116,7 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
         Text("Frames drawn").style({ faint: true }),
         Text("Frames per second").style({ faint: true }),
         Text("Frame interval").style({ faint: true }),
-        Text("Overall frame time").style({ faint: true }),
+        Text("Frame time").style({ faint: true }),
         Text("Render time").style({ faint: true }),
         Text("Stdout time").style({ faint: true }),
         Text("Cells drawn").style({ faint: true }),
@@ -187,6 +189,8 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
     cellsWritten: number;
     cellsSkipped: number;
     renderTime: number;
+    renderProcessingTime: number;
+    stdoutTime: number;
   }): void {
     this.isRendering = false;
 
@@ -209,6 +213,8 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
     cellsWritten: number;
     cellsSkipped: number;
     renderTime: number;
+    renderProcessingTime: number;
+    stdoutTime: number;
   }): void {
     const now = performance.now();
     const current = this.metrics.get();
@@ -220,6 +226,8 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
     this.frameTimestamps.push(now);
     this.frameTimes.push(totalFrameTime);
     this.renderTimes.push(stats.renderTime);
+    this.renderProcessingTimes.push(stats.renderProcessingTime);
+    this.stdoutTimes.push(stats.stdoutTime);
     this.cellsWrittenHistory.push(stats.cellsWritten);
     this.cellsSkippedHistory.push(stats.cellsSkipped);
 
@@ -228,6 +236,8 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
       this.frameTimestamps.shift();
       this.frameTimes.shift();
       this.renderTimes.shift();
+      this.renderProcessingTimes.shift();
+      this.stdoutTimes.shift();
       this.cellsWrittenHistory.shift();
       this.cellsSkippedHistory.shift();
     }
@@ -239,7 +249,7 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
         ? this.frameTimestamps[this.frameTimestamps.length - 1]! -
           this.frameTimestamps[this.frameTimestamps.length - 2]!
         : 0;
-    const currentStdoutTime = Math.max(0, totalFrameTime - stats.renderTime);
+    const currentStdoutTime = stats.stdoutTime;
 
     // Calculate rolling averages
     const avgFps = this.calculateAverageFPS();
@@ -252,7 +262,15 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
       this.renderTimes.length > 0
         ? this.renderTimes.reduce((a, b) => a + b, 0) / this.renderTimes.length
         : 0;
-    const avgStdoutTime = Math.max(0, avgOverallTime - avgRenderTime);
+    const avgRenderProcessingTime =
+      this.renderProcessingTimes.length > 0
+        ? this.renderProcessingTimes.reduce((a, b) => a + b, 0) /
+          this.renderProcessingTimes.length
+        : 0;
+    const avgStdoutTime =
+      this.stdoutTimes.length > 0
+        ? this.stdoutTimes.reduce((a, b) => a + b, 0) / this.stdoutTimes.length
+        : 0;
     const avgCellsWritten =
       this.cellsWrittenHistory.length > 0
         ? this.cellsWrittenHistory.reduce((a, b) => a + b, 0) /
@@ -272,8 +290,8 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
       frameCount: current.frameCount + 1,
       overallTime: totalFrameTime,
       avgOverallTime,
-      renderTime: stats.renderTime,
-      avgRenderTime,
+      renderTime: stats.renderProcessingTime,
+      avgRenderTime: avgRenderProcessingTime,
       stdoutTime: currentStdoutTime,
       avgStdoutTime,
       cellsWritten: stats.cellsWritten,
@@ -351,6 +369,8 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
     this.frameTimestamps = [];
     this.frameTimes = [];
     this.renderTimes = [];
+    this.renderProcessingTimes = [];
+    this.stdoutTimes = [];
     this.cellsWrittenHistory = [];
     this.cellsSkippedHistory = [];
     this.metrics.set({
