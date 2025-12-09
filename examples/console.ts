@@ -10,7 +10,6 @@ const app = VStack(
   Text("Live Data Feed with Console").style({
     background: "red",
     padding: [1, 2],
-    width: 10,
   }),
   VStack(Text(label1), Text(label2)).style({
     background: "#4ACFFF",
