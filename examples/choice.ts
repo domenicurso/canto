@@ -56,11 +56,7 @@ const app = VStack(
       ),
     ).style({ height: "hug" }),
   )
-    .props({
-      scrollX,
-      scrollY,
-      scrollWheelEnabled: false,
-    })
+    .props({ scrollX, scrollY, scrollWheelEnabled: false })
     .style({ height: 4 })
     .unless(isComplete),
 );
