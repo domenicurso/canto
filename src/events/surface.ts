@@ -1,5 +1,3 @@
-import readline from "readline";
-
 import { Renderer } from "../renderer";
 import { effect, state } from "../signals";
 import { addGlobalSignalChangeListener, StateSignal } from "../signals/core";
@@ -32,6 +30,15 @@ import type {
   SurfaceMiddleware,
   TextInputEvent,
 } from "./types";
+
+export interface SurfaceOptions {
+  /**
+   * Whether to disable the console overlay. When true, console logging
+   * functionality will not be mounted to the surface.
+   * @default false
+   */
+  disableConsole?: boolean;
+}
 
 export class Surface {
   readonly root: Node;
@@ -73,7 +80,7 @@ export class Surface {
     this.dispatch(event);
   };
 
-  constructor(root: Node, renderer: Renderer) {
+  constructor(root: Node, renderer: Renderer, options: SurfaceOptions = {}) {
     // Create debug panel
     this.debugPanel = new DebugPanelNode({
       visible: this.debugVisible,
@@ -86,23 +93,33 @@ export class Surface {
       zIndex: 100,
     });
 
-    // Wrap root with console overlay
-    const consoleWrapped = withConsole(
-      root,
-      this.handleConsoleInput.bind(this),
-    );
+    let baseRoot: Node;
 
-    // Store reference to console overlay and register with global manager
-    this.consoleOverlay = consoleWrapped;
-    Console.setOverlay(consoleWrapped);
+    if (options.disableConsole) {
+      // Use root directly without console overlay
+      baseRoot = root;
+      this.consoleOverlay = null;
+    } else {
+      // Wrap root with console overlay
+      const consoleWrapped = withConsole(
+        root,
+        this.handleConsoleInput.bind(this),
+      );
 
-    // Set surface reference for focus management
-    consoleWrapped.setSurface(this);
+      // Store reference to console overlay and register with global manager
+      this.consoleOverlay = consoleWrapped;
+      Console.setOverlay(consoleWrapped);
+
+      // Set surface reference for focus management
+      consoleWrapped.setSurface(this);
+
+      baseRoot = consoleWrapped;
+    }
 
     // Create final wrapped root with debug panel overlay
-    this.wrappedRoot = Stack(consoleWrapped, this.debugPanel).style({
+    // Don't constrain the Stack - let baseRoot fill space and debug panel float
+    this.wrappedRoot = Stack(baseRoot, this.debugPanel).style({
       width: "100%",
-      height: "100%",
     });
 
     this.root = this.wrappedRoot;
@@ -359,6 +376,14 @@ export class Surface {
     }
     this.chan.close();
     this.cleanupStdin();
+  }
+
+  /**
+   * Check if console overlay is enabled on this surface.
+   * @returns true if console functionality is available, false if disabled
+   */
+  isConsoleEnabled(): boolean {
+    return this.consoleOverlay !== null;
   }
 
   // === INTERNAL: emit helpers ===
@@ -1154,6 +1179,11 @@ export class Surface {
   }
 
   private handleConsoleInput(input: string): void {
+    // Guard against console input when console is disabled
+    if (!this.isConsoleEnabled()) {
+      return;
+    }
+
     const trimmed = input.trim().toLowerCase();
 
     switch (trimmed) {
