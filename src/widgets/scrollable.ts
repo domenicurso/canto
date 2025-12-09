@@ -1,4 +1,4 @@
-import { state } from "../signals";
+import { batch, state } from "../signals";
 import { BaseNode } from "./node";
 import { StackNodeBase } from "./stack";
 
@@ -74,6 +74,9 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
   private scrollOffsetY: Signal<number> = state(0);
   private scrollSubscriptionX: (() => void) | null = null;
   private scrollSubscriptionY: (() => void) | null = null;
+  private internalScrollSubscriptionX: (() => void) | null = null;
+  private internalScrollSubscriptionY: (() => void) | null = null;
+  private scrollDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
   private focused = false;
   private isDragging = false;
   private dragStartX = 0;
@@ -84,6 +87,7 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
 
   constructor(child: Node) {
     super("Scrollable", [child], null);
+    this.setupInternalScrollSubscriptions();
     this.syncScrollProps();
   }
 
@@ -185,10 +189,44 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
   }
 
   scrollBy(dx: number, dy: number): void {
-    this.setScroll(
-      this.scrollOffsetX.get() + dx,
-      this.scrollOffsetY.get() + dy,
-    );
+    this.debouncedScrollBy(dx, dy);
+  }
+
+  private debouncedScrollBy(dx: number, dy: number): void {
+    // Clear
+    if (this.scrollDebounceTimeout) {
+      clearTimeout(this.scrollDebounceTimeout);
+    }
+
+    // Schedule scroll update to run on next tick
+    this.scrollDebounceTimeout = setTimeout(() => {
+      this.setScrollImmediate(
+        this.scrollOffsetX.get() + dx,
+        this.scrollOffsetY.get() + dy,
+      );
+      this.scrollDebounceTimeout = null;
+    }, 0);
+  }
+
+  private setScrollImmediate(x: number, y: number): void {
+    const clamped = this.clampScroll(x, y);
+    const currentX = this.scrollOffsetX.get();
+    const currentY = this.scrollOffsetY.get();
+    const changed = clamped.x !== currentX || clamped.y !== currentY;
+    if (!changed) {
+      return;
+    }
+
+    // Immediate scroll update without debouncing - used internally
+    batch(() => {
+      this.scrollOffsetX.set(clamped.x);
+      this.scrollOffsetY.set(clamped.y);
+    });
+
+    const handler = this.propsDefinition.onScroll;
+    if (typeof handler === "function") {
+      handler(clamped.x, clamped.y);
+    }
   }
 
   setScroll(x: number, y: number): void {
@@ -200,9 +238,11 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
       return;
     }
 
-    // Set the new scroll offsets - signal changes will trigger re-render
-    this.scrollOffsetX.set(clamped.x);
-    this.scrollOffsetY.set(clamped.y);
+    // Batch scroll updates to prevent render clogging
+    batch(() => {
+      this.scrollOffsetX.set(clamped.x);
+      this.scrollOffsetY.set(clamped.y);
+    });
 
     const handler = this.propsDefinition.onScroll;
     if (typeof handler === "function") {
@@ -217,6 +257,16 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
       x: Math.max(0, Math.min(x, maxX)),
       y: Math.max(0, Math.min(y, maxY)),
     };
+  }
+
+  private setupInternalScrollSubscriptions(): void {
+    // Subscribe to internal scroll offset changes to trigger invalidation
+    this.internalScrollSubscriptionX = this.scrollOffsetX.subscribe(() => {
+      this._invalidate();
+    });
+    this.internalScrollSubscriptionY = this.scrollOffsetY.subscribe(() => {
+      this._invalidate();
+    });
   }
 
   private syncScrollProps(): void {
@@ -235,11 +285,13 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
       ).x;
       this.scrollOffsetX.set(clampedX);
       this.scrollSubscriptionX = signal.subscribe((value) => {
-        const clampedValue = this.clampScroll(
-          value,
-          this.scrollOffsetY.get(),
-        ).x;
-        this.scrollOffsetX.set(clampedValue);
+        batch(() => {
+          const clampedValue = this.clampScroll(
+            value,
+            this.scrollOffsetY.get(),
+          ).x;
+          this.scrollOffsetX.set(clampedValue);
+        });
       });
     } else {
       this.scrollSubscriptionX = null;
@@ -253,11 +305,13 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
       ).y;
       this.scrollOffsetY.set(clampedY);
       this.scrollSubscriptionY = signal.subscribe((value) => {
-        const clampedValue = this.clampScroll(
-          this.scrollOffsetX.get(),
-          value,
-        ).y;
-        this.scrollOffsetY.set(clampedValue);
+        batch(() => {
+          const clampedValue = this.clampScroll(
+            this.scrollOffsetX.get(),
+            value,
+          ).y;
+          this.scrollOffsetY.set(clampedValue);
+        });
       });
     } else {
       this.scrollSubscriptionY = null;
@@ -271,7 +325,6 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
   }
 
   override dispose(): void {
-    super.dispose();
     if (this.scrollSubscriptionX) {
       this.scrollSubscriptionX();
       this.scrollSubscriptionX = null;
@@ -280,6 +333,19 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
       this.scrollSubscriptionY();
       this.scrollSubscriptionY = null;
     }
+    if (this.internalScrollSubscriptionX) {
+      this.internalScrollSubscriptionX();
+      this.internalScrollSubscriptionX = null;
+    }
+    if (this.internalScrollSubscriptionY) {
+      this.internalScrollSubscriptionY();
+      this.internalScrollSubscriptionY = null;
+    }
+    if (this.scrollDebounceTimeout) {
+      clearTimeout(this.scrollDebounceTimeout);
+      this.scrollDebounceTimeout = null;
+    }
+    super.dispose();
   }
 
   override _measure(constraints: Constraints, inherited: ResolvedStyle): Size {
@@ -481,10 +547,10 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
 
     // Only adjust scroll offset if it exceeds the new bounds
     if (this.scrollOffsetX.get() > maxX) {
-      this.scrollOffsetX.set(maxX);
+      batch(() => this.scrollOffsetX.set(maxX));
     }
     if (this.scrollOffsetY.get() > maxY) {
-      this.scrollOffsetY.set(maxY);
+      batch(() => this.scrollOffsetY.set(maxY));
     }
 
     // Position child based on scroll offset
@@ -651,7 +717,7 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
         const deltaY = y - this.dragStartY;
         const scrollRatio = deltaY / usableTrackHeight;
         const newScrollY = this.initialScrollY + scrollRatio * maxScrollY;
-        this.setScroll(this.scrollOffsetX.get(), newScrollY);
+        this.setScrollImmediate(this.scrollOffsetX.get(), newScrollY);
       }
     } else if (this.dragScrollbarType === "horizontal") {
       const trackWidth = needsVerticalScrollbar
@@ -675,7 +741,7 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
         const deltaX = x - this.dragStartX;
         const scrollRatio = deltaX / usableTrackWidth;
         const newScrollX = this.initialScrollX + scrollRatio * maxScrollX;
-        this.setScroll(newScrollX, this.scrollOffsetY.get());
+        this.setScrollImmediate(newScrollX, this.scrollOffsetY.get());
       }
     }
 
@@ -824,7 +890,7 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
         );
         const scrollRatio = targetThumbCenter / usableTrackHeight;
         const newScrollY = scrollRatio * maxScrollY;
-        this.setScroll(this.scrollOffsetX.get(), newScrollY);
+        this.setScrollImmediate(this.scrollOffsetX.get(), newScrollY);
       }
     } else if (scrollbarType === "horizontal") {
       const trackX = layout.x;
@@ -849,7 +915,7 @@ export class ScrollableNode extends StackNodeBase<ScrollableContainerProps> {
         );
         const scrollRatio = targetThumbCenter / usableTrackWidth;
         const newScrollX = scrollRatio * maxScrollX;
-        this.setScroll(newScrollX, this.scrollOffsetY.get());
+        this.setScrollImmediate(newScrollX, this.scrollOffsetY.get());
       }
     }
   }
