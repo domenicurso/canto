@@ -231,8 +231,8 @@ export class DebugPanelNode extends BaseNode<DebugPanelProps> {
     this.cellsWrittenHistory.push(stats.cellsWritten);
     this.cellsSkippedHistory.push(stats.cellsSkipped);
 
-    // Keep only last 60 measurements for rolling averages
-    if (this.frameTimestamps.length > 60) {
+    // Keep only last 120 measurements for rolling averages
+    if (this.frameTimestamps.length > 120) {
       this.frameTimestamps.shift();
       this.frameTimes.shift();
       this.renderTimes.shift();
