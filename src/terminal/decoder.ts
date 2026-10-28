@@ -109,6 +109,7 @@ export class Decoder {
             shift: token === "Z" || Boolean(modifier & 1),
             alt: Boolean(modifier & 2),
             ctrl: Boolean(modifier & 4),
+            meta: Boolean(modifier & 8),
           }),
         });
       return sequence[0].length;
@@ -157,6 +158,9 @@ export class Decoder {
         x: Number(match[2]) - 1,
         y: Number(match[3]) - 1,
         button: code & 3,
+        shift: Boolean(code & 4),
+        alt: Boolean(code & 8),
+        ctrl: Boolean(code & 16),
         action:
           code & 64
             ? "scroll"

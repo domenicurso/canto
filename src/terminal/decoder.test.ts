@@ -50,3 +50,30 @@ test("wheel reports preserve both axes and Shift+wheel selects horizontal moveme
     [1, 0],
   ]);
 });
+
+test("arrow and mouse modifiers survive bytewise terminal input", () => {
+  const events: TerminalEvent[] = [];
+  const decoder = new Decoder((event) => events.push(event));
+  for (const byte of Buffer.from("\x1b[1;6C\x1b[1;3D\x1b[1;10A\x1b[<28;3;4M"))
+    decoder.push(new Uint8Array([byte]));
+  expect(
+    events.map((event) =>
+      event.type === "key"
+        ? [
+            event.event.key,
+            event.event.shift,
+            event.event.alt,
+            event.event.ctrl,
+            event.event.meta,
+          ]
+        : event.type === "mouse"
+          ? [event.event.shift, event.event.alt, event.event.ctrl]
+          : null,
+    ),
+  ).toEqual([
+    ["right", true, false, true, false],
+    ["left", false, true, false, false],
+    ["up", true, false, false, true],
+    [true, true, true],
+  ]);
+});

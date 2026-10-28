@@ -4,6 +4,7 @@ export interface KeyEvent {
   readonly ctrl: boolean;
   readonly alt: boolean;
   readonly shift: boolean;
+  readonly meta?: boolean;
   readonly defaultPrevented: boolean;
   readonly propagationStopped: boolean;
   preventDefault(): void;
@@ -17,6 +18,10 @@ export interface PointerEvent {
   readonly deltaY: number;
   readonly deltaX?: number;
   readonly deltaMode?: "cell" | "pixel";
+  readonly shift?: boolean;
+  readonly alt?: boolean;
+  readonly ctrl?: boolean;
+  readonly clicks?: 1 | 2 | 3;
 }
 export interface ElementRef {
   focus(): void;

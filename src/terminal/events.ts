@@ -6,7 +6,9 @@ export type TerminalEvent =
   | { type: "resize" };
 export function keyEvent(
   key: string,
-  options: Partial<Pick<KeyEvent, "text" | "ctrl" | "alt" | "shift">> = {},
+  options: Partial<
+    Pick<KeyEvent, "text" | "ctrl" | "alt" | "shift" | "meta">
+  > = {},
 ): KeyEvent {
   let prevented = false;
   let stopped = false;
@@ -15,6 +17,7 @@ export function keyEvent(
     ctrl: false,
     alt: false,
     shift: false,
+    meta: false,
     ...options,
     get defaultPrevented() {
       return prevented;
