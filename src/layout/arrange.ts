@@ -4,11 +4,21 @@ import type { Size } from "./geometry";
 import { wrap } from "../text/wrap";
 import { flow } from "./flow";
 import { bounded, dimension, inset } from "./geometry";
-import { beginMeasurement, content, measure } from "./measure";
+import { invalidateMeasurement, content, measure } from "./measure";
 import { arrangeScroll } from "./scroll";
 
-export function layout(root: Mounted, viewport: Size, fullscreen = true): void {
-  beginMeasurement();
+const placements = new WeakMap<Mounted, Rect>();
+let placed = 0;
+export function invalidateLayout(node: Mounted): void {
+  invalidateMeasurement(node);
+  placements.delete(node);
+}
+export function layout(
+  root: Mounted,
+  viewport: Size,
+  fullscreen = true,
+): number {
+  placed = 0;
   const natural = measure(root, viewport);
   place(root, {
     x: 0,
@@ -20,8 +30,20 @@ export function layout(root: Mounted, viewport: Size, fullscreen = true): void {
       ? viewport.height
       : Math.min(viewport.height, natural.height),
   });
+  return placed;
 }
 function place(node: Mounted, rect: Rect): void {
+  const previous = placements.get(node);
+  if (
+    previous &&
+    node.rect.x === rect.x &&
+    node.rect.y === rect.y &&
+    node.rect.width === rect.width &&
+    node.rect.height === rect.height
+  )
+    return;
+  placed++;
+  placements.set(node, rect);
   node.rect = rect;
   node.inner = inset(rect, node.style);
   const kind = node.element.data.kind;

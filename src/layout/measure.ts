@@ -11,9 +11,9 @@ export function content(node: Mounted): string {
   if (props) return props.value ?? node.value;
   return node.element.data.text ?? "";
 }
-let measurements = new WeakMap<Mounted, Map<string, Size>>();
-export function beginMeasurement(): void {
-  measurements = new WeakMap();
+const measurements = new WeakMap<Mounted, Map<string, Size>>();
+export function invalidateMeasurement(node: Mounted): void {
+  measurements.delete(node);
 }
 export function measure(node: Mounted, available: Size): Size {
   const key = `${available.width}:${available.height}`;
@@ -25,6 +25,8 @@ export function measure(node: Mounted, available: Size): Size {
   const existing = cache.get(key);
   if (existing) return existing;
   const size = measureSize(node, available);
+  // Resizing can produce unbounded constraint combinations during one mounted lifetime.
+  if (cache.size >= 8) cache.clear();
   cache.set(key, size);
   return size;
 }

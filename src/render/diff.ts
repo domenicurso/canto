@@ -8,9 +8,10 @@ export interface FrameOutput {
 }
 function equal(a: Cell | undefined, b: Cell | undefined): boolean {
   return (
-    a?.text === b?.text &&
-    a?.continuation === b?.continuation &&
-    ansi(a?.style ?? {}) === ansi(b?.style ?? {})
+    a === b ||
+    (a?.text === b?.text &&
+      a?.continuation === b?.continuation &&
+      ansi(a?.style ?? {}) === ansi(b?.style ?? {}))
   );
 }
 export function diff(previous: Screen | undefined, next: Screen): FrameOutput {

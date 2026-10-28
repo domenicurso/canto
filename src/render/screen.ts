@@ -14,12 +14,28 @@ export class Screen {
   constructor(
     readonly width: number,
     readonly height: number,
+    previous?: Screen,
   ) {
-    this.cells = Array.from({ length: width * height }, () => ({
-      text: " ",
-      style: {},
-      continuation: false,
-    }));
+    this.cells = previous
+      ? previous.cells.slice()
+      : Array.from({ length: width * height }, () => ({
+          text: " ",
+          style: {},
+          continuation: false,
+        }));
+  }
+  clone(): Screen {
+    const copy = new Screen(this.width, this.height, this);
+    return copy;
+  }
+  clear(rect: Rect): void {
+    for (let y = rect.y; y < rect.y + rect.height; y++)
+      for (let x = rect.x; x < rect.x + rect.width; x++)
+        this.cells[y * this.width + x] = {
+          text: " ",
+          style: {},
+          continuation: false,
+        };
   }
   get(x: number, y: number): Cell | undefined {
     return this.cells[y * this.width + x];

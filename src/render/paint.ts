@@ -21,7 +21,7 @@ export function paint(
   draw(root, screen, { x: 0, y: 0, ...size });
   return screen;
 }
-function draw(node: Mounted, screen: Screen, clip: Rect): void {
+export function draw(node: Mounted, screen: Screen, clip: Rect): void {
   const ownClip = intersect(clip, node.rect);
   if ((!ownClip.width || !ownClip.height) && node.style.overflow !== "visible")
     return;

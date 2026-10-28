@@ -7,7 +7,7 @@ import { LayoutInvalidation } from "../layout/invalidation";
 import { repositionScroll } from "../layout/scroll";
 import { resolveStyles } from "../layout/styles";
 import { diff } from "../render/diff";
-import { paint } from "../render/paint";
+import { RetainedPaint } from "../render/retained";
 import { Screen } from "../render/screen";
 import { editorView } from "./editor-view";
 
@@ -15,8 +15,11 @@ export interface FrameStats {
   cellsWritten: number;
   renderTime: number;
   layoutTime: number;
+  layoutNodes?: number;
+  paintedCells?: number;
 }
 export class Frames {
+  private readonly painter = new RetainedPaint();
   private previous: Screen | undefined;
   private readonly invalidation = new LayoutInvalidation();
   private size = "";
@@ -53,20 +56,26 @@ export class Frames {
     const size = `${this.terminal.width}:${this.terminal.height}`;
     const changed = this.invalidation.changed(root) || size !== this.size;
     const start = performance.now();
-    if (changed)
-      layout(
-        root,
-        { width: this.terminal.width, height: this.terminal.height },
-        this.mode === "fullscreen",
-      );
-    else repositionScroll(root);
+    this.stats.layoutNodes = changed
+      ? layout(
+          root,
+          { width: this.terminal.width, height: this.terminal.height },
+          this.mode === "fullscreen",
+        )
+      : 0;
+    repositionScroll(root);
     this.size = size;
     this.stats.layoutTime = changed ? performance.now() - start : 0;
     const height =
       this.mode === "inline"
         ? Math.min(this.terminal.height, Math.max(1, root.rect.height))
         : this.terminal.height;
-    return paint(root, { width: this.terminal.width, height });
+    const screen = this.painter.render(root, {
+      width: this.terminal.width,
+      height,
+    });
+    this.stats.paintedCells = this.painter.paintedCells;
+    return screen;
   }
 }
 function cursorOutput(focused: Mounted | undefined, screen: Screen): string {

@@ -16,7 +16,7 @@
     "check": "bun run format:check && bun run typecheck && bun run lint && bun test",
     "demo": "bun examples/dashboard.ts",
     "demo:inline": "bun examples/counter.ts",
-    "bench": "bun src/runtime/performance.bench.ts",
+    "bench": "bun src/runtime/performance.bench.ts && bun src/runtime/rendering.bench.ts",
     "demo:form": "bun examples/form.ts",
     "demo:layout": "bun examples/layout.ts",
     "demo:tasks": "bun examples/tasks.ts",
