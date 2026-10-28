@@ -2,6 +2,7 @@ import type { Mounted, Rect } from "../runtime/tree";
 import type { Style } from "../style/types";
 
 import { intersect } from "../layout/geometry";
+import { overlays } from "../runtime/overlays";
 import { drawContent, drawText } from "./content";
 import { drawEditor } from "./editor";
 import { joinedBorders } from "./joined-borders";
@@ -43,9 +44,12 @@ export function draw(node: Mounted, screen: Screen, clip: Rect): void {
         (a.child.style.zIndex ?? 0) - (b.child.style.zIndex ?? 0) ||
         a.index - b.index,
     );
-  for (const { child } of children) draw(child, screen, childClip);
+  for (const { child } of children)
+    if (!child.element.data.props.overlay) draw(child, screen, childClip);
   joinedBorders(node, screen, childClip);
   if (kind === "scroll") scrollbar(node, screen, ownClip);
+  if (!node.parent)
+    for (const layer of overlays(node)) draw(layer, screen, clip);
 }
 function background(node: Mounted, screen: Screen, clip: Rect): void {
   if (node.style.background == null) return;

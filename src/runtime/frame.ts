@@ -2,7 +2,7 @@ import type { Mode, Terminal } from "../terminal/transport";
 import type { Selection } from "./selection";
 import type { Mounted } from "./tree";
 
-import { layout } from "../layout/arrange";
+import { layout, positionOverlays } from "../layout/arrange";
 import { contains } from "../layout/geometry";
 import { LayoutInvalidation } from "../layout/invalidation";
 import { repositionScroll } from "../layout/scroll";
@@ -71,6 +71,7 @@ export class Frames {
         )
       : 0;
     repositionScroll(root);
+    positionOverlays(root);
     this.size = size;
     this.stats.layoutTime = changed ? performance.now() - start : 0;
     const height =

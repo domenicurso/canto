@@ -55,3 +55,5 @@ export type {
   SelectionMode,
   SelectionControl,
 } from "./src/runtime/selection-mode";
+
+export type { OverlayProps } from "./src/element/overlay";

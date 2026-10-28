@@ -1,4 +1,5 @@
 import type { ElementEvents } from "./events";
+import type { OverlayProps } from "./overlay";
 
 export type ValueProps =
   | { value: string; onChange: (value: string) => void; defaultValue?: never }
@@ -35,6 +36,7 @@ export type ScrollProps = ScrollAppearance &
     | ({ axis: "both" } & ScrollControl<ScrollPosition>)
   );
 export interface ElementProps extends ElementEvents {
+  overlay?: OverlayProps;
   input?: InputProps;
   button?: ButtonProps;
   scroll?: ScrollProps;

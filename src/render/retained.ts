@@ -60,6 +60,7 @@ export class RetainedPaint {
     const previous = this.snapshots.get(node);
     const escapes =
       node.style.overflow === "visible" ||
+      Boolean(node.element.data.props.overlay) ||
       node.children.some((child) => this.snapshots.get(child)?.escapes);
     const childrenChanged =
       !previous ||

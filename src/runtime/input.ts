@@ -8,6 +8,7 @@ import type { Mounted } from "./tree";
 import { ClipboardInput } from "./clipboard";
 import { edit } from "./editing";
 import { disabled, Focus, hit, keyboardRoot } from "./focus";
+import { OverlayInput } from "./overlay-input";
 import { PointerState } from "./pointer";
 import { ScrollDrag } from "./scroll-drag";
 import { ScrollInput } from "./scroll-input";
@@ -18,6 +19,7 @@ import { WheelInput } from "./wheel-input";
 export class InputRouter {
   readonly focus: Focus;
   private readonly pointer: PointerState;
+  private readonly overlays: OverlayInput;
   get selection() {
     return this.pointer.selection;
   }
@@ -37,6 +39,7 @@ export class InputRouter {
     },
   ) {
     this.focus = new Focus(schedule);
+    this.overlays = new OverlayInput(this.focus);
     this.pointer = new PointerState(this.focus);
     this.selectionModes = new SelectionModes(
       access.terminal,
@@ -54,7 +57,15 @@ export class InputRouter {
     this.scrolling = new ScrollInput(schedule, cellSize);
     this.wheels = new WheelInput(schedule);
   }
+  refresh(root: Mounted): void {
+    this.overlays.refresh(root);
+    this.focus.refresh(root);
+  }
   key(root: Mounted, event: KeyEvent): void {
+    if (this.overlays.key(event)) {
+      this.schedule();
+      return;
+    }
     let clipboardHandled = false;
     let node = this.focus.current ?? keyboardRoot(root);
     while (node) {
@@ -69,7 +80,7 @@ export class InputRouter {
       if (!event.defaultPrevented && this.defaultKey(node, event))
         event.preventDefault();
       if (event.propagationStopped) break;
-      if (!node.parent) break;
+      if (!node.parent || node === this.focus.scope) break;
       node = node.parent;
     }
     if (!clipboardHandled) this.selection.clear();
@@ -109,6 +120,11 @@ export class InputRouter {
   }
   mouse(root: Mounted, event: PointerEvent): void {
     if (this.selectionModes.control.mode === "native") return;
+    if (this.overlays.mouse(event)) {
+      this.resetPointer();
+      this.schedule();
+      return;
+    }
     if (event.action === "scroll") {
       this.selection.clear();
       this.wheels.push(this.scrolling.normalize(event));

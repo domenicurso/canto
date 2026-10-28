@@ -1,6 +1,7 @@
 import type { Mounted, Rect } from "./tree";
 
 import { contains, intersect } from "../layout/geometry";
+import { overlays, inside } from "./overlays";
 import { walk } from "./tree";
 
 export function disabled(node: Mounted): boolean {
@@ -19,8 +20,10 @@ export function focusable(node: Mounted): boolean {
 }
 export class Focus {
   current: Mounted | undefined;
+  scope: Mounted | undefined;
   constructor(private readonly schedule: () => void) {}
   set(node: Mounted | undefined): void {
+    if (node && this.scope && !inside(node, this.scope)) return;
     if (node === this.current || (node && !focusable(node))) return;
     const previous = this.current;
     this.current = node;
@@ -36,7 +39,7 @@ export class Focus {
     this.schedule();
   }
   refresh(root: Mounted): void {
-    const nodes = walk(root);
+    const nodes = walk(this.scope ?? root);
     if (this.current && (!this.current.active || !focusable(this.current)))
       this.set(undefined);
     if (!this.current)
@@ -47,7 +50,7 @@ export class Focus {
       );
   }
   next(root: Mounted, reverse: boolean): void {
-    const nodes = walk(root)
+    const nodes = walk(this.scope ?? root)
       .filter(
         (node) =>
           focusable(node) && (node.element.data.props.tabIndex ?? 0) >= 0,
@@ -70,6 +73,7 @@ export class Focus {
   private reveal(node: Mounted): void {
     let ancestor = node.parent;
     while (ancestor) {
+      if (ancestor.element.data.props.overlay) break;
       if (ancestor.element.data.kind === "scroll") {
         const delta =
           node.rect.y < ancestor.inner.y
@@ -124,6 +128,12 @@ export function hit(
   clip: Rect,
 ): Mounted | undefined {
   if (!contains(clip, point.x, point.y)) return undefined;
+  if (!node.parent) {
+    for (const layer of overlays(node).reverse()) {
+      const target = hit(layer, point, clip);
+      if (target) return target;
+    }
+  }
   const own = intersect(clip, node.rect);
   const childClip =
     node.style.overflow === "visible" && node.element.data.kind !== "scroll"
@@ -133,6 +143,7 @@ export function hit(
     .sort((a, b) => (a.style.zIndex ?? 0) - (b.style.zIndex ?? 0))
     .reverse();
   for (const child of children) {
+    if (child.element.data.props.overlay) continue;
     const target = hit(child, point, childClip);
     if (target) return target;
   }

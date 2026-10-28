@@ -161,7 +161,7 @@ export class App {
       app: this,
       schedule: () => this.schedule(),
     });
-    this.router.focus.refresh(this.root);
+    this.router.refresh(this.root);
     await this.frames.commit(
       this.root,
       this.router.focus.current,

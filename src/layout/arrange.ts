@@ -5,6 +5,7 @@ import { wrap } from "../text/wrap";
 import { flow } from "./flow";
 import { bounded, dimension, inset } from "./geometry";
 import { invalidateMeasurement, content, measure } from "./measure";
+import { placeOverlays } from "./overlay";
 import { arrangeScroll } from "./scroll";
 
 const placements = new WeakMap<Mounted, Rect>();
@@ -30,7 +31,11 @@ export function layout(
       ? viewport.height
       : Math.min(viewport.height, natural.height),
   });
+  placeOverlays(root, place);
   return placed;
+}
+export function positionOverlays(root: Mounted): void {
+  placeOverlays(root, place);
 }
 function place(node: Mounted, rect: Rect): void {
   const previous = placements.get(node);
