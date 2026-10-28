@@ -8,6 +8,7 @@ This is a breaking, from-scratch v2 alpha. The v1 renderer, signal runtime, widg
 
 ```sh
 bun install
+bun run demo:studio   # Release-planning POC
 bun run demo          # Full-screen project dashboard
 bun run demo:inline   # Inline counter
 bun run check        # Formatting, type checking, lint, and tests
@@ -18,6 +19,7 @@ bun run bench        # Headless 10,000-item virtual list benchmark
 
 | Command                     | What it demonstrates                                                          |
 | --------------------------- | ----------------------------------------------------------------------------- |
+| `bun run demo:studio`       | Responsive release workspace with search, editable briefs, and issue creation |
 | `bun run demo:interactions` | Text/editor selection, clipboard actions, and draggable scrollbars            |
 | `bun run demo:form`         | Controlled inputs, multiline notes, validation, and disabled actions          |
 | `bun run demo:layout`       | Fixed and weighted panes, wrapping, scrolling, and an absolute badge          |
@@ -26,6 +28,8 @@ bun run bench        # Headless 10,000-item virtual list benchmark
 | `bun run demo:virtual-list` | Filtering 10,000 projects, virtualized rows, and selection                    |
 | `bun run demo:canvas`       | Animated custom drawing, resize-aware geometry, and pause/reset controls      |
 | `bun run demo:styles`       | Immutable shared styles, mixed text spans, and interaction variants           |
+
+Studio is a complete session-based workflow: filter or search issues, open a brief, edit its title and notes, change priority, and complete or reopen it. Ctrl+F focuses search, Ctrl+N creates an issue, Escape returns to the queue on narrow screens, and F2 toggles native terminal selection. Tab moves between controls; arrow keys navigate the focused queue. Edits are temporary and reset when you quit.
 
 Examples use local or simulated data; the form does not write contacts to disk. Their exported views can also be mounted with `MemoryTerminal` for testing.
 
