@@ -1,4 +1,6 @@
+import type { PixelBuffer } from "../element/pixels";
 import type { Mounted, Rect } from "../runtime/tree";
+import type { CellSize } from "../terminal/cell-size";
 
 import { intersect } from "../layout/geometry";
 import { content } from "../layout/measure";
@@ -10,23 +12,29 @@ interface Snapshot {
   rect: Rect;
   children: readonly Mounted[];
   escapes: boolean;
+  pixels?: PixelBuffer;
 }
 /** Retain cells, then recompose damaged rows through the full stacking and clipping tree. */
 export class RetainedPaint {
   private readonly snapshots = new WeakMap<Mounted, Snapshot>();
   private previous?: Screen;
   paintedCells = 0;
-  render(root: Mounted, size: { width: number; height: number }): Screen {
+  render(
+    root: Mounted,
+    size: { width: number; height: number; cellSize?: CellSize },
+  ): Screen {
     const bounds = { x: 0, y: 0, ...size };
     const full =
       !this.previous ||
       this.previous.width !== size.width ||
-      this.previous.height !== size.height;
+      this.previous.height !== size.height ||
+      this.previous.cellSize.width !== (size.cellSize?.width ?? 8) ||
+      this.previous.cellSize.height !== (size.cellSize?.height ?? 16);
     const rows = new Set<number>();
     this.collect(root, rows, bounds);
     if (full) for (let y = 0; y < size.height; y++) rows.add(y);
     const screen = full
-      ? new Screen(size.width, size.height)
+      ? new Screen(size.width, size.height, undefined, size.cellSize)
       : this.previous?.clone();
     if (!screen)
       throw new Error("Retained painting requires a previous frame.");
@@ -71,12 +79,17 @@ export class RetainedPaint {
       (previous?.signature !== signature && (previous?.escapes || escapes))
     )
       damage(rows, bounds, bounds);
-    else if (previous.signature !== signature || data.draw) {
+    else if (
+      previous.signature !== signature ||
+      previous.pixels !== data.pixels ||
+      data.draw
+    ) {
       damage(rows, previous.rect, bounds);
       damage(rows, node.rect, bounds);
     }
     this.snapshots.set(node, {
       signature,
+      pixels: data.pixels,
       escapes,
       rect: { ...node.rect },
       children: node.children.slice(),

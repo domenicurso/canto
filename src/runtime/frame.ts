@@ -8,6 +8,7 @@ import { LayoutInvalidation } from "../layout/invalidation";
 import { repositionScroll } from "../layout/scroll";
 import { resolveStyles } from "../layout/styles";
 import { diff } from "../render/diff";
+import { maskRasterCells, rasterPlacements } from "../render/raster-placement";
 import { RetainedPaint } from "../render/retained";
 import { Screen } from "../render/screen";
 import { editorView } from "./editor-view";
@@ -39,8 +40,10 @@ export class Frames {
   ): Promise<void> {
     const start = performance.now();
     const base = this.prepare(root);
-    const screen = selection ? base.clone() : base;
+    const screen = base.clone();
     selection?.present(screen, root);
+    screen.rasters = rasterPlacements(root, screen, this.terminal.graphics);
+    maskRasterCells(screen);
     const previous =
       this.previous?.width === screen.width &&
       this.previous.height === screen.height
@@ -81,6 +84,7 @@ export class Frames {
     const screen = this.painter.render(root, {
       width: this.terminal.width,
       height,
+      cellSize: this.terminal.cellSize,
     });
     this.stats.paintedCells = this.painter.paintedCells;
     return screen;

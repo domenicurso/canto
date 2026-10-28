@@ -57,3 +57,7 @@ export type {
 } from "./src/runtime/selection-mode";
 
 export type { OverlayProps } from "./src/element/overlay";
+
+export type { PixelBuffer, CanvasOptions } from "./src/element/pixels";
+
+export type { GraphicsCapabilities } from "./src/terminal/graphics-capabilities";

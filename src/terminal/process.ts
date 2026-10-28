@@ -3,13 +3,18 @@ import type { CellSize } from "./cell-size";
 import type { TerminalEvent } from "./events";
 import type { Mode, Terminal } from "./transport";
 
+import { diff } from "../render/diff";
 import { CellMetrics } from "./cell-size";
 import { clipboardOutput } from "./clipboard";
 import { Decoder } from "./decoder";
+import { graphicsQuery } from "./graphics-capabilities";
+import { GraphicsOutput } from "./graphics-output";
 import { InlineRegion } from "./inline-region";
 
 let owner: ProcessTerminal | undefined;
 export class ProcessTerminal implements Terminal {
+  readonly graphics = { kitty: false, sixel: false };
+  private readonly images = new GraphicsOutput();
   readonly clipboard = {
     writeText: async (text: string): Promise<void> => {
       if (!this.started || !process.stdout.isTTY)
@@ -75,6 +80,13 @@ export class ProcessTerminal implements Terminal {
       },
       (report) => {
         this.metrics.report(report);
+        emit({ type: "resize" });
+      },
+      (reply) => {
+        if (!this.graphics[reply]) {
+          this.graphics[reply] = true;
+          emit({ type: "resize" });
+        }
       },
     );
     this.raw = process.stdin.isRaw ?? false;
@@ -89,7 +101,8 @@ export class ProcessTerminal implements Terminal {
     if (process.stdout.isTTY)
       await this.write(
         (mode === "fullscreen" ? "\x1b[?1049h\x1b[2J\x1b[H" : "\r\x1b7") +
-          "\x1b[?25l\x1b[?2004h\x1b[?1003h\x1b[?1006h",
+          "\x1b[?25l\x1b[?2004h\x1b[?1003h\x1b[?1006h" +
+          graphicsQuery,
       );
   }
   async setMouseTracking(enabled: boolean): Promise<void> {
@@ -105,14 +118,28 @@ export class ProcessTerminal implements Terminal {
       await this.write(screen.toString() + "\n");
       return;
     }
+    const rows = Array.from(
+      output.matchAll(/\x1b\[(\d+);\d+H/g),
+      (match) => Number(match[1]) - 1,
+    );
+    const native = this.images.update(screen.rasters, rows);
+    const cursor =
+      output.match(/(?:\x1b\[\d+;\d+H)?\x1b\[\?25[hl]$/)?.[0] ?? "";
+    output =
+      (native.repaint ? diff(undefined, screen).output : output) +
+      native.output +
+      cursor;
     const query = this.queryMetrics ? "\x1b[16t\x1b[14t" : "";
     this.queryMetrics = false;
     if (this.mode === "fullscreen") {
-      await this.write(query + output);
+      await this.write(query + "\x1b[?2026h" + output + "\x1b[?2026l");
       return;
     }
     await this.write(
-      query + this.inline.present(screen.height, output, this.height),
+      query +
+        "\x1b[?2026h" +
+        this.inline.present(screen.height, output, this.height) +
+        "\x1b[?2026l",
     );
   }
   async stop(): Promise<void> {
@@ -126,7 +153,8 @@ export class ProcessTerminal implements Terminal {
     if (owner === this) owner = undefined;
     if (process.stdout.isTTY)
       await this.write(
-        "\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1006l\x1b[?25h" +
+        this.images.stop() +
+          "\x1b[?2026l\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1006l\x1b[?25h" +
           (this.mode === "fullscreen" ? "\x1b[?1049l" : this.inline.stop()),
       );
   }

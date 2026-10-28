@@ -1,9 +1,11 @@
 import type { DrawingContext } from "./drawing";
 import type { Child } from "./node";
 import type { OverlayProps } from "./overlay";
+import type { PixelBuffer, CanvasOptions } from "./pixels";
 import type { ButtonProps, InputProps, ScrollProps } from "./props";
 
 import { Element, flatten } from "./node";
+import { validatePixels } from "./pixels";
 
 export function text(...content: Child[]): Element {
   const elements = flatten(content);
@@ -25,8 +27,24 @@ export function text(...content: Child[]): Element {
     props: {},
   });
 }
-export function canvas(draw: (context: DrawingContext) => void): Element {
-  return new Element({ kind: "canvas", draw, children: [], props: {} });
+export function canvas(
+  source: PixelBuffer | ((context: DrawingContext) => void),
+  options: CanvasOptions = {},
+): Element {
+  if (typeof source === "function")
+    return new Element({
+      kind: "canvas",
+      draw: source,
+      children: [],
+      props: { canvas: options },
+    });
+  validatePixels(source);
+  return new Element({
+    kind: "canvas",
+    pixels: source,
+    children: [],
+    props: { canvas: options },
+  });
 }
 export function row(...children: Child[]): Element {
   return new Element({ kind: "row", children, props: {} });

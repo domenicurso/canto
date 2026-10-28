@@ -1,25 +1,7 @@
 import type { Color, Style } from "../style/types";
 
-const named: Record<string, number> = {
-  black: 0,
-  red: 1,
-  green: 2,
-  yellow: 3,
-  blue: 4,
-  magenta: 5,
-  cyan: 6,
-  white: 7,
-  gray: 8,
-  grey: 8,
-  brightBlack: 8,
-  brightRed: 9,
-  brightGreen: 10,
-  brightYellow: 11,
-  brightBlue: 12,
-  brightMagenta: 13,
-  brightCyan: 14,
-  brightWhite: 15,
-};
+import { namedColors as named } from "../style/colors";
+
 function color(value: Color, background: boolean): string {
   const prefix = background ? 48 : 38;
   if (typeof value !== "string")

@@ -1,5 +1,9 @@
+import type { PixelBuffer } from "../element/pixels";
 import type { Rect } from "../runtime/tree";
+import type { RGB } from "../style/colors";
 import type { Style } from "../style/types";
+import type { CellSize } from "../terminal/cell-size";
+import type { RasterPlacement } from "./raster-placement";
 
 import { contains } from "../layout/geometry";
 import { columns, graphemes } from "../text/columns";
@@ -11,11 +15,20 @@ export interface Cell {
 }
 export class Screen {
   readonly cells: Cell[];
+  readonly pixelSources: WeakMap<object, PixelBuffer>;
+  rasters: RasterPlacement[] = [];
+  readonly pixelBackgrounds: WeakMap<object, ReadonlyMap<number, RGB>>;
   constructor(
     readonly width: number,
     readonly height: number,
     previous?: Screen,
+    readonly cellSize: CellSize = previous?.cellSize ?? {
+      width: 8,
+      height: 16,
+    },
   ) {
+    this.pixelSources = previous?.pixelSources ?? new WeakMap();
+    this.pixelBackgrounds = previous?.pixelBackgrounds ?? new WeakMap();
     this.cells = previous
       ? previous.cells.slice()
       : Array.from({ length: width * height }, () => ({

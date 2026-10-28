@@ -1,24 +1,38 @@
 import type { Mounted, Rect } from "../runtime/tree";
 import type { Screen } from "./screen";
 
+import { validatePixels } from "../element/pixels";
 import { intersect } from "../layout/geometry";
 import { width as displayWidth, sanitize } from "../text/columns";
+import { drawPixels } from "./quadrants";
 
 export function drawContent(node: Mounted, screen: Screen, clip: Rect): void {
+  screen.pixelSources.delete(node);
+  drawPixels(node, screen, clip);
   const draw = node.element.data.draw;
   const area = node.inner;
+  let cells = false;
   if (draw)
     draw({
+      pixelWidth: Math.round(area.width * screen.cellSize.width),
+      pixelHeight: Math.round(area.height * screen.cellSize.height),
+      pixels: (buffer) => {
+        validatePixels(buffer);
+        drawPixels(node, screen, clip, buffer);
+      },
       width: area.width,
       height: area.height,
-      write: (x, y, text, style = {}) =>
+      write: (x, y, text, style = {}) => {
+        cells = true;
         screen.put(
           { x: area.x + x, y: area.y + y, width: area.width, height: 1 },
           sanitize(text),
           { ...node.style, ...style },
           clip,
-        ),
+        );
+      },
       fill: (rect, style = {}) => {
+        cells = true;
         const bounds = intersect(clip, {
           ...rect,
           x: area.x + rect.x,
@@ -33,6 +47,7 @@ export function drawContent(node: Mounted, screen: Screen, clip: Rect): void {
           );
       },
     });
+  if (cells) screen.pixelSources.delete(node);
 }
 export function drawText(node: Mounted, screen: Screen, clip: Rect): void {
   const runs = node.element.data.runs;

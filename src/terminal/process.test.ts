@@ -69,6 +69,8 @@ test.skipIf(!available).each([
         emulator.resize(phase.width, phase.height);
         const bytes = Buffer.from(phase.output, "base64").toString("utf8");
         await write(emulator, bytes);
+        if (index < 8) expect(bytes).toContain("\x1b[?2026h");
+        expect(bytes).toContain("\x1b[?2026l");
         if (index === 0) expect(visible(emulator)).toContain("offset=0,0");
         if (index === 1) expect(visible(emulator)).toContain("offset=3,3");
         if (index === 2) expect(visible(emulator)).toContain("offset=3,35");

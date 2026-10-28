@@ -6,6 +6,7 @@ import type {
   KeyEvent,
   PointerEvent,
 } from "./events";
+import type { PixelBuffer } from "./pixels";
 import type { ElementProps } from "./props";
 
 import { StyleBuilder } from "../style/builder";
@@ -42,6 +43,7 @@ export interface ElementData {
   text?: string;
   runs?: readonly { text: string; style: Readonly<Style> }[];
   draw?: (context: DrawingContext) => void;
+  pixels?: PixelBuffer;
   key?: string | number;
   call?: ComponentCall;
 }

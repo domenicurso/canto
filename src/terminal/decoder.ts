@@ -2,9 +2,11 @@ import { StringDecoder } from "node:string_decoder";
 
 import type { PixelReport } from "./cell-size";
 import type { TerminalEvent } from "./events";
+import type { GraphicsReply } from "./graphics-capabilities";
 
 import { parsePixelReport } from "./cell-size";
 import { keyEvent } from "./events";
+import { graphicsResponse } from "./graphics-capabilities";
 
 const keys: Record<string, string> = {
   A: "up",
@@ -46,6 +48,7 @@ export class Decoder {
     private readonly emit: (event: TerminalEvent) => void,
     private readonly cursor?: (row: number) => void,
     private readonly pixels?: (report: PixelReport) => void,
+    private readonly graphics?: (reply: GraphicsReply) => void,
   ) {}
   push(bytes: Uint8Array): void {
     this.buffer += this.utf8.write(Buffer.from(bytes));
@@ -77,6 +80,11 @@ export class Decoder {
     }
   }
   private escape(): number {
+    const graphics = graphicsResponse(this.buffer);
+    if (graphics) {
+      if (graphics.reply) this.graphics?.(graphics.reply);
+      return graphics.length;
+    }
     const mouse = /^\x1b\[<(\d+);(\d+);(\d+)([Mm])/.exec(this.buffer);
     if (mouse) {
       this.mouse(mouse);
@@ -95,23 +103,7 @@ export class Decoder {
         this.cursor?.(Number(report[1]) - 1);
         return sequence[0].length;
       }
-      const modifier = Number(token.split(";")[1]?.replace(/\D/g, "") ?? 1) - 1;
-      const code = token.includes(";")
-        ? token.endsWith("~")
-          ? token.split(";")[0] + "~"
-          : (token.at(-1) ?? "")
-        : token;
-      const key = keys[code];
-      if (key)
-        this.emit({
-          type: "key",
-          event: keyEvent(key, {
-            shift: token === "Z" || Boolean(modifier & 1),
-            alt: Boolean(modifier & 2),
-            ctrl: Boolean(modifier & 4),
-            meta: Boolean(modifier & 8),
-          }),
-        });
+      this.keySequence(token);
       return sequence[0].length;
     }
     if (this.buffer.length === 1 || /^\x1b(?:\[[<\d;]*|O)$/.test(this.buffer))
@@ -123,6 +115,25 @@ export class Decoder {
       event: keyEvent(char.toLowerCase(), { alt: true, text: char }),
     });
     return 1 + char.length;
+  }
+  private keySequence(token: string): void {
+    const modifier = Number(token.split(";")[1]?.replace(/\D/g, "") ?? 1) - 1;
+    const code = token.includes(";")
+      ? token.endsWith("~")
+        ? token.split(";")[0] + "~"
+        : (token.at(-1) ?? "")
+      : token;
+    const key = keys[code];
+    if (key)
+      this.emit({
+        type: "key",
+        event: keyEvent(key, {
+          shift: token === "Z" || Boolean(modifier & 1),
+          alt: Boolean(modifier & 2),
+          ctrl: Boolean(modifier & 4),
+          meta: Boolean(modifier & 8),
+        }),
+      });
   }
   private character(): number {
     const char = Array.from(this.buffer)[0] ?? "";
