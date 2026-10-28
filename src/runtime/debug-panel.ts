@@ -6,6 +6,7 @@ import type { Rect } from "./tree";
 import { contains } from "../layout/geometry";
 import { paintDebugPanel } from "./debug-paint";
 import { DebugSampling } from "./debug-sampling";
+import { DebugTooltip } from "./debug-tooltip";
 
 export interface DebugControl {
   readonly visible: boolean;
@@ -14,6 +15,7 @@ export interface DebugControl {
 }
 /** Diagnostics consume the current content snapshot without entering the app's tree. */
 export class DebugPanel implements DebugControl {
+  private readonly tooltip = new DebugTooltip();
   private sampling = new DebugSampling();
   private shown = false;
   private presented?: Rect;
@@ -31,6 +33,7 @@ export class DebugPanel implements DebugControl {
   setVisible(visible: boolean): void {
     if (this.shown === visible) return;
     this.shown = visible;
+    this.tooltip.clear();
     if (visible) this.sampling = new DebugSampling();
     this.changed();
   }
@@ -46,6 +49,7 @@ export class DebugPanel implements DebugControl {
     return true;
   }
   mouse(event: PointerEvent): boolean {
+    if (this.shown && this.tooltip.move(event)) this.changed();
     const rect = this.presented;
     const captured =
       this.pressed && (event.action === "move" || event.action === "release");
@@ -81,6 +85,7 @@ export class DebugPanel implements DebugControl {
       content,
       this.sampling.read(stats, previous, performance.now()),
       rect,
+      this.tooltip,
     );
   }
   private bounds(screen: Screen): Rect {

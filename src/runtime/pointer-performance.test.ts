@@ -24,11 +24,11 @@ test("mouse motion within an element and the inspector does not manufacture rend
     expect(terminal.frames).toHaveLength(count);
     app.debug.toggle();
     await app.flush();
-    move(terminal, 60, 15);
+    move(terminal, 60, 22);
     await Bun.sleep(0);
     const inspected = terminal.frames.length;
     for (let burst = 0; burst < 5; burst++) {
-      for (let x = 40; x < 70; x++) move(terminal, x, 15);
+      for (let x = 40; x < 70; x++) move(terminal, x, 22);
       await Bun.sleep(0);
     }
     expect(terminal.frames).toHaveLength(inspected);

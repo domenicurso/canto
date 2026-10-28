@@ -1,18 +1,25 @@
 import type { Screen } from "../render/screen";
 import type { Style } from "../style/types";
+import type { Reading } from "./debug-readings";
 import type { DebugReadings } from "./debug-sampling";
+import type { DebugTooltip } from "./debug-tooltip";
 import type { Rect } from "./tree";
 
 import { border } from "../render/border";
 import { composite } from "../render/opacity";
 import { take, width } from "../text/columns";
+import { debugReadings } from "./debug-readings";
 
 const surface: Style = { foreground: "#cbd5e1", background: "#0f172a" };
-type Reading = readonly [string, string];
+interface DiagnosticPaint {
+  layer: Screen;
+  tooltip: DebugTooltip;
+}
 export function paintDebugPanel(
   content: Screen,
   stats: DebugReadings,
   rect: Rect,
+  tooltip: DebugTooltip,
 ): Screen {
   const layer = content.clone();
   for (let y = rect.y; y < rect.y + rect.height; y++)
@@ -28,9 +35,13 @@ export function paintDebugPanel(
     width: Math.max(0, rect.width - 4),
     height: Math.max(0, rect.height - 2),
   };
-  paintReadings(layer, stats, inner);
+  tooltip.begin();
+  const readings = debugReadings(stats, layer);
+  const paint = { layer, tooltip };
+  readings.header.forEach((value, row) => reading(paint, value, inner, row));
+  paintColumns(paint, readings, inner);
   if (rect.width >= 12) {
-    layer.put({ ...rect, x: rect.x + 2, height: 1 }, " Debug ", surface, rect);
+    layer.put({ ...rect, x: rect.x + 1, height: 1 }, " Debug ", surface, rect);
     layer.put(
       { ...rect, x: rect.x + rect.width - 4, height: 1 },
       " x ",
@@ -40,53 +51,11 @@ export function paintDebugPanel(
   }
   const shown = content.clone();
   composite(shown, layer, rect, 0.88);
+  tooltip.paint(shown);
   return shown;
 }
-function paintReadings(layer: Screen, stats: DebugReadings, inner: Rect): void {
-  const { content, completed } = stats;
-  const ms = (value: number): string => `${value.toFixed(1)} ms`;
-  const metric = (value?: number): string =>
-    value === undefined ? "—" : ms(value);
-  reading(
-    layer,
-    [`${Math.round(stats.fps)} FPS`, `${layer.width} × ${layer.height}`],
-    inner,
-    0,
-  );
-  reading(
-    layer,
-    [`Content #${content.frame}`, `Output #${completed.frame}`],
-    inner,
-    1,
-  );
-  const left: Reading[] = [
-    ["CPU", ms(content.contentTime)],
-    [" View", ms(content.updateTime)],
-    [" Style/layout", ms(content.prepareTime)],
-    [" Paint", ms(content.paintTime)],
-    [" Diff", ms(content.diffTime)],
-    ["", ""],
-    ["Nodes", content.layoutNodes.toString()],
-    ["Painted", content.paintedCells.toString()],
-    ["Changed", content.contentCellsWritten.toString()],
-  ];
-  const right: Reading[] = [
-    ["Frame", ms(completed.renderTime)],
-    [" Inspector", ms(completed.debugTime)],
-    [" Encode", metric(completed.encodeTime)],
-    [" Write", metric(completed.writeTime ?? completed.presentTime)],
-    ["Interval", ms(completed.intervalTime)],
-    [
-      "Output",
-      completed.outputBytes === undefined
-        ? "—"
-        : `${(completed.outputBytes / 1024).toFixed(1)} KiB`,
-    ],
-  ];
-  paintColumns(layer, { left, right }, inner);
-}
 function paintColumns(
-  layer: Screen,
+  paint: DiagnosticPaint,
   values: { left: Reading[]; right: Reading[] },
   inner: Rect,
 ): void {
@@ -106,11 +75,17 @@ function paintColumns(
         y: start.y + left.length,
         height: Math.max(0, start.height - left.length),
       };
-  left.forEach((value, row) => reading(layer, value, start, row));
-  right.forEach((value, row) => reading(layer, value, second, row));
+  left.forEach((value, row) => reading(paint, value, start, row));
+  right.forEach((value, row) => reading(paint, value, second, row));
 }
-function reading(layer: Screen, pair: Reading, rect: Rect, row: number): void {
+function reading(
+  paint: DiagnosticPaint,
+  pair: Reading,
+  rect: Rect,
+  row: number,
+): void {
   if (row >= rect.height) return;
+  const { layer, tooltip } = paint;
   const value = take(pair[1], rect.width);
   const label = take(pair[0], Math.max(0, rect.width - width(value) - 1));
   layer.put(
@@ -125,4 +100,15 @@ function reading(layer: Screen, pair: Reading, rect: Rect, row: number): void {
     { ...surface, foreground: "#67e8f9" },
     rect,
   );
+  const name = label.trimStart();
+  if (pair[2] && name)
+    tooltip.label(
+      {
+        x: rect.x + width(label) - width(name),
+        y: rect.y + row,
+        width: width(name),
+        height: 1,
+      },
+      pair[2],
+    );
 }

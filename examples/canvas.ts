@@ -63,7 +63,6 @@ export function Canvas() {
     ).dim(),
   )
     .gap(1)
-    .padding(1)
     .fill();
 }
 

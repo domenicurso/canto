@@ -41,7 +41,7 @@ test("canvas example submits a native raster at its physical inner size", async 
     await Bun.sleep(0);
     const image = terminal.screen?.rasters[0];
     expect(image).toBeDefined();
-    // The outer layout has one padding cell; the border occupies the next cell.
+    // The unpadded layout leaves only the canvas border outside its pixel area.
     expect(terminal.screen?.get(1, 3)?.style.background).toEqual(
       waveformBackground,
     );
@@ -51,9 +51,9 @@ test("canvas example submits a native raster at its physical inner size", async 
     expect(terminal.screen?.get(1, 4)?.style.background).toEqual(
       waveformBackground,
     );
-    expect(image?.rect.x).toBe(2);
-    expect(image?.rect.y).toBe(4);
-    expect(image?.rect.width).toBe(terminal.width - 4);
+    expect(image?.rect.x).toBe(1);
+    expect(image?.rect.y).toBe(3);
+    expect(image?.rect.width).toBe(terminal.width - 2);
     expect(image?.buffer.width).toBe((image?.rect.width ?? 0) * 9);
     expect(image?.buffer.height).toBe((image?.rect.height ?? 0) * 21);
     terminal.resize(70, 24);
