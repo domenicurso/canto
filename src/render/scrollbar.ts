@@ -2,6 +2,8 @@ import type { Mounted, Rect } from "../runtime/tree";
 import type { Style } from "../style/types";
 import type { Screen } from "./screen";
 
+import { barGeometry } from "../layout/scrollbar";
+
 const leftBlocks = " ▏▎▍▌▋▊▉█";
 const lowerBlocks = " ▁▂▃▄▅▆▇█";
 
@@ -29,15 +31,10 @@ function drawBar({
   clip: Rect;
   horizontal: boolean;
 }): void {
-  const length = horizontal ? node.inner.width : node.inner.height;
-  const maximum = horizontal ? node.maxOffsetX : node.maxOffset;
-  const offset = horizontal ? node.offsetX : node.offset;
-  const units = length * 8;
-  const thumb = Math.min(
-    units,
-    Math.max(8, Math.round((units * length) / Math.max(1, length + maximum))),
-  );
-  const start = maximum ? Math.round((offset / maximum) * (units - thumb)) : 0;
+  const bar = barGeometry(node, horizontal);
+  const { length } = bar;
+  const thumb = bar.thumb * 8;
+  const start = bar.start * 8;
   for (let index = 0; index < length; index++) {
     const from = Math.max(0, start - index * 8);
     const to = Math.min(8, start + thumb - index * 8);

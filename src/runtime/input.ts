@@ -1,37 +1,78 @@
 import type { KeyEvent, PointerEvent } from "../element/events";
 import type { CellSize } from "../terminal/cell-size";
+import type { Clipboard } from "../terminal/clipboard";
+import type { Terminal } from "../terminal/transport";
+import type { SelectionMode } from "./selection-mode";
 import type { Mounted } from "./tree";
 
-import { take } from "../text/columns";
+import { ClipboardInput } from "./clipboard";
 import { edit } from "./editing";
-import { editorView } from "./editor-view";
-import { disabled, Focus, hit } from "./focus";
+import { disabled, Focus, hit, keyboardRoot } from "./focus";
+import { PointerState } from "./pointer";
+import { ScrollDrag } from "./scroll-drag";
 import { ScrollInput } from "./scroll-input";
+import { SelectionModes } from "./selection-mode";
+import { walk } from "./tree";
 import { WheelInput } from "./wheel-input";
 
 export class InputRouter {
   readonly focus: Focus;
+  private readonly pointer: PointerState;
+  get selection() {
+    return this.pointer.selection;
+  }
+  readonly selectionModes: SelectionModes;
+  private readonly drag = new ScrollDrag();
+  private readonly clipboard: ClipboardInput;
   private readonly scrolling: ScrollInput;
   private readonly wheels: WheelInput;
-  private pressed: Mounted | undefined;
   constructor(
     private readonly schedule: () => void,
     cellSize: () => CellSize | undefined,
+    access: {
+      clipboard: () => Clipboard;
+      fail: (error: unknown) => void;
+      terminal: () => Terminal;
+      selection: () => SelectionMode;
+    },
   ) {
+    this.focus = new Focus(schedule);
+    this.pointer = new PointerState(this.focus);
+    this.selectionModes = new SelectionModes(
+      access.terminal,
+      access.selection,
+      () => {
+        this.resetPointer();
+        schedule();
+      },
+    );
+    this.clipboard = new ClipboardInput({
+      ...access,
+      selection: this.selection,
+      schedule,
+    });
     this.scrolling = new ScrollInput(schedule, cellSize);
     this.wheels = new WheelInput(schedule);
-    this.focus = new Focus(schedule);
   }
   key(root: Mounted, event: KeyEvent): void {
-    let node = this.focus.current ?? root;
+    let clipboardHandled = false;
+    let node = this.focus.current ?? keyboardRoot(root);
     while (node) {
       node.element.data.props.onKey?.(event);
+      if (
+        !event.defaultPrevented &&
+        this.clipboard.key(this.focus.current, event)
+      ) {
+        clipboardHandled = true;
+        event.preventDefault();
+      }
       if (!event.defaultPrevented && this.defaultKey(node, event))
         event.preventDefault();
       if (event.propagationStopped) break;
       if (!node.parent) break;
       node = node.parent;
     }
+    if (!clipboardHandled) this.selection.clear();
     if (!event.defaultPrevented && event.key === "tab")
       this.focus.next(root, event.shift);
     this.schedule();
@@ -53,16 +94,49 @@ export class InputRouter {
       this.scrolling.wheel(node, event);
   }
   dispose(): void {
+    this.selectionModes.stop();
+    this.clipboard.dispose();
+    this.drag.clear();
+    this.pointer.clear();
     this.wheels.dispose();
     this.scrolling.dispose();
   }
+  resetPointer(): void {
+    this.pointer.clear();
+    this.drag.clear();
+    this.wheels.dispose();
+    this.scrolling.interrupt();
+  }
   mouse(root: Mounted, event: PointerEvent): void {
+    if (this.selectionModes.control.mode === "native") return;
     if (event.action === "scroll") {
+      this.selection.clear();
       this.wheels.push(this.scrolling.normalize(event));
       return;
     }
+    if (
+      event.action !== "press" &&
+      (this.drag.move(event) || this.selection.move(event))
+    ) {
+      this.schedule();
+      if (event.action === "release") this.pointer.release(undefined);
+      return;
+    }
+    if (event.action === "press") {
+      this.wheels.dispose();
+      this.scrolling.interrupt();
+    }
     const target = hit(root, event, root.rect);
-    this.hover(root, target);
+    const captured =
+      event.action === "press" ? this.drag.press(target, event) : undefined;
+    if (captured) {
+      this.focus.set(captured);
+      this.selection.clear();
+      this.schedule();
+      return;
+    }
+    if (event.action === "press") this.pointer.select(target, event);
+    this.pointer.hover(target);
     let node = target;
     while (node) {
       node.element.data.props.onMouse?.(event);
@@ -70,45 +144,17 @@ export class InputRouter {
         event.action === "press" &&
         (node.element.data.props.button || node.element.data.props.input)
       ) {
-        this.press(node, event);
+        this.pointer.press(node, event);
         break;
       }
       node = node.parent ?? undefined;
     }
-    if (event.action === "release") this.release(target);
+    if (event.action === "release") this.pointer.release(target);
     this.schedule();
   }
-  private press(node: Mounted, event: PointerEvent): void {
-    if (disabled(node)) return;
-    this.focus.set(node);
-    if (node.element.data.props.input) {
-      const line = editorView(node).lines[Math.max(0, event.y - node.inner.y)];
-      if (line)
-        node.cursor =
-          line.start +
-          take(line.text, Math.max(0, event.x - node.inner.x)).length;
-      node.anchor = null;
-    }
-    node.pressed = true;
-    this.pressed = node;
-  }
-  private release(target: Mounted | undefined): void {
-    const pressed = this.pressed;
-    if (!pressed) return;
-    pressed.pressed = false;
-    this.pressed = undefined;
-    let node = target;
-    while (node && node !== pressed) node = node.parent ?? undefined;
-    if (node === pressed && !disabled(pressed))
-      pressed.element.data.props.button?.onPress();
-  }
-  private hover(node: Mounted, target: Mounted | undefined): void {
-    let ancestor = target;
-    node.hovered = false;
-    while (ancestor) {
-      if (ancestor === node) node.hovered = true;
-      ancestor = ancestor.parent ?? undefined;
-    }
-    for (const child of node.children) this.hover(child, target);
+  resize(root: Mounted): void {
+    this.selection.clear();
+    for (const node of walk(root))
+      if (node.element.data.kind === "component") node.dirty = true;
   }
 }

@@ -2,7 +2,14 @@ import { expect, test } from "bun:test";
 
 import type { ScrollPosition, ScrollProps } from "../../index";
 
-import { createApp, MemoryTerminal, scroll, text, useState } from "../../index";
+import {
+  createApp,
+  keyEvent,
+  MemoryTerminal,
+  scroll,
+  text,
+  useState,
+} from "../../index";
 import { Decoder } from "../terminal/decoder";
 import { decayMotion } from "./scroll-physics";
 
@@ -142,4 +149,43 @@ test("shutdown cancels physics while motion is still active", async () => {
   await Bun.sleep(50);
   expect(output?.frames.length).toBe(frames);
   expect(output?.stopped).toBe(true);
+});
+
+test("keyboard scrolling cancels existing wheel momentum", async () => {
+  await gesture(
+    { friction: 1, momentum: 40 },
+    async ({ terminal, send, flush, position }) => {
+      send([65]);
+      await flush();
+      terminal.dispatch({ type: "key", event: keyEvent("tab") });
+      await flush();
+      terminal.dispatch({ type: "key", event: keyEvent("down") });
+      await flush();
+      const stopped = position();
+      await Bun.sleep(80);
+      await flush();
+      expect(position()).toEqual(stopped);
+    },
+  );
+});
+
+test("a pointer press cancels queued wheel input without disabling subsequent wheel scheduling", async () => {
+  await gesture(undefined, async ({ terminal, send, flush, position }) => {
+    send([65]);
+    terminal.dispatch({
+      type: "mouse",
+      event: {
+        action: "press",
+        button: 0,
+        deltaY: 0,
+        x: 1,
+        y: 1,
+      },
+    });
+    await flush();
+    expect(position()).toEqual({ x: 0, y: 0 });
+    send([65]);
+    await Bun.sleep(20);
+    expect(position()).toEqual({ x: 0, y: 1 });
+  });
 });

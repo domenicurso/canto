@@ -1,5 +1,6 @@
 import type { Screen } from "../render/screen";
 import type { CellSize } from "./cell-size";
+import type { Clipboard } from "./clipboard";
 import type { TerminalEvent } from "./events";
 
 export type Mode = "fullscreen" | "inline";
@@ -7,6 +8,8 @@ export interface Terminal {
   readonly width: number;
   readonly height: number;
   readonly cellSize?: CellSize;
+  readonly clipboard?: Clipboard;
+  setMouseTracking?(enabled: boolean): Promise<void>;
   start(mode: Mode, emit: (event: TerminalEvent) => void): Promise<void>;
   present(screen: Screen, output: string): Promise<void>;
   stop(): Promise<void>;
@@ -14,6 +17,17 @@ export interface Terminal {
 export class MemoryTerminal implements Terminal {
   readonly frames: Screen[] = [];
   readonly output: string[] = [];
+  clipboardText = "";
+  readonly clipboard: Clipboard = {
+    writeText: async (text) => {
+      this.clipboardText = text;
+    },
+    readText: async () => this.clipboardText,
+  };
+  mouseTracking = true;
+  async setMouseTracking(enabled: boolean): Promise<void> {
+    this.mouseTracking = enabled;
+  }
   started = false;
   stopped = false;
   cellSize: CellSize = { width: 8, height: 16 };

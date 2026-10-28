@@ -1,5 +1,7 @@
-import type { Terminal } from "../terminal/transport";
+import type { Clipboard } from "../terminal/clipboard";
+import type { Mode, Terminal } from "../terminal/transport";
 import type { InputRouter } from "./input";
+import type { SelectionMode } from "./selection-mode";
 import type { Mounted } from "./tree";
 
 import { unmount } from "./reconcile";
@@ -26,12 +28,27 @@ export class SessionSignals {
   }
 }
 
-export async function releaseSession(
-  root: Mounted,
-  router: InputRouter,
-  terminal: Terminal,
-  failure: (error: unknown) => void,
-): Promise<void> {
+export async function releaseSession({
+  root,
+  router,
+  terminal,
+  signals,
+  rendering,
+  failure,
+}: {
+  root: Mounted;
+  router: InputRouter;
+  terminal: Terminal;
+  signals: SessionSignals;
+  rendering: Promise<void> | undefined;
+  failure: (error: unknown) => void;
+}): Promise<void> {
+  signals.stop();
+  try {
+    await rendering;
+  } catch (error) {
+    failure(error);
+  }
   router.dispose();
   try {
     router.focus.set(undefined);
@@ -48,4 +65,20 @@ export async function releaseSession(
   } catch (error) {
     failure(error);
   }
+}
+
+export type AppStatus =
+  | "created"
+  | "starting"
+  | "running"
+  | "stopping"
+  | "stopped";
+
+export interface AppOptions {
+  mode?: Mode;
+  terminal?: Terminal;
+  signal?: AbortSignal;
+  exitOnCtrlC?: boolean;
+  clipboard?: Clipboard;
+  selection?: SelectionMode;
 }

@@ -3,6 +3,7 @@ import { expect, test } from "bun:test";
 import { createApp, keyEvent, MemoryTerminal } from "../index";
 import { Canvas } from "./canvas";
 import { Form } from "./form";
+import { Interactions } from "./interactions";
 import { Layout } from "./layout";
 import { Logs } from "./logs";
 import { Styles } from "./styles";
@@ -12,6 +13,11 @@ import { VirtualList } from "./virtual-list";
 const examples = [
   { name: "canvas", view: Canvas, label: "animated sine wave" },
   { name: "form", view: Form, label: "Create a contact" },
+  {
+    name: "interactions",
+    view: Interactions,
+    label: "Pointer and clipboard playground",
+  },
   { name: "layout", view: Layout, label: "Layout explorer" },
   { name: "logs", view: Logs, label: "Live event stream" },
   { name: "styles", view: Styles, label: "Fluent styles" },

@@ -1,8 +1,12 @@
 import type { Child } from "../element/node";
+import type { Clipboard } from "../terminal/clipboard";
 import type { TerminalEvent } from "../terminal/events";
-import type { Mode, Terminal } from "../terminal/transport";
+import type { Terminal } from "../terminal/transport";
+import type { SelectionControl } from "./selection-mode";
+import type { AppOptions, AppStatus } from "./session";
 
 import { Element } from "../element/node";
+import { unavailableClipboard } from "../terminal/clipboard";
 import { ProcessTerminal } from "../terminal/process";
 import { Frames } from "./frame";
 import { commitEffects } from "./hooks";
@@ -10,20 +14,9 @@ import { InputRouter } from "./input";
 import { reconcile } from "./reconcile";
 import { Refs } from "./refs";
 import { SessionSignals, releaseSession } from "./session";
-import { mounted, walk } from "./tree";
+import { mounted } from "./tree";
 
-export interface AppOptions {
-  mode?: Mode;
-  terminal?: Terminal;
-  signal?: AbortSignal;
-  exitOnCtrlC?: boolean;
-}
-export type AppStatus =
-  | "created"
-  | "starting"
-  | "running"
-  | "stopping"
-  | "stopped";
+export type { AppOptions, AppStatus } from "./session";
 export class App {
   private state: AppStatus = "created";
   private readonly terminal: Terminal;
@@ -32,6 +25,12 @@ export class App {
   private readonly router = new InputRouter(
     () => this.schedule(),
     () => this.terminal.cellSize,
+    {
+      clipboard: () => this.clipboard,
+      fail: (error) => this.fail(error),
+      terminal: () => this.terminal,
+      selection: () => this.options.selection ?? "text",
+    },
   );
   private readonly refs = new Refs(this.router.focus, () => this.schedule());
   private pending = false;
@@ -64,6 +63,14 @@ export class App {
     });
     this.root = mounted(element, null);
   }
+  get selection(): SelectionControl {
+    return this.router.selectionModes.control;
+  }
+  get clipboard(): Clipboard {
+    return (
+      this.options.clipboard ?? this.terminal.clipboard ?? unavailableClipboard
+    );
+  }
   get viewport(): { width: number; height: number } {
     return { width: this.terminal.width, height: this.terminal.height };
   }
@@ -75,9 +82,7 @@ export class App {
   }
   async run(): Promise<void> {
     if (this.state !== "created")
-      throw new Error(
-        "An app can only run once. Create another app to restart.",
-      );
+      throw new Error("An app can only run once; create another to restart.");
     this.state = "starting";
     try {
       this.signals.start();
@@ -85,6 +90,7 @@ export class App {
         await this.terminal.start(this.options.mode ?? "fullscreen", (event) =>
           this.dispatch(event),
         );
+        await this.router.selectionModes.start();
         if (this.state === "starting") {
           this.state = "running";
           await this.flush();
@@ -96,7 +102,15 @@ export class App {
     } catch (error) {
       this.fail(error);
     }
-    await this.cleanup();
+    await releaseSession({
+      root: this.root,
+      router: this.router,
+      terminal: this.terminal,
+      signals: this.signals,
+      rendering: this.rendering,
+      failure: (error) => this.fail(error),
+    });
+    this.state = "stopped";
     if (this.failed) throw this.failure;
   }
   stop(): void {
@@ -148,7 +162,11 @@ export class App {
       schedule: () => this.schedule(),
     });
     this.router.focus.refresh(this.root);
-    await this.frames.commit(this.root, this.router.focus.current);
+    await this.frames.commit(
+      this.root,
+      this.router.focus.current,
+      this.router.selection,
+    );
     if (this.state !== "running") return;
     this.refs.commit(this.root);
     commitEffects(this.root);
@@ -160,38 +178,21 @@ export class App {
         if (
           this.options.exitOnCtrlC !== false &&
           event.event.ctrl &&
-          event.event.key === "c"
+          event.event.key === "c" &&
+          !event.event.shift
         )
           this.stop();
         else this.router.key(this.root, event.event);
       } else if (event.type === "mouse")
         this.router.mouse(this.root, event.event);
       else {
-        walk(this.root)
-          .filter((node) => node.element.data.kind === "component")
-          .forEach((node) => {
-            node.dirty = true;
-          });
+        this.router.resize(this.root);
         this.frames.invalidate();
         this.schedule();
       }
     } catch (error) {
       this.fail(error);
     }
-  }
-  private async cleanup(): Promise<void> {
-    this.signals.stop();
-    if (this.rendering) {
-      try {
-        await this.rendering;
-      } catch (error) {
-        this.fail(error);
-      }
-    }
-    await releaseSession(this.root, this.router, this.terminal, (error) =>
-      this.fail(error),
-    );
-    this.state = "stopped";
   }
 }
 export function createApp(render: () => Child, options?: AppOptions): App {

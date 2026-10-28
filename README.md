@@ -18,6 +18,7 @@ bun run bench        # Headless 10,000-item virtual list benchmark
 
 | Command                     | What it demonstrates                                                          |
 | --------------------------- | ----------------------------------------------------------------------------- |
+| `bun run demo:interactions` | Text/editor selection, clipboard actions, and draggable scrollbars            |
 | `bun run demo:form`         | Controlled inputs, multiline notes, validation, and disabled actions          |
 | `bun run demo:layout`       | Fixed and weighted panes, wrapping, scrolling, and an absolute badge          |
 | `bun run demo:tasks`        | Adding/removing keyed components and preserving local state during reordering |
@@ -153,6 +154,18 @@ Buttons, editors, and scrolling regions participate in Tab navigation. `.focusab
 
 `.onKey()` bubbles structured events through ancestors. `preventDefault()` suppresses default editing or activation; `stopPropagation()` stops bubbling. Buttons activate on Enter, Space, or pointer release inside the pressed button. `.onMouse()` exposes pointer events, and `.hovered()` styles their ancestors. Inline mouse coordinates require a terminal cursor-position reply; keyboard operation remains available if the terminal does not reply.
 
+Drag text to select within that text element, or drag within an editor to select its underlying value, including whole graphemes and original newlines. Text selection follows source characters across wrapped lines, copies their original spaces instead of visual line breaks, and excludes padding, empty rows, and adjacent controls. Both text and editor selection support `.selected(style())`. Plain selection clears on wheel input, other keyboard actions, source replacement, or resize. Selection does not automatically scroll beyond the viewport or expand words on double-click.
+
+Use `createApp(View, { selection: "native" })` to let the terminal handle mouse selection and copying. Switch during a session with `await app.selection.setMode("native")` or `await app.selection.setMode("text")`; `app.selection.mode` reports the current mode. The default is `"text"`. Native mode disables application mouse tracking, including pointer buttons, hover, wheels, and scrollbar dragging; keyboard controls continue to work. Injected terminal adapters support native mode through optional `setMouseTracking(enabled)`. The interactions playground toggles modes with F2, which also switches back when native mode owns the mouse.
+
+```ts
+text("Select this text").selected(style().background("blue").color("white"));
+```
+
+Alt+W or Ctrl+Insert copies the selection. Ctrl+X cuts an editable selection. Paste normally uses the terminal's native shortcut and bracketed paste; Ctrl+V or Shift+Insert additionally works when a clipboard adapter provides reads. Ctrl+C still exits. An editor's `onKey` can prevent the default clipboard action.
+
+`useApp().clipboard.writeText(text)` sends a UTF-8 [OSC 52 clipboard request](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html). The terminal must permit this operation; sending the request cannot confirm acceptance. `createApp(View, { clipboard })` overrides it with a `Clipboard` adapter containing async `writeText` and optional `readText`. No clipboard read query is sent to the terminal. `MemoryTerminal.clipboardText` provides an in-memory clipboard. Clipboard shortcut failures shut down through normal app error handling; direct API callers own their promise and errors. Delayed paste is discarded if the editor changes or unmounts before it completes.
+
 ## Scrolling and large collections
 
 ```ts
@@ -168,7 +181,7 @@ list(projects, {
 });
 ```
 
-Scroll regions support controlled or default offsets, vertical/horizontal/both axes, automatic/hidden/visible scrollbars, and stable gutters. Arrow keys, Page Up/Down, mouse wheels, and refs move the viewport. Focus navigation reveals newly focused descendants. Hidden scrollbars reserve no gutter, including with `gutter: "stable"`; visible thumbs use eighth-cell Unicode blocks.
+Scroll regions support controlled or default offsets, vertical/horizontal/both axes, automatic/hidden/visible scrollbars, and stable gutters. Arrow keys, Page Up/Down, mouse wheels, and refs move the viewport. Focus navigation reveals newly focused descendants. Hidden scrollbars reserve no gutter, including with `gutter: "stable"`; visible thumbs use eighth-cell Unicode blocks. Drag either thumb to set its offset, including outside the track; clicking the track centers the thumb at that position. Keyboard or pointer presses cancel ongoing artificial momentum.
 
 Native wheel reports move in terminal-provided cell units; terminals that normalize trackpad movement already account for cell aspect ratio. Adapters can supply `deltaMode: "pixel"` with `deltaX` and `deltaY`, which Canto converts using `terminal.cellSize`. The process adapter queries cell dimensions and falls back to 8 × 16 pixels when unsupported. Arrow keys move one cell. Wheel bursts coalesce before rendering and preserve both axes of diagonal gestures.
 
@@ -190,7 +203,7 @@ Physics defaults to `"instant"`, so Canto adds no motion after input stops. An o
 
 State updates reconcile descriptions, resolve styles, check geometry changes, lay out when necessary, paint, diff, await output, attach refs, and commit effects. Failed renders or writes trigger app cleanup. All sibling cleanups are attempted even if one throws. Custom components, styles, canvas elements, and terminal adapters are the supported extension points.
 
-Paint-only and offset-only scroll updates skip layout. Geometry changes invalidate affected branches and their ancestors; measurement and placement reuse unchanged branches when their constraints and rectangles still match. Per-node measurement caches retain at most eight constraint combinations. Painting retains immutable cells and recomposes damaged rows through the complete clipping and stacking tree; cell comparison skips retained cell references. Child insertion/removal and escaped overflow can conservatively repaint the full viewport. Canvas callbacks remain invalidated each frame because their closures can read external state. `app.stats.layoutNodes` and `paintedCells` expose the work performed. Unicode segmentation uses `Intl.Segmenter`; wide-character classification uses a built-in approximation, so ambiguous widths and terminal-specific emoji presentation can differ. Inline rendering assumes exclusive writes to its reserved region. Clipboard integration, drag selection, scrollbar dragging, and cross-terminal conformance testing are not included in this alpha.
+Paint-only and offset-only scroll updates skip layout. Geometry changes invalidate affected branches and their ancestors; measurement and placement reuse unchanged branches when their constraints and rectangles still match. Per-node measurement caches retain at most eight constraint combinations. Painting retains immutable cells and recomposes damaged rows through the complete clipping and stacking tree; cell comparison skips retained cell references. Child insertion/removal and escaped overflow can conservatively repaint the full viewport. Canvas callbacks remain invalidated each frame because their closures can read external state. `app.stats.layoutNodes` and `paintedCells` expose the work performed. Unicode segmentation uses `Intl.Segmenter`; wide-character classification uses a built-in approximation, so ambiguous widths and terminal-specific emoji presentation can differ. Inline rendering assumes exclusive writes to its reserved region. Trackpad feel and clipboard permission behavior across terminal applications still require manual verification; automated PTY and emulator tests cannot establish those properties.
 
 ## Development tools
 

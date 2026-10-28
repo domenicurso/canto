@@ -36,6 +36,7 @@ export class WheelInput {
   }
   dispose(): void {
     clearTimeout(this.timer);
+    this.timer = undefined;
     this.pending.clear();
   }
 }

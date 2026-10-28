@@ -86,6 +86,7 @@ export class ScrollPhysics {
   }
   dispose(): void {
     clearTimeout(this.timer);
+    this.timer = undefined;
     this.motions.clear();
   }
 }

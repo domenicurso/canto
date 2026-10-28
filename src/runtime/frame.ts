@@ -1,4 +1,5 @@
 import type { Mode, Terminal } from "../terminal/transport";
+import type { Selection } from "./selection";
 import type { Mounted } from "./tree";
 
 import { layout } from "../layout/arrange";
@@ -31,9 +32,15 @@ export class Frames {
   invalidate(): void {
     this.previous = undefined;
   }
-  async commit(root: Mounted, focused?: Mounted): Promise<void> {
+  async commit(
+    root: Mounted,
+    focused?: Mounted,
+    selection?: Selection,
+  ): Promise<void> {
     const start = performance.now();
-    const screen = this.prepare(root);
+    const base = this.prepare(root);
+    const screen = selection ? base.clone() : base;
+    selection?.present(screen, root);
     const previous =
       this.previous?.width === screen.width &&
       this.previous.height === screen.height

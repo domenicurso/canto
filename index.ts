@@ -48,3 +48,10 @@ export { list } from "./src/element/list";
 export type { ListOptions } from "./src/element/list";
 
 export type { CellSize } from "./src/terminal/cell-size";
+
+export type { Clipboard } from "./src/terminal/clipboard";
+
+export type {
+  SelectionMode,
+  SelectionControl,
+} from "./src/runtime/selection-mode";

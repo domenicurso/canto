@@ -123,6 +123,7 @@ export function hit(
   point: { x: number; y: number },
   clip: Rect,
 ): Mounted | undefined {
+  if (!contains(clip, point.x, point.y)) return undefined;
   const own = intersect(clip, node.rect);
   const childClip =
     node.style.overflow === "visible" && node.element.data.kind !== "scroll"
@@ -136,4 +137,14 @@ export function hit(
     if (target) return target;
   }
   return contains(own, point.x, point.y) ? node : undefined;
+}
+
+export function keyboardRoot(root: Mounted): Mounted {
+  let node = root;
+  while (node.element.data.kind === "component" && node.children.length === 1) {
+    const child = node.children[0];
+    if (!child) break;
+    node = child;
+  }
+  return node;
 }

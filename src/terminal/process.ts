@@ -4,11 +4,19 @@ import type { TerminalEvent } from "./events";
 import type { Mode, Terminal } from "./transport";
 
 import { CellMetrics } from "./cell-size";
+import { clipboardOutput } from "./clipboard";
 import { Decoder } from "./decoder";
 import { InlineRegion } from "./inline-region";
 
 let owner: ProcessTerminal | undefined;
 export class ProcessTerminal implements Terminal {
+  readonly clipboard = {
+    writeText: async (text: string): Promise<void> => {
+      if (!this.started || !process.stdout.isTTY)
+        throw new Error("Clipboard requires an active terminal session.");
+      await this.write(clipboardOutput(text));
+    },
+  };
   private mode: Mode = "fullscreen";
   private raw = false;
   private paused = true;
@@ -82,6 +90,14 @@ export class ProcessTerminal implements Terminal {
       await this.write(
         (mode === "fullscreen" ? "\x1b[?1049h\x1b[2J\x1b[H" : "\r\x1b7") +
           "\x1b[?25l\x1b[?2004h\x1b[?1003h\x1b[?1006h",
+      );
+  }
+  async setMouseTracking(enabled: boolean): Promise<void> {
+    if (this.started && process.stdout.isTTY)
+      await this.write(
+        enabled
+          ? "\x1b[?1003h\x1b[?1006h"
+          : "\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l",
       );
   }
   async present(screen: Screen, output: string): Promise<void> {

@@ -20,7 +20,11 @@ export class ScrollInput {
   ) {
     this.physics = new ScrollPhysics(schedule, this.move);
   }
+  interrupt(): void {
+    this.physics.dispose();
+  }
   key(node: Mounted, event: KeyEvent): boolean {
+    this.interrupt();
     const axis = node.element.data.props.scroll?.axis ?? "vertical";
     const horizontal = axis === "horizontal";
     const page = horizontal ? node.inner.width : node.inner.height;

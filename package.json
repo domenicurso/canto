@@ -24,7 +24,8 @@
     "demo:virtual-list": "bun examples/virtual-list.ts",
     "demo:canvas": "bun examples/canvas.ts",
     "demo:styles": "bun examples/styles.ts",
-    "lint:structure": "eslint index.ts src examples"
+    "lint:structure": "eslint index.ts src examples",
+    "demo:interactions": "bun examples/interactions.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
