@@ -6,11 +6,15 @@ import { Form } from "./form";
 import { Interactions } from "./interactions";
 import { Layout } from "./layout";
 import { Logs } from "./logs";
+import { Overlays } from "./overlays";
+import { Pixels } from "./pixels";
 import { Styles } from "./styles";
 import { Tasks } from "./tasks";
 import { VirtualList } from "./virtual-list";
 
 const examples = [
+  { name: "pixels", view: Pixels, label: "Pixel canvas" },
+  { name: "overlays", view: Overlays, label: "Unstyled overlay behavior" },
   { name: "canvas", view: Canvas, label: "animated sine wave" },
   { name: "form", view: Form, label: "Create a contact" },
   {

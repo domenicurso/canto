@@ -2,12 +2,14 @@ import type { Element } from "../../index";
 import type { Issue } from "./model";
 
 import { button, column, row, text } from "../../index";
+import { Artwork } from "./artwork";
 import { action, colors, surface } from "./theme";
 
 export function Header(create: () => void): Element {
   return row(
     text("◈ STUDIO").bold().color(colors.accent),
     text(" /  Canto v2").color(colors.muted).width("fill"),
+    Artwork(),
     button("+ New issue", create).use(action).color(colors.accent),
   )
     .height(1)

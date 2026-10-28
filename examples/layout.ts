@@ -95,7 +95,7 @@ export function Layout() {
         .fill()
         .key("stacked")
     : row(Navigation(compact), Preview({ badge, compact }), Inspector(compact))
-        .gap(1)
+        .joinBorders()
         .fill()
         .key("panes");
 

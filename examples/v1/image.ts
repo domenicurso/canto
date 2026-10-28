@@ -1,4 +1,4 @@
-import type { Raster } from "./image-raster";
+import type { PixelBuffer } from "../../index";
 
 import {
   canvas,
@@ -8,10 +8,10 @@ import {
   useEffect,
   useState,
 } from "../../index";
-import { decodePng, drawRaster, sampleRaster } from "./image-raster";
+import { decodePng, sampleRaster } from "./image-raster";
 
 type ImageState =
-  | { kind: "ready"; raster: Raster }
+  | { kind: "ready"; raster: PixelBuffer }
   | { kind: "loading" }
   | { kind: "error"; message: string };
 export function Image(path?: string) {
@@ -39,11 +39,9 @@ export function Image(path?: string) {
     };
   }, [path]);
   return column(
-    text("Image · PNG rendered with half-block cells").bold(),
+    text("Image · native graphics with quadrant fallback").bold(),
     state.kind === "ready"
-      ? canvas((draw) => drawRaster(draw, state.raster))
-          .fill()
-          .background("black")
+      ? canvas(state.raster).fill().background("black")
       : text(state.kind === "loading" ? "Loading…" : state.message).color(
           "red",
         ),

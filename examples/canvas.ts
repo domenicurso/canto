@@ -1,4 +1,4 @@
-import type { DrawingContext } from "../index";
+import type { PixelBuffer } from "../index";
 
 import {
   button,
@@ -11,40 +11,47 @@ import {
   useApp,
   useEffect,
   useState,
+  useRef,
 } from "../index";
+import { waveform } from "./waveform";
 
 const action = style().color("cyan").focused(style().background("#164e63"));
-function waveform(draw: DrawingContext, phase: number): void {
-  const center = Math.floor(draw.height / 2);
-  draw.fill(
-    { x: 0, y: 0, width: draw.width, height: draw.height },
-    { background: "#0f172a" },
-  );
-  draw.write(0, center, "─".repeat(draw.width), { foreground: "#334155" });
-  const amplitude = Math.max(0, Math.floor((draw.height - 2) / 2));
-  for (let x = 0; x < draw.width; x++) {
-    const y = center - Math.round(Math.sin(x / 6 + phase) * amplitude);
-    draw.write(x, y, "●", { foreground: "cyan", bold: true });
-  }
-}
 export function Canvas() {
   const [phase, setPhase] = useState(0);
   const [paused, setPaused] = useState(false);
   const app = useApp();
+  const cached = useRef<{ phase: number; buffer: PixelBuffer } | undefined>(
+    undefined,
+  );
   useEffect(() => {
     if (paused) return;
     const timer = setInterval(
-      () => setPhase((previous) => previous + 0.15),
-      80,
+      () => setPhase((previous) => previous + 0.0625),
+      33,
     );
     return () => clearInterval(timer);
   }, [paused]);
   return column(
     text("Custom canvas · animated sine wave").bold(),
-    canvas((draw) => waveform(draw, phase))
+    canvas(
+      (draw) => {
+        const { pixelWidth: width, pixelHeight: height } = draw;
+        if (!width || !height) return;
+        const old = cached.current;
+        if (
+          !old ||
+          old.phase !== phase ||
+          old.buffer.width !== width ||
+          old.buffer.height !== height
+        )
+          cached.current = { phase, buffer: waveform(width, height, phase) };
+        if (cached.current) draw.pixels(cached.current.buffer);
+      },
+      { fit: "fill" },
+    )
       .border("rounded")
       .borderColor("#475569")
-      .padding(1)
+      // .padding(1)
       .fill(),
     row(
       button(paused ? "Play" : "Pause", () => setPaused(!paused)).use(action),
@@ -52,7 +59,7 @@ export function Canvas() {
       button("Quit", () => app.stop()).use(action),
     ).gap(2),
     text(
-      "Resize the terminal; drawing uses the canvas's current inner dimensions.",
+      "RGBA pixel waveform · Kitty → Sixel → quadrant blocks · resize to fit.",
     ).dim(),
   )
     .gap(1)

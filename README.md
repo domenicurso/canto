@@ -26,6 +26,8 @@ bun run bench        # Headless 10,000-item virtual list benchmark
 | `bun run demo:tasks`        | Adding/removing keyed components and preserving local state during reordering |
 | `bun run demo:logs`         | Effect cleanup, a bounded event history, pause/resume, and follow mode        |
 | `bun run demo:virtual-list` | Filtering 10,000 projects, virtualized rows, and selection                    |
+| `bun run demo:pixels`       | RGBA art, native graphics selection, and modal inspection                     |
+| `bun run demo:overlays`     | Anchored action menus, modal editing, dismissal, and focus restoration        |
 | `bun run demo:canvas`       | Animated custom drawing, resize-aware geometry, and pause/reset controls      |
 | `bun run demo:styles`       | Immutable shared styles, mixed text spans, and interaction variants           |
 
@@ -59,9 +61,9 @@ bun examples/v1/image.ts /path/to/image.png
 | `console.ts`           | Animated feed and an interactive command console                              |
 | `debug.ts`             | Animated counter and previous-frame rendering statistics                      |
 | `git.ts`               | Read-only Git status, refresh, and selection in the current working directory |
-| `image.ts`             | PNG decoding and aspect-preserving half-block rendering                       |
+| `image.ts`             | PNG decoding and native graphics with aspect-preserving quadrant fallback     |
 
-Console and debug panels are composed explicitly from v2 elements. Use F3 for statistics, F12 or Ctrl+T for the console, and Escape to close it. Prompt and choice keep their accepted answer visible until Ctrl+C. The image example uses the example-only `pngjs` development dependency, composites transparency over black, and displays a built-in sample when no path is supplied; the original machine-specific image path is gone.
+Console and debug panels are composed explicitly from v2 elements. Use F3 for statistics, F12 or Ctrl+T for the console, and Escape to close it. Prompt and choice keep their accepted answer visible until Ctrl+C. The image example uses the example-only `pngjs` development dependency, composites transparency over the canvas background, and displays a built-in sample when no path is supplied; the original machine-specific image path is gone.
 
 The [side-by-side v1/v2 comparison](examples/v1/comparison.html) shows complete implementations of the same counter, including state, styling, controls, and lifecycle. The v1 listing targets the archived API; both listings are illustrative code, while `examples/counter.ts` is runnable v2 code.
 
@@ -210,13 +212,72 @@ Physics defaults to `"instant"`, so Canto adds no motion after input stops. An o
 
 ## Custom drawing and testing
 
-`canvas(draw)` gives you local dimensions, `write(x, y, text, style)`, and `fill(rect, style)`. It participates in normal layout, clipping, backgrounds, refs, and event routing. Give it an explicit size or fill dimensions.
+`canvas(draw)` provides cell dimensions, `write(x, y, text, style)`, and `fill(rect, style)`. For pixels, pass a row-major RGBA buffer directly or call `draw.pixels(buffer)` from the callback:
+
+```ts
+canvas(
+  {
+    width: 2,
+    height: 1,
+    data: new Uint8Array([255, 0, 0, 255, 0, 128, 255, 255]),
+  },
+  { fit: "contain", renderer: "auto" },
+).fill();
+
+canvas(
+  (draw) => {
+    // Render at the reported terminal pixel resolution instead of stretching a small bitmap.
+    if (draw.pixelWidth && draw.pixelHeight)
+      draw.pixels(renderChart(draw.pixelWidth, draw.pixelHeight));
+  },
+  { fit: "fill" },
+).fill();
+```
+
+`PixelBuffer` borrows its RGBA bytes; replace the buffer description when pixels change. `draw.pixelWidth` and `pixelHeight` follow the inner cell dimensions and terminal cell metrics, including resize. Give canvases explicit sizes or fill dimensions. Fits are `"contain"` (default), `"cover"`, and `"fill"`; they use physical cell proportions. Alpha composites against the painted background. Set an explicit hex or RGB background for predictable colors; named ANSI colors use a conventional palette and an unknown terminal background is treated as black.
+
+The process adapter probes graphics support, then chooses Kitty → Sixel → Unicode quadrant blocks. `renderer` can request `"kitty"`, `"sixel"`, or `"quadrants"`; unsupported requests fall back to quadrants. Sixel uses a 216-color palette. Partial clipping crops the native raster; overlapping elements and callbacks mixing pixels with cell drawing use quadrants to preserve composition. Native image IDs belong to the terminal session and are deleted on unmount or shutdown. Kitty uploads use lossless compression, unchanged images retain their data, replacements are placed before old images are removed, and frames use synchronized output to avoid exposing partial updates. A new buffer still requires a native upload; large animated canvases have terminal-dependent throughput.
+
+## Overlays, dialogs, and popovers
+
+`overlay(...children)` still stacks ordinary children. `overlay({ content, ... })` adds viewport placement and interaction behavior without supplying a border, background, backdrop, or padding:
+
+```ts
+overlay({
+  modal: true,
+  onDismiss: close,
+  content: column(
+    text("Publish?"),
+    button("Publish", publish),
+    button("Cancel", close),
+  ),
+})
+  .width(40)
+  .border("rounded")
+  .padding(1);
+
+overlay({
+  anchor: () => trigger.current?.rect,
+  placement: "bottom-start",
+  focus: "first",
+  onDismiss: close,
+  content: actions,
+})
+  .width(24)
+  .background("#17232c");
+```
+
+Behavior overlays escape ancestor clipping and paint above ordinary content, ordered by `zIndex` and tree order. They center by default; anchored placements support top/bottom and start/end, optional `offset`, edge flipping, and viewport clamping. Anchors are callbacks so placement follows scrolling and resizing. Keep scrollable dialog bodies separate from their action rows when height is constrained, as `examples/overlays.ts` does.
+
+`modal: true` traps keyboard focus and blocks background pointer input. A modal focuses its autofocus control or first control; `focus: "none"` focuses the overlay container. Nonmodal overlays keep current focus unless `focus: "first"` is requested. Closing restores the previous active control. Escape and outside presses call the topmost overlay's `onDismiss`; use `dismissOnEscape: false` or `dismissOnOutside: false` to disable either. Outside dismissal consumes the press. You own open/closed state and every visual style.
+
+## Adapter testing
 
 `MemoryTerminal` implements the same adapter contract as the process terminal. Inject it through `createApp(View, { terminal })`, dispatch `keyEvent()` or pointer events, resize it, and inspect `terminal.screen`. `app.flush()` awaits the current scheduled frame; effects can schedule subsequent frames. Async adapter writes provide backpressure, preventing overlapping output commits.
 
 ## Architecture and current limits
 
-`element` owns immutable descriptions and public composition. `runtime` owns mounted identity, hooks, scheduling, focus, input behavior, and app cleanup. `layout` resolves styles, measures text/content, allocates whole cells, and positions the mounted tree. `render` draws clipped cells and emits changed runs. `terminal` owns byte decoding, process streams, and terminal modes. Runtime coordinates these boundaries; terminal adapters never depend on components.
+`element` owns immutable descriptions and public composition. `runtime` owns mounted identity, hooks, scheduling, focus, input behavior, and app cleanup. `layout` resolves styles, measures text/content, allocates whole cells, and positions the mounted tree. `render` draws clipped cells, captures pixel surfaces, and prepares native raster placements. `terminal` owns byte decoding, process streams, and terminal modes. Runtime coordinates these boundaries; terminal adapters never depend on components. Overlay placement belongs to layout, modal scopes and dismissal belong to runtime, and render draws viewport layers after ordinary content. Native raster encoding, image ownership, and terminal capability queries belong to terminal.
 
 State updates reconcile descriptions, resolve styles, check geometry changes, lay out when necessary, paint, diff, await output, attach refs, and commit effects. Failed renders or writes trigger app cleanup. All sibling cleanups are attempted even if one throws. Custom components, styles, canvas elements, and terminal adapters are the supported extension points.
 

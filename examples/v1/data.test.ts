@@ -4,7 +4,7 @@ import { PNG } from "pngjs";
 import { canvas, createApp, MemoryTerminal } from "../../index";
 import { parseGitStatus } from "./git-status";
 import { Image } from "./image";
-import { decodePng, drawRaster } from "./image-raster";
+import { decodePng } from "./image-raster";
 
 test("Git porcelain records preserve spaces, Unicode, newlines, and rename pairs", () => {
   const files = parseGitStatus(
@@ -20,15 +20,12 @@ test("Git porcelain records preserve spaces, Unicode, newlines, and rename pairs
   expect(() => parseGitStatus("M\0")).toThrow("Malformed");
   expect(() => parseGitStatus("R  target\0")).toThrow("rename source");
 });
-test("PNG decoding paints upper/lower pixels and composites transparency over black", async () => {
+test("PNG decoding feeds the pixel canvas and composites transparency over black", async () => {
   const png = new PNG({ width: 1, height: 2 });
   png.data.set([255, 0, 0, 255, 0, 255, 0, 128]);
   const raster = decodePng(PNG.sync.write(png));
   const terminal = new MemoryTerminal(1, 1);
-  const app = createApp(
-    () => canvas((draw) => drawRaster(draw, raster)).fill(),
-    { terminal },
-  );
+  const app = createApp(() => canvas(raster).fill(), { terminal });
   const running = app.run();
   try {
     await Bun.sleep(0);

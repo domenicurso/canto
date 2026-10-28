@@ -26,7 +26,9 @@
     "demo:styles": "bun examples/styles.ts",
     "lint:structure": "eslint index.ts src examples",
     "demo:interactions": "bun examples/interactions.ts",
-    "demo:studio": "bun examples/studio/app.ts"
+    "demo:studio": "bun examples/studio/app.ts",
+    "demo:pixels": "bun examples/pixels.ts",
+    "demo:overlays": "bun examples/overlays.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

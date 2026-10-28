@@ -4,6 +4,8 @@ This document describes the implemented layout engine. All geometry uses termina
 
 ## Composition and ownership
 
+`overlay({ content, ... })` is a viewport layer: it escapes ancestor clipping and flow, centers by default, and can anchor to a live rectangle with top/bottom start/end placement and an offset. Placement flips when the preferred edge lacks space, then clamps the layer dimensions and position to the viewport. Ordinary content paints first, then behavior layers in `zIndex` and tree order; modal input boundaries are owned by runtime.
+
 `row` lays children left to right. `column` and `box` lay children top to bottom. `overlay` places children at the same origin; later children paint above earlier children unless `zIndex` changes their ordering. Component descriptions introduce a wrapper with the same box model, so styles applied to a component apply to that wrapper.
 
 Children may contain nested arrays, strings, numbers, `null`, `undefined`, or `false`. Strings and numbers become text; absent children consume no space and create no gap. Components use their type and sibling key to preserve mounted identity.

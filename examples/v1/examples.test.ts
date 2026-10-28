@@ -28,7 +28,7 @@ const examples = [
   { view: Scrollbars, label: "Scrollable Widget with Scrollbars Demo" },
   { view: ScrollTest, label: "Scroll Test Application" },
   { view: Git, label: "Git Status" },
-  { view: Image, label: "PNG rendered with half-block cells" },
+  { view: Image, label: "native graphics with quadrant fallback" },
 ];
 async function mounted(
   view: () => Child,
