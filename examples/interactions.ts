@@ -74,10 +74,10 @@ export function Interactions() {
     text("Pointer and clipboard playground").bold().color("cyan"),
     text(selection.status).color("cyan"),
     text(
-      "Drag text or a scrollbar. Alt+W / Ctrl+Insert copies; Ctrl+X cuts an editor selection.",
+      "Drag across text; double-click words, triple-click lines. Alt+W copies; Ctrl+X cuts.",
     ).use(selectedText),
     text(
-      "Paste with your terminal shortcut; Ctrl+V also works when an adapter provides clipboard reads.",
+      "Ctrl/Alt+arrows move by word; Shift extends. Paste with your terminal shortcut.",
     )
       .dim()
       .use(selectedText),

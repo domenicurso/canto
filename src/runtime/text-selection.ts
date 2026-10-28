@@ -1,70 +1,79 @@
 import type { PointerEvent } from "../element/events";
 import type { Screen } from "../render/screen";
-import type { Mounted, Rect } from "./tree";
+import type { SelectionUnit } from "../text/ranges";
+import type { Glyph } from "./selection-glyphs";
+import type { Mounted } from "./tree";
 
-import { contains, intersect } from "../layout/geometry";
-import { columns, graphemes, sanitize } from "../text/columns";
+import { sanitize } from "../text/columns";
+import { selectionRange } from "../text/ranges";
 import { hit } from "./focus";
+import { visibleGlyphs } from "./selection-glyphs";
+import { walk } from "./tree";
 
-interface Glyph {
-  x: number;
-  y: number;
+interface Source {
+  node: Mounted;
+  value: string;
   start: number;
-  end: number;
-  width: number;
 }
-/** A text selection belongs to one text element, including its wrapped lines and spans. */
+interface LocatedGlyph extends Glyph {
+  node: Mounted;
+}
 export class TextSelection {
-  private node?: Mounted;
+  private sources: Source[] = [];
   private value = "";
-  private glyphs: Glyph[] = [];
-  private anchor?: Glyph;
-  private end?: Glyph;
+  private glyphs: LocatedGlyph[] = [];
+  private anchor: [number, number] = [0, 0];
+  private end: [number, number] = [0, 0];
   private moved = false;
-  press(node: Mounted, event: PointerEvent, screen: Screen): boolean {
+  private unit: SelectionUnit = "character";
+  press(
+    node: Mounted,
+    event: PointerEvent,
+    screen: Screen,
+    clicks: number,
+  ): boolean {
     if (node.element.data.kind !== "text") return false;
-    this.node = node;
-    this.value = sanitize(node.element.data.text ?? "");
-    this.glyphs = visibleGlyphs(node, screen);
-    this.anchor = this.at(event);
-    this.end = this.anchor;
-    this.moved = false;
-    return this.anchor !== undefined;
+    let root = node;
+    while (root.parent) root = root.parent;
+    this.capture(root, screen);
+    this.unit = clicks === 3 ? "line" : clicks === 2 ? "word" : "character";
+    const glyph = this.at(event);
+    if (!glyph) return false;
+    this.anchor = this.end = this.expand(glyph);
+    this.moved = clicks > 1;
+    return true;
   }
   move(event: PointerEvent): void {
-    const end = this.at(event);
-    if (end && this.anchor) {
-      this.end = end;
-      this.moved ||= end.start !== this.anchor.start;
-    }
+    const glyph = this.at(event);
+    if (!glyph) return;
+    this.end = this.expand(glyph);
+    this.moved ||= this.end[0] !== this.anchor[0];
   }
   clear(): void {
-    this.node = this.anchor = this.end = undefined;
+    this.sources = [];
     this.glyphs = [];
     this.moved = false;
   }
   text(): string {
     if (!this.valid() || !this.moved) return "";
-    const [from, to] = this.range();
-    return this.value.slice(from, to);
+    return this.value.slice(...this.range());
   }
   present(screen: Screen, root: Mounted): void {
-    const node = this.node;
-    if (!node || !this.valid() || !this.moved) return;
+    if (!this.valid() || !this.moved) return;
+    this.refresh(screen);
     const [from, to] = this.range();
-    this.glyphs = visibleGlyphs(node, screen);
     const bounds = { x: 0, y: 0, width: screen.width, height: screen.height };
-    const selected = node.element.definition.variants.selected ?? {
-      background: "brightWhite",
-      foreground: "black",
-    };
     for (const glyph of this.glyphs) {
       if (
         glyph.start < from ||
         glyph.end > to ||
-        hit(root, glyph, bounds) !== node
+        hit(root, glyph, bounds) !== glyph.node
       )
         continue;
+      const selected = glyph.node.element.definition.variants.selected ?? {
+        background: "brightWhite",
+        foreground: "black",
+      };
       for (let x = glyph.x; x < glyph.x + glyph.width; x++) {
         const index = glyph.y * screen.width + x;
         const cell = screen.cells[index];
@@ -76,20 +85,69 @@ export class TextSelection {
       }
     }
   }
+  private capture(root: Mounted, screen: Screen): void {
+    this.sources = [];
+    this.value = "";
+    const nodes = walk(root)
+      .filter(selectable)
+      .filter((node) => visibleGlyphs(node, screen).length);
+    nodes.sort((a, b) => a.inner.y - b.inner.y || a.inner.x - b.inner.x);
+    for (const node of nodes) {
+      const previous = this.sources.at(-1)?.node;
+      if (previous)
+        this.value += previous.inner.y === node.inner.y ? " " : "\n";
+      const value = sanitize(node.element.data.text ?? "");
+      this.sources.push({ node, value, start: this.value.length });
+      this.value += value;
+    }
+    this.refresh(screen);
+  }
+  private refresh(screen: Screen): void {
+    this.glyphs = this.sources.flatMap((source) =>
+      visibleGlyphs(source.node, screen).map((glyph) => ({
+        ...glyph,
+        node: source.node,
+        start: glyph.start + source.start,
+        end: glyph.end + source.start,
+      })),
+    );
+    this.glyphs.sort((a, b) => a.y - b.y || a.x - b.x);
+  }
   private valid(): boolean {
-    return Boolean(
-      this.node?.active &&
-      sanitize(this.node.element.data.text ?? "") === this.value,
+    return (
+      this.sources.length > 0 &&
+      this.sources.every(
+        (source) =>
+          source.node.active &&
+          sanitize(source.node.element.data.text ?? "") === source.value,
+      )
     );
   }
   private range(): [number, number] {
     return [
-      Math.min(this.anchor?.start ?? 0, this.end?.start ?? 0),
-      Math.max(this.anchor?.end ?? 0, this.end?.end ?? 0),
+      Math.min(this.anchor[0], this.end[0]),
+      Math.max(this.anchor[1], this.end[1]),
     ];
   }
-  private at(point: { x: number; y: number }): Glyph | undefined {
-    if (!this.glyphs.length) return undefined;
+  private expand(glyph: LocatedGlyph): [number, number] {
+    if (this.unit === "character") return [glyph.start, glyph.end];
+    if (this.unit === "word") {
+      const source = this.sources.find((source) => source.node === glyph.node);
+      if (!source) return [glyph.start, glyph.end];
+      const [start, end] = selectionRange(
+        source.value,
+        glyph.start - source.start,
+        "word",
+      );
+      return [start + source.start, end + source.start];
+    }
+    const row = this.glyphs.filter((other) => other.y === glyph.y);
+    return [
+      Math.min(...row.map((other) => other.start)),
+      Math.max(...row.map((other) => other.end)),
+    ];
+  }
+  private at(point: { x: number; y: number }): LocatedGlyph | undefined {
     const first = this.glyphs[0];
     if (first && point.y < first.y) return first;
     const row = this.glyphs.filter((glyph) => glyph.y === point.y);
@@ -98,44 +156,10 @@ export class TextSelection {
     return row.find((glyph) => point.x < glyph.x + glyph.width) ?? row.at(-1);
   }
 }
-function visibleGlyphs(node: Mounted, screen: Screen): Glyph[] {
-  const value = sanitize(node.element.data.text ?? "");
-  const clip = textClip(node, screen);
-  let offset = 0;
-  const result: Glyph[] = [];
-  for (const [row, original] of node.lines.entries()) {
-    const line =
-      node.style.overflow === "ellipsis" && original.endsWith("…")
-        ? original.slice(0, -1)
-        : original;
-    const found = value.indexOf(line, offset);
-    let start = found < 0 ? offset : found;
-    let x = node.inner.x;
-    const y = node.inner.y + row;
-    for (const text of graphemes(line)) {
-      const width = columns(text);
-      const end = start + text.length;
-      if (width && contains(clip, x, y) && contains(clip, x + width - 1, y))
-        result.push({ x, y, start, end, width });
-      x += width;
-      start = end;
-    }
-    offset = start;
-  }
-  return result;
-}
-function textClip(node: Mounted, screen: Screen): Rect {
-  let clip = intersect(node.inner, {
-    x: 0,
-    y: 0,
-    width: screen.width,
-    height: screen.height,
-  });
-  for (let parent = node.parent; parent; parent = parent.parent)
-    if (
-      parent.style.overflow !== "visible" ||
-      parent.element.data.kind === "scroll"
-    )
-      clip = intersect(clip, parent.inner);
-  return clip;
+function selectable(node: Mounted): boolean {
+  if (node.element.data.kind !== "text") return false;
+  for (let owner: Mounted | null = node; owner; owner = owner.parent)
+    if (owner.element.data.props.input || owner.element.data.props.button)
+      return false;
+  return true;
 }

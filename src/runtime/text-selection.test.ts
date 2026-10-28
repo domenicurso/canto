@@ -44,7 +44,7 @@ async function copy(terminal: MemoryTerminal) {
   terminal.dispatch({ type: "key", event: keyEvent("w", { alt: true }) });
   await Bun.sleep(0);
 }
-test("text selection stays inside its source element and excludes blank rows and neighboring controls", async () => {
+test("text selection crosses source elements without painting layout gaps", async () => {
   await session(
     () =>
       column(text("first text").width("fill"), text("second control")).gap(2),
@@ -53,14 +53,13 @@ test("text selection stays inside its source element and excludes blank rows and
       pointer(terminal, "release", 9, 3);
       await app.flush();
       await copy(terminal);
-      expect(terminal.clipboardText).toBe("rst text");
+      expect(terminal.clipboardText).toBe("rst text\nsecond con");
       expect(terminal.screen?.get(9, 0)?.style.background).toBe("brightWhite");
       for (const [x, y] of [
         [10, 0],
         [29, 0],
         [0, 1],
         [0, 2],
-        [0, 3],
       ] as const)
         expect(terminal.screen?.get(x, y)?.style.background).toBeUndefined();
     },
