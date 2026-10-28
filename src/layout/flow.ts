@@ -2,7 +2,7 @@ import type { Mounted, Rect } from "../runtime/tree";
 import type { Allocation } from "./allocation";
 
 import { allocate } from "./allocation";
-import { borderOverlap, flowGaps } from "./border-joining";
+import { axisGap, borderOverlap, flowGaps } from "./border-joining";
 import { bounded, dimension } from "./geometry";
 import { measure } from "./measure";
 
@@ -37,7 +37,7 @@ export function flow(node: Mounted, place: Place): void {
           height: item.flow,
         };
     place(item.node, rect);
-    cursor += item.flow + (node.style.gap ?? 0) + extra;
+    cursor += item.flow + axisGap(node, horizontal) + extra;
   }
 }
 function crossPlacement(

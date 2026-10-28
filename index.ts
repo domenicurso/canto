@@ -36,6 +36,9 @@ export type {
   Dimension,
   Padding,
   Border,
+  BorderGlyphs,
+  TextAlignment,
+  Underline,
   Alignment,
   Distribution,
 } from "./src/style/types";
@@ -61,3 +64,5 @@ export type { OverlayProps } from "./src/element/overlay";
 export type { PixelBuffer, CanvasOptions } from "./src/element/pixels";
 
 export type { GraphicsCapabilities } from "./src/terminal/graphics-capabilities";
+
+export type { ColorTheme } from "./src/style/colors";

@@ -85,6 +85,7 @@ export class Frames {
       width: this.terminal.width,
       height,
       cellSize: this.terminal.cellSize,
+      theme: this.terminal.theme,
     });
     this.stats.paintedCells = this.painter.paintedCells;
     return screen;

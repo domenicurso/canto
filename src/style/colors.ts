@@ -25,10 +25,17 @@ const palette = [
   0x00ffff, 0xffffff,
 ];
 export type RGB = readonly [number, number, number];
-export function rgb(value: Color | null | undefined): RGB {
+export interface ColorTheme {
+  readonly foreground?: RGB;
+  readonly background?: RGB;
+  readonly palette?: Readonly<Partial<Record<number, RGB>>>;
+}
+export function rgb(value: Color | null | undefined, theme?: ColorTheme): RGB {
   if (value == null) return [0, 0, 0];
   if (typeof value !== "string") return value;
   const named = namedColors[value];
+  if (named !== undefined && theme?.palette?.[named])
+    return theme.palette[named];
   let color = named === undefined ? undefined : palette[named];
   if (color === undefined) {
     const hex = /^#([\da-f]{3}|[\da-f]{6})$/i.exec(value)?.[1];

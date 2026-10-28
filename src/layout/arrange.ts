@@ -37,7 +37,12 @@ export function layout(
 export function positionOverlays(root: Mounted): void {
   placeOverlays(root, place);
 }
-function place(node: Mounted, rect: Rect): void {
+function place(node: Mounted, allocation: Rect): void {
+  const rect = {
+    ...allocation,
+    x: allocation.x + (node.style.translateX ?? 0),
+    y: allocation.y + (node.style.translateY ?? 0),
+  };
   const previous = placements.get(node);
   if (
     previous &&

@@ -16,40 +16,54 @@ const action = style()
   .borderColor("#475569")
   .hovered(style().borderColor("white"))
   .focused(style().borderColor("cyan").bold())
+  .hovered(style().focused(style().background("#164e63")))
   .pressed(style().background("#164e63"))
   .disabled(style().color("gray").faint());
 const warning = panel.borderColor("yellow");
+
+const panelSamples = row(
+  column(
+    text("Original panel").bold(),
+    text("Shared styles stay immutable.").dim(),
+  )
+    .use(panel)
+    .width("fill"),
+  column(
+    text("Extended panel").color("yellow"),
+    text("Only this panel has a yellow border."),
+  )
+    .use(warning)
+    .width("fill"),
+)
+  .gap(2)
+  .width("fill");
 
 export function Styles() {
   const [connected, setConnected] = useState(false);
   const app = useApp();
   return column(
-    text("Fluent styles and reusable treatments").bold(),
-    row(
-      column(
-        text("Original panel").bold(),
-        text("Shared styles stay immutable.").dim(),
-      )
-        .use(panel)
-        .width("fill"),
-      column(
-        text("Extended panel").color("yellow"),
-        text("Only this panel has a yellow border."),
-      )
-        .use(warning)
-        .width("fill"),
-    )
-      .gap(2)
-      .width("fill"),
+    text("Fluent styles and reusable treatments")
+      .bold()
+      .width("fill")
+      .textAlign("center"),
+    panelSamples,
     text(
       "Mix ",
       text("bold").bold(),
       ", ",
       text("italic").italic(),
       ", and ",
-      text("underlined color").underline().color("cyan"),
+      text("underlined color")
+        .underline("curly")
+        .underlineColor("yellow")
+        .color("cyan"),
       " in one paragraph.",
     ),
+    row(
+      text("Completed").strikethrough(),
+      text("Highlighted").inverse(),
+      text("Faded").opacity(0.5),
+    ).columnGap(2),
     row(
       button(connected ? "Disconnect" : "Connect", () =>
         setConnected(!connected),

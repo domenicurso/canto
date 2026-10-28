@@ -11,10 +11,10 @@ export function edges(style: Style): readonly [number, number, number, number] {
   const inset = style.border && style.border !== "none" ? 1 : 0;
   const p = padding(style.padding);
   return [
-    p[0] + (style.borderTop === false ? 0 : inset),
-    p[1] + (style.borderRight === false ? 0 : inset),
-    p[2] + (style.borderBottom === false ? 0 : inset),
-    p[3] + (style.borderLeft === false ? 0 : inset),
+    (style.paddingTop ?? p[0]) + (style.borderTop === false ? 0 : inset),
+    (style.paddingRight ?? p[1]) + (style.borderRight === false ? 0 : inset),
+    (style.paddingBottom ?? p[2]) + (style.borderBottom === false ? 0 : inset),
+    (style.paddingLeft ?? p[3]) + (style.borderLeft === false ? 0 : inset),
   ];
 }
 export function inset(rect: Rect, style: Style): Rect {

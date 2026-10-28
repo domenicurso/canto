@@ -47,21 +47,19 @@ function seam(
     const visible = hit(pair.parent, { x, y }, clip);
     if (visible !== a && visible !== b) continue;
     const owner = visible;
-    const mask = directions(a, x, y) | directions(b, x, y);
+    if (hiddenBorder(owner, pair.parent)) continue;
+    const mask =
+      (hiddenBorder(a, pair.parent) ? 0 : directions(a, x, y)) |
+      (hiddenBorder(b, pair.parent) ? 0 : directions(b, x, y));
+    const cell = screen.get(x, y);
+    if (!cell) continue;
     const type =
       owner.style.border === "rounded" ? "single" : owner.style.border;
-    const text = type && type !== "none" ? glyphs[type][mask] : undefined;
-    if (text)
-      screen.put(
-        { x, y, width: 1, height: 1 },
-        text,
-        {
-          ...owner.style,
-          foreground: owner.style.borderColor ?? owner.style.foreground,
-          background: owner.style.borderBackground ?? owner.style.background,
-        },
-        clip,
-      );
+    const text =
+      type && type !== "none" && typeof type !== "object"
+        ? glyphs[type][mask]
+        : undefined;
+    if (text) screen.put({ x, y, width: 1, height: 1 }, text, cell.style, clip);
   }
 }
 function directions(node: Mounted, x: number, y: number): number {
@@ -79,4 +77,15 @@ function directions(node: Mounted, x: number, y: number): number {
   if (horizontal) mask |= (x > r.x ? 8 : 0) | (x < right ? 2 : 0);
   if (vertical) mask |= (y > r.y ? 1 : 0) | (y < bottom ? 4 : 0);
   return mask;
+}
+
+function hiddenBorder(node: Mounted, parent: Mounted): boolean {
+  for (
+    let owner: Mounted | null = node;
+    owner && owner !== parent;
+    owner = owner.parent
+  ) {
+    if (owner.style.opacity === 0) return true;
+  }
+  return false;
 }

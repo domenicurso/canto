@@ -1,6 +1,6 @@
 import type { PixelBuffer } from "../element/pixels";
 import type { Rect } from "../runtime/tree";
-import type { RGB } from "../style/colors";
+import type { ColorTheme, RGB } from "../style/colors";
 import type { Style } from "../style/types";
 import type { CellSize } from "../terminal/cell-size";
 import type { RasterPlacement } from "./raster-placement";
@@ -14,6 +14,7 @@ export interface Cell {
   continuation: boolean;
 }
 export class Screen {
+  theme?: ColorTheme;
   readonly cells: Cell[];
   readonly pixelSources: WeakMap<object, PixelBuffer>;
   rasters: RasterPlacement[] = [];
@@ -27,6 +28,7 @@ export class Screen {
       height: 16,
     },
   ) {
+    this.theme = previous?.theme;
     this.pixelSources = previous?.pixelSources ?? new WeakMap();
     this.pixelBackgrounds = previous?.pixelBackgrounds ?? new WeakMap();
     this.cells = previous

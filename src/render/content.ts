@@ -3,6 +3,7 @@ import type { Screen } from "./screen";
 
 import { validatePixels } from "../element/pixels";
 import { intersect } from "../layout/geometry";
+import { textOffset } from "../text/alignment";
 import { width as displayWidth, sanitize } from "../text/columns";
 import { drawPixels } from "./quadrants";
 
@@ -52,10 +53,7 @@ export function drawContent(node: Mounted, screen: Screen, clip: Rect): void {
 export function drawText(node: Mounted, screen: Screen, clip: Rect): void {
   const runs = node.element.data.runs;
   if (!runs || runs.length < 2) {
-    const style = { ...node.style, ...runs?.[0]?.style };
-    node.lines.forEach((line, index) =>
-      screen.put({ ...node.inner, y: node.inner.y + index }, line, style, clip),
-    );
+    drawPlainText(node, screen, clip);
     return;
   }
   const spans = runs.map((run) => ({ ...run, text: sanitize(run.text) }));
@@ -67,7 +65,8 @@ export function drawText(node: Mounted, screen: Screen, clip: Rect): void {
     const found = original.indexOf(source, offset);
     const start = found < 0 ? offset : found;
     let position = 0;
-    let x = node.inner.x;
+    let x =
+      node.inner.x + textOffset(line, node.inner.width, node.style.textAlign);
     for (const run of spans) {
       const end = position + run.text.length;
       const part = run.text.slice(
@@ -94,4 +93,22 @@ export function drawText(node: Mounted, screen: Screen, clip: Rect): void {
       );
     offset = start + source.length;
   }
+}
+
+function drawPlainText(node: Mounted, screen: Screen, clip: Rect): void {
+  const style = { ...node.style, ...node.element.data.runs?.[0]?.style };
+  node.lines.forEach((line, index) =>
+    screen.put(
+      {
+        ...node.inner,
+        x:
+          node.inner.x +
+          textOffset(line, node.inner.width, node.style.textAlign),
+        y: node.inner.y + index,
+      },
+      line,
+      style,
+      clip,
+    ),
+  );
 }

@@ -1,6 +1,7 @@
 import type { Mounted } from "./tree";
 
 import { content } from "../layout/measure";
+import { textOffset } from "../text/alignment";
 import { columns, graphemes, take, width } from "../text/columns";
 import { wrap } from "../text/wrap";
 
@@ -38,6 +39,7 @@ export function editorView(node: Mounted): EditorView {
     cursor: {
       x:
         node.inner.x +
+        textOffset(line?.text ?? "", node.inner.width, node.style.textAlign) +
         Math.min(
           node.inner.width - 1,
           width(value.slice(line?.start ?? 0, cursor)),
@@ -66,7 +68,14 @@ function inputView(node: Mounted, value: string): EditorView {
     lines: [{ text: take(display.slice(start), node.inner.width), start }],
     placeholder,
     cursor: {
-      x: node.inner.x + width(value.slice(start, cursor)),
+      x:
+        node.inner.x +
+        textOffset(
+          take(display.slice(start), node.inner.width),
+          node.inner.width,
+          node.style.textAlign,
+        ) +
+        width(value.slice(start, cursor)),
       y: node.inner.y,
     },
   };

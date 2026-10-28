@@ -1,4 +1,5 @@
 import type { Screen } from "../render/screen";
+import type { ColorTheme } from "../style/colors";
 import type { CellSize } from "./cell-size";
 import type { Clipboard } from "./clipboard";
 import type { TerminalEvent } from "./events";
@@ -9,6 +10,7 @@ export interface Terminal {
   readonly width: number;
   readonly height: number;
   readonly cellSize?: CellSize;
+  readonly theme?: ColorTheme;
   readonly graphics?: GraphicsCapabilities;
   readonly clipboard?: Clipboard;
   setMouseTracking?(enabled: boolean): Promise<void>;
@@ -17,6 +19,7 @@ export interface Terminal {
   stop(): Promise<void>;
 }
 export class MemoryTerminal implements Terminal {
+  theme?: ColorTheme;
   graphics: GraphicsCapabilities = { kitty: false, sixel: false };
   readonly frames: Screen[] = [];
   readonly output: string[] = [];

@@ -1,19 +1,14 @@
-import type {
-  Alignment,
-  Border,
-  Color,
-  Dimension,
-  Distribution,
-  Interaction,
-  Padding,
-  Style,
-  StyleDefinition,
-} from "./types";
+import type { Interaction, Style, StyleDefinition, StylePart } from "./types";
 
-export class StyleBuilder {
+import { mergeDefinitions, nestDefinition } from "./definitions";
+import { LayoutBuilder } from "./layout-builder";
+
+export class StyleBuilder extends LayoutBuilder {
   constructor(
     readonly definition: StyleDefinition = { base: {}, variants: {} },
-  ) {}
+  ) {
+    super();
+  }
   protected copy(definition: StyleDefinition): this {
     return new StyleBuilder(definition) as this;
   }
@@ -24,153 +19,30 @@ export class StyleBuilder {
     });
   }
   use(...styles: readonly StyleBuilder[]): this {
-    // oxlint-disable-next-line typescript/no-this-alias -- Immutable merges replace this accumulator with each new builder.
-    let result: this = this;
-    for (const value of styles) result = result.merge(value.definition);
-    return result;
-  }
-  private merge(value: StyleDefinition): this {
-    const variants = { ...this.definition.variants };
-    for (const key of [
-      "focused",
-      "hovered",
-      "pressed",
-      "disabled",
-      "selected",
-    ] as const) {
-      if (value.variants[key])
-        variants[key] = { ...variants[key], ...value.variants[key] };
-    }
-    return this.copy({
-      base: { ...this.definition.base, ...value.base },
-      variants,
-    });
+    return this.copy(
+      styles.reduce(
+        (definition, value) => mergeDefinitions(definition, value.definition),
+        this.definition,
+      ),
+    );
   }
   private variant(name: Interaction, value: StyleBuilder): this {
+    return this.copy(
+      mergeDefinitions(this.definition, nestDefinition(name, value.definition)),
+    );
+  }
+  private part(name: StylePart, value: StyleBuilder): this {
+    const parts = this.definition.parts;
     return this.copy({
       ...this.definition,
-      variants: {
-        ...this.definition.variants,
-        [name]: { ...this.definition.variants[name], ...value.definition.base },
+      parts: {
+        ...parts,
+        [name]: mergeDefinitions(
+          parts?.[name] ?? { base: {}, variants: {} },
+          value.definition,
+        ),
       },
     });
-  }
-  color(foreground: Color | null): this {
-    return this.style({ foreground });
-  }
-  background(background: Color | null): this {
-    return this.style({ background });
-  }
-  bold(bold = true): this {
-    return this.style({ bold });
-  }
-  italic(italic = true): this {
-    return this.style({ italic });
-  }
-  underline(underline = true): this {
-    return this.style({ underline });
-  }
-  faint(faint = true): this {
-    return this.style({ faint });
-  }
-  dim(): this {
-    return this.faint();
-  }
-  width(width: Dimension): this {
-    return this.style({ width });
-  }
-  height(height: Dimension): this {
-    return this.style({ height });
-  }
-  minWidth(minWidth: number): this {
-    return this.style({ minWidth });
-  }
-  maxWidth(maxWidth: number): this {
-    return this.style({ maxWidth });
-  }
-  minHeight(minHeight: number): this {
-    return this.style({ minHeight });
-  }
-  maxHeight(maxHeight: number): this {
-    return this.style({ maxHeight });
-  }
-  fill(): this {
-    return this.style({ width: "fill", height: "fill" });
-  }
-  grow(grow = 1): this {
-    return this.style({ grow });
-  }
-  shrink(shrink = 1): this {
-    return this.style({ shrink });
-  }
-  joinBorders(joinBorders = true): this {
-    return this.style({ joinBorders });
-  }
-  selectable(selectable = true): this {
-    return this.style({ selectable });
-  }
-  gap(gap: number): this {
-    return this.style({ gap });
-  }
-  padding(padding: Padding): this {
-    return this.style({ padding });
-  }
-  border(border: Border): this {
-    return this.style({ border });
-  }
-  borderColor(borderColor: Color | null): this {
-    return this.style({ borderColor });
-  }
-  borderBackground(borderBackground: Color | null): this {
-    return this.style({ borderBackground });
-  }
-  borderTop(borderTop = true): this {
-    return this.style({ borderTop });
-  }
-  borderRight(borderRight = true): this {
-    return this.style({ borderRight });
-  }
-  borderBottom(borderBottom = true): this {
-    return this.style({ borderBottom });
-  }
-  borderLeft(borderLeft = true): this {
-    return this.style({ borderLeft });
-  }
-  justify(justify: Distribution): this {
-    return this.style({ justify });
-  }
-  align(align: Alignment): this {
-    return this.style({ align });
-  }
-  alignSelf(alignSelf: Alignment): this {
-    return this.style({ alignSelf });
-  }
-  position(position: "static" | "absolute"): this {
-    return this.style({ position });
-  }
-  top(top: number): this {
-    return this.style({ top });
-  }
-  right(right: number): this {
-    return this.style({ right });
-  }
-  bottom(bottom: number): this {
-    return this.style({ bottom });
-  }
-  left(left: number): this {
-    return this.style({ left });
-  }
-  zIndex(zIndex: number): this {
-    return this.style({ zIndex });
-  }
-  overflow(overflow: "clip" | "visible" | "ellipsis"): this {
-    return this.style({ overflow });
-  }
-  wrap(wrap: "word" | "character" | "none"): this {
-    return this.style({ wrap });
-  }
-  maxLines(maxLines: number): this {
-    return this.style({ maxLines });
   }
   focused(value: StyleBuilder): this {
     return this.variant("focused", value);
@@ -186,6 +58,15 @@ export class StyleBuilder {
   }
   disabled(value: StyleBuilder): this {
     return this.variant("disabled", value);
+  }
+  placeholder(value: StyleBuilder): this {
+    return this.part("placeholder", value);
+  }
+  scrollbarThumb(value: StyleBuilder): this {
+    return this.part("scrollbarThumb", value);
+  }
+  scrollbarTrack(value: StyleBuilder): this {
+    return this.part("scrollbarTrack", value);
   }
 }
 export function style(): StyleBuilder {

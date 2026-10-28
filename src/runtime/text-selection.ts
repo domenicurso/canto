@@ -4,6 +4,7 @@ import type { SelectionUnit } from "../text/ranges";
 import type { Glyph } from "./selection-glyphs";
 import type { Mounted } from "./tree";
 
+import { selectionStyle } from "../layout/style-parts";
 import { sanitize } from "../text/columns";
 import { selectionRange } from "../text/ranges";
 import { hit } from "./focus";
@@ -70,10 +71,7 @@ export class TextSelection {
         hit(root, glyph, bounds) !== glyph.node
       )
         continue;
-      const selected = glyph.node.element.definition.variants.selected ?? {
-        background: "brightWhite",
-        foreground: "black",
-      };
+      const selected = selectionStyle(glyph.node);
       for (let x = glyph.x; x < glyph.x + glyph.width; x++) {
         const index = glyph.y * screen.width + x;
         const cell = screen.cells[index];

@@ -24,7 +24,7 @@ class TerminalState {
   >();
   feed(output: string): void {
     const tokens =
-      output.match(/\x1b(?:[78]|\[[\d;?]*[A-Za-z])|[^\x1b]/gu) ?? [];
+      output.match(/\x1b(?:[78]|\[[\d;:?]*[A-Za-z])|[^\x1b]/gu) ?? [];
     for (const token of tokens) {
       if (token === "\x1b7") this.saved = { ...this.cursor };
       else if (token === "\x1b8") this.cursor = { ...this.saved };
@@ -144,4 +144,17 @@ test("the styling example keeps every cell's rendition through inline focus and 
     app.stop();
     await running;
   }
+});
+
+test("inline cursor restores preserve extended underline rendition across sparse writes", () => {
+  const terminal = new TerminalState();
+  terminal.feed("\x1b7");
+  const next = frame("cyan", {
+    underline: "curly",
+    underlineColor: "red",
+    strikethrough: true,
+    inverse: true,
+  });
+  terminal.feed(inlineOutput(diff(undefined, next).output));
+  terminal.expectFrame(next);
 });

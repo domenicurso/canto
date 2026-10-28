@@ -2,7 +2,7 @@
 export function inlineOutput(output: string): string {
   let rendition = "";
   return output.replace(
-    /\x1b\[(?:(\d+);(\d+)H|[\d;]*m)/g,
+    /\x1b\[(?:(\d+);(\d+)H|[\d;:]*m)/g,
     (sequence: string, row: string | undefined, col: string | undefined) => {
       if (row === undefined) {
         // Frame diffs emit complete SGR state, beginning with a reset.

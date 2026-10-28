@@ -2,6 +2,7 @@ import type { Screen } from "../render/screen";
 import type { Mounted, Rect } from "./tree";
 
 import { contains, intersect } from "../layout/geometry";
+import { textOffset } from "../text/alignment";
 import { columns, graphemes, sanitize } from "../text/columns";
 export interface Glyph {
   x: number;
@@ -23,7 +24,9 @@ export function visibleGlyphs(node: Mounted, screen: Screen): Glyph[] {
         : original;
     const found = value.indexOf(line, offset);
     let start = found < 0 ? offset : found;
-    let x = node.inner.x;
+    let x =
+      node.inner.x +
+      textOffset(original, node.inner.width, node.style.textAlign);
     const y = node.inner.y + row;
     if (y < clip.y || y >= clip.y + clip.height) {
       offset = start + line.length;

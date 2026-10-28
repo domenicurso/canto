@@ -25,13 +25,19 @@ export function borderOverlap(
   if (
     !previous ||
     !parent?.style.joinBorders ||
-    (parent.style.gap ?? 0) !== 0 ||
+    axisGap(parent, horizontal) !== 0 ||
     !["row", "column"].includes(parent.element.data.kind)
   )
     return 0;
   const a = borderOwner(previous),
     b = borderOwner(next);
-  if (!a || !b) return 0;
+  if (
+    !a ||
+    !b ||
+    typeof a.style.border === "object" ||
+    typeof b.style.border === "object"
+  )
+    return 0;
   const axis = horizontal ? "width" : "height";
   const maximum = horizontal ? "maxWidth" : "maxHeight";
   if (
@@ -53,12 +59,21 @@ export function flowGaps(
   children: readonly Mounted[],
   horizontal: boolean,
 ): number {
-  const gap = children[0]?.parent?.style.gap ?? 0;
+  const parent = children[0]?.parent;
+  const gap = parent ? axisGap(parent, horizontal) : 0;
   return children.reduce(
     (sum, node, index) =>
       index
         ? sum + gap - borderOverlap(children[index - 1], node, horizontal)
         : sum,
     0,
+  );
+}
+
+export function axisGap(node: Mounted, horizontal: boolean): number {
+  return (
+    (horizontal ? node.style.columnGap : node.style.rowGap) ??
+    node.style.gap ??
+    0
   );
 }

@@ -3,6 +3,7 @@ import type { Screen } from "../render/screen";
 import type { Mounted } from "./tree";
 
 import { content } from "../layout/measure";
+import { textOffset } from "../text/alignment";
 import { take } from "../text/columns";
 import { selectionRange, type SelectionUnit } from "../text/ranges";
 import { editorView } from "./editor-view";
@@ -83,6 +84,15 @@ function editorPosition(node: Mounted, event: PointerEvent): number {
   );
   const line = view.lines[row];
   return line
-    ? line.start + take(line.text, Math.max(0, event.x - node.inner.x)).length
+    ? line.start +
+        take(
+          line.text,
+          Math.max(
+            0,
+            event.x -
+              node.inner.x -
+              textOffset(line.text, node.inner.width, node.style.textAlign),
+          ),
+        ).length
     : 0;
 }

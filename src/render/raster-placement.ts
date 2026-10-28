@@ -57,7 +57,8 @@ export function rasterPlacements(
           : capabilities.sixel && requested !== "kitty"
             ? "sixel"
             : undefined;
-    if (!screen.pixelSources.has(node) || !renderer) continue;
+    if (!screen.pixelSources.has(node) || !renderer || translucent(node))
+      continue;
     const rect = visibleRect(node, screen);
     if (!rect.width || !rect.height || !uncovered(root, node, rect)) continue;
     result.push({
@@ -115,4 +116,12 @@ export function maskRasterCells(screen: Screen): void {
       }
     }
   }
+}
+
+function translucent(node: Mounted): boolean {
+  for (let owner: Mounted | null = node; owner; owner = owner.parent) {
+    if ((owner.style.opacity ?? 1) !== 1) return true;
+    if (owner.element.data.props.overlay) break;
+  }
+  return false;
 }

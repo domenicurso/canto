@@ -1,9 +1,11 @@
 import type { PixelBuffer } from "../element/pixels";
 import type { Mounted, Rect } from "../runtime/tree";
+import type { ColorTheme } from "../style/colors";
 import type { CellSize } from "../terminal/cell-size";
 
 import { intersect } from "../layout/geometry";
 import { content } from "../layout/measure";
+import { activeInteractions } from "../layout/style-parts";
 import { draw } from "./paint";
 import { Screen } from "./screen";
 
@@ -21,11 +23,17 @@ export class RetainedPaint {
   paintedCells = 0;
   render(
     root: Mounted,
-    size: { width: number; height: number; cellSize?: CellSize },
+    size: {
+      width: number;
+      height: number;
+      cellSize?: CellSize;
+      theme?: ColorTheme;
+    },
   ): Screen {
     const bounds = { x: 0, y: 0, ...size };
     const full =
       !this.previous ||
+      this.previous.theme !== size.theme ||
       this.previous.width !== size.width ||
       this.previous.height !== size.height ||
       this.previous.cellSize.width !== (size.cellSize?.width ?? 8) ||
@@ -38,6 +46,7 @@ export class RetainedPaint {
       : this.previous?.clone();
     if (!screen)
       throw new Error("Retained painting requires a previous frame.");
+    screen.theme = size.theme;
     this.paintedCells = rows.size * size.width;
     for (const rect of rowRegions(rows, size.width)) {
       screen.clear(rect);
@@ -52,18 +61,15 @@ export class RetainedPaint {
       node.rect,
       node.inner,
       node.style,
+      activeInteractions(node),
       node.lines,
       data.runs,
       content(node),
-      node.cursor,
-      node.anchor,
-      node.offset,
-      node.offsetX,
-      node.maxOffset,
-      node.maxOffsetX,
+      [node.cursor, node.anchor],
+      [node.offset, node.offsetX, node.maxOffset, node.maxOffsetX],
       data.props.scroll?.scrollbar,
       data.props.scroll?.gutter,
-      node.element.definition.variants.selected,
+      node.element.definition,
     ]);
     const previous = this.snapshots.get(node);
     const escapes =
