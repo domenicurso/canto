@@ -103,3 +103,7 @@ bun --hot ./index.ts
 ```
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+
+## Git workflow
+
+After finishing requested work, commit the changes in coherent logical units. Use multiple commits when a prompt spans distinct behaviors or subsystems; choose boundaries based on the changes rather than the number of prompts.
