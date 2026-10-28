@@ -1,7 +1,9 @@
 import {
+  box,
   button,
   column,
   createApp,
+  overlay,
   row,
   style,
   text,
@@ -9,7 +11,7 @@ import {
   useState,
 } from "../index";
 
-const panel = style().border("rounded").borderColor("#475569").padding([1, 2]);
+const panel = style().border("rounded").borderColor("#475569").padding([0, 2]);
 const action = style()
   .padding([0, 2])
   .border("rounded")
@@ -24,7 +26,10 @@ const warning = panel.borderColor("yellow");
 const panelSamples = row(
   column(
     text("Original panel").bold(),
-    text("Shared styles stay immutable.").dim(),
+    row(
+      text("Completed").strikethrough(),
+      text("Highlighted").inverse(),
+    ).columnGap(2),
   )
     .use(panel)
     .width("fill"),
@@ -37,6 +42,34 @@ const panelSamples = row(
 )
   .gap(2)
   .width("fill");
+
+const opacitySamples = column(
+  text("Layer opacity: 100%, 50%, nested 25%").bold(),
+  overlay(
+    box(text("Back layer: 100%").bold(), text("Text beneath the front layer"))
+      .border("rounded")
+      .borderColor("#93c5fd")
+      .background("#1e3a8a")
+      .color("#ffffff")
+      .width(28)
+      .height(4)
+      .position("absolute"),
+    box(text("Front group: 50%").bold(), text("Nested text: 25%").opacity(0.5))
+      .border("rounded")
+      .borderColor("#67e8f9")
+      .background("#164e63")
+      .color("#ffffff")
+      .width(30)
+      .height(4)
+      .position("absolute")
+      .left(18)
+      .top(1)
+      .zIndex(1)
+      .opacity(0.5),
+  )
+    .width("fill")
+    .height(5),
+);
 
 export function Styles() {
   const [connected, setConnected] = useState(false);
@@ -60,11 +93,6 @@ export function Styles() {
       " in one paragraph.",
     ),
     row(
-      text("Completed").strikethrough(),
-      text("Highlighted").inverse(),
-      text("Faded").opacity(0.5),
-    ).columnGap(2),
-    row(
       button(connected ? "Disconnect" : "Connect", () =>
         setConnected(!connected),
       )
@@ -73,6 +101,7 @@ export function Styles() {
       button("Unavailable", { disabled: true, onPress: () => {} }).use(action),
       button("Quit", () => app.stop()).use(action),
     ).gap(2),
+    opacitySamples,
     text(
       "Tab changes focus · Move the pointer to hover · Press and release to activate",
     ).dim(),
