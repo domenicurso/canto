@@ -57,10 +57,10 @@ test("clicking the inspector does not activate or dismiss app overlays, and the 
     expect(presses).toBe(0);
     expect(dismissals).toBe(0);
     expect(releases).toBe(0);
-    pointer(terminal, "press", 75, 9);
+    pointer(terminal, "press", 77, 10);
     await app.flush();
     expect(app.debug.visible).toBe(false);
-    pointer(terminal, "release", 75, 9);
+    pointer(terminal, "release", 77, 10);
     await app.flush();
     expect(presses).toBe(0);
     expect(dismissals).toBe(0);
@@ -165,6 +165,8 @@ test("the floating inspector remains clipped through tiny viewports and can be c
       await app.flush();
       expect(terminal.screen?.cells).toHaveLength(width * height);
       expect(terminal.screen?.width).toBe(width);
+      if (width > 1 && height > 1)
+        expect(terminal.screen?.get(width - 1, height - 1)?.text).toBe("╯");
     }
     expect(terminal.screen?.toString()).toContain(" Debug ");
   } finally {

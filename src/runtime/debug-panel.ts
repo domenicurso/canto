@@ -79,13 +79,11 @@ export class DebugPanel implements DebugControl {
     );
   }
   private bounds(screen: Screen): Rect {
-    const marginX = screen.width > 2 ? 1 : 0;
-    const marginY = screen.height > 2 ? 1 : 0;
-    const width = Math.min(60, screen.width - 2 * marginX);
-    const height = Math.min(14, screen.height - 2 * marginY);
+    const width = Math.min(60, screen.width);
+    const height = Math.min(14, screen.height);
     return {
-      x: screen.width - width - marginX,
-      y: screen.height - height - marginY,
+      x: screen.width - width,
+      y: screen.height - height,
       width,
       height,
     };
