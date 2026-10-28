@@ -1,9 +1,23 @@
-import { box, column, createApp, MemoryTerminal, overlay, row, scroll, text } from "../../index";
 import { expect, test } from "bun:test";
 
 import type { Child, ElementRef } from "../../index";
 
-async function render(view: () => Child, width = 30, height = 10): Promise<MemoryTerminal> {
+import {
+  box,
+  column,
+  createApp,
+  MemoryTerminal,
+  overlay,
+  row,
+  scroll,
+  text,
+} from "../../index";
+
+async function render(
+  view: () => Child,
+  width = 30,
+  height = 10,
+): Promise<MemoryTerminal> {
   const terminal = new MemoryTerminal(width, height);
   const app = createApp(view, { terminal });
   const running = app.run();
@@ -54,7 +68,10 @@ test("borders and padding are included in explicit dimensions", async () => {
 });
 test("absolute children do not take flow space and later overlays paint on top", async () => {
   const result = await render(() =>
-    overlay(text("abcdef"), text("XY").position("absolute").left(2).top(0).zIndex(1)),
+    overlay(
+      text("abcdef"),
+      text("XY").position("absolute").left(2).top(0).zIndex(1),
+    ),
   );
   expect(result.screen?.toString().split("\n")[0]).toBe("abXYef");
 });
@@ -75,7 +92,7 @@ test("vertical scrolling wraps content to its viewport and clips children", asyn
     7,
     2,
   );
-  expect(result.screen?.toString().split("\n")).toEqual(["one   █", "two   ░"]);
+  expect(result.screen?.toString().split("\n")).toEqual(["one   █", "two"]);
 });
 test("minimums cause overflow rather than negative allocation", async () => {
   const rects: number[] = [];
@@ -98,7 +115,11 @@ test("minimums cause overflow rather than negative allocation", async () => {
 });
 
 test("fractional cell spacing is normalized before allocation and painting", async () => {
-  const result = await render(() => row(text("a"), text("b")).gap(1.9).padding(1.9), 8, 4);
+  const result = await render(
+    () => row(text("a"), text("b")).gap(1.9).padding(1.9),
+    8,
+    4,
+  );
   expect(result.screen?.toString().split("\n")[1]).toBe(" a b");
 });
 
@@ -106,7 +127,10 @@ test("row height accounts for text wrapping after main-axis allocation", async (
   const result = await render(
     () =>
       column(
-        row(text("abcdefgh").width("fill"), text("12345678").width("fill")).width(8),
+        row(
+          text("abcdefgh").width("fill"),
+          text("12345678").width("fill"),
+        ).width(8),
         text("after"),
       ),
     12,

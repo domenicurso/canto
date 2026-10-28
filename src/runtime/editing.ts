@@ -1,8 +1,8 @@
-import { content } from "../layout/measure";
-import { boundary, vertical } from "../text/navigation";
-
 import type { KeyEvent } from "../element/events";
 import type { Mounted } from "./tree";
+
+import { content } from "../layout/measure";
+import { boundary, vertical } from "../text/navigation";
 
 export function edit(node: Mounted, event: KeyEvent): boolean {
   const props = node.element.data.props.input;
@@ -22,7 +22,10 @@ function navigate(node: Mounted, value: string, event: KeyEvent): boolean {
   let next: number;
   if (key === "left" || key === "right")
     next = boundary(value, node.cursor, key === "left" ? -1 : 1);
-  else if ((key === "up" || key === "down") && node.element.data.kind === "textarea")
+  else if (
+    (key === "up" || key === "down") &&
+    node.element.data.kind === "textarea"
+  )
     next = vertical(value, node.cursor, key === "up" ? -1 : 1);
   else if (key === "home") next = value.lastIndexOf("\n", node.cursor - 1) + 1;
   else if (key === "end") {
@@ -50,7 +53,9 @@ function change(node: Mounted, value: string, event: KeyEvent): boolean {
   } else if (event.key === "enter") insert = "\n";
   else if (event.text && !event.ctrl && !event.alt) insert = event.text;
   else return false;
-  insert = insert.replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "");
+  insert = insert
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "");
   if (node.element.data.kind === "input") insert = insert.replace(/\n/g, " ");
   const next = value.slice(0, start) + insert + value.slice(end);
   node.cursor = start + insert.length;

@@ -6,7 +6,9 @@ export function Conditional() {
   const [count, setCount] = useState(0);
   return column(
     text("Conditional Widget Demo").bold().color("green"),
-    text("m: message · c: choices · Space: increment · r: reset · Ctrl+C: exit").dim(),
+    text(
+      "m: message · c: choices · Space: increment · r: reset · Ctrl+C: exit",
+    ).dim(),
     text(`Counter: ${count}`).color("cyan"),
     message &&
       column(
@@ -16,10 +18,13 @@ export function Conditional() {
     choices &&
       column(
         text("Available Options:").color("blue"),
-        ...["A", "B", "C"].map((option) => text(`  → Option ${option}`).color("yellow")),
+        ...["A", "B", "C"].map((option) =>
+          text(`  → Option ${option}`).color("yellow"),
+        ),
       ),
     count >= 5 && text("Counter reached 5 or more!").color("green").bold(),
-    count >= 10 && text("Counter reached 10 or more! Amazing!").color("red").bold(),
+    count >= 10 &&
+      text("Counter reached 10 or more! Amazing!").color("red").bold(),
     row(
       text("Status:"),
       text("Message").color(message ? "green" : "red"),

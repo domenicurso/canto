@@ -24,12 +24,19 @@ export function VirtualList() {
   const [selected, setSelected] = useState("No project selected");
   const app = useApp();
   const matches = useMemo(
-    () => projects.filter((project) => project.name.toLowerCase().includes(query.toLowerCase())),
+    () =>
+      projects.filter((project) =>
+        project.name.toLowerCase().includes(query.toLowerCase()),
+      ),
     [query],
   );
   return column(
     text("10,000 projects · virtualized rows").bold(),
-    input({ value: query, onChange: setQuery, placeholder: "Filter by project number…" })
+    input({
+      value: query,
+      onChange: setQuery,
+      placeholder: "Filter by project number…",
+    })
       .width("fill")
       .border("rounded")
       .padding([0, 1])
@@ -38,19 +45,15 @@ export function VirtualList() {
       height: 12,
       itemHeight: 1,
       key: (project) => project.id,
-      render: (project) =>
-        row(
-          button(project.name, () => setSelected(`${project.name} · ${project.language}`))
-            .use(action)
-            .width("fill"),
-          text(project.language).dim().width(12),
-        )
-          .gap(2)
-          .width("fill"),
+      render: (project) => projectRow(project, setSelected),
     }).key(query),
-    text(`${matches.length.toLocaleString()} results · ${selected}`).color("green"),
+    text(`${matches.length.toLocaleString()} results · ${selected}`).color(
+      "green",
+    ),
     row(
-      text("Tab to navigate · Page Down to scroll · Enter to select").dim().width("fill"),
+      text("Tab to navigate · Page Down to scroll · Enter to select")
+        .dim()
+        .width("fill"),
       button("Quit", () => app.stop()).use(action),
     ).gap(1),
   )
@@ -60,3 +63,17 @@ export function VirtualList() {
 }
 
 if (import.meta.main) await createApp(VirtualList).run();
+
+function projectRow(
+  project: { name: string; language: string },
+  select: (value: string) => void,
+) {
+  return row(
+    button(project.name, () => select(`${project.name} · ${project.language}`))
+      .use(action)
+      .width("fill"),
+    text(project.language).dim().width(12),
+  )
+    .gap(2)
+    .width("fill");
+}

@@ -25,7 +25,7 @@ Text foreground, bold, italic, underline, and faint inherit. Padding, borders, d
 
 Percentage sizing under an unbounded dimension falls back to content sizing. Fill does the same under unbounded measurement. Dimensions are floored and clamped to nonnegative cells.
 
-`minWidth`, `maxWidth`, `minHeight`, and `maxHeight` constrain sizes. Minimums default to zero and maximums to unbounded. If minimum and maximum conflict, the minimum wins. Parent clipping still limits visible output when a child minimum exceeds its viewport.
+`minWidth`, `maxWidth`, `minHeight`, and `maxHeight` constrain sizes. Automatic main-axis minimums preserve decoration and at least one cell of text, editor, or scroll content, composed through flow children and gaps. Explicit minimums override this behavior; use zero to permit complete collapse. Maximums default to unbounded and cap automatic minimums. If minimum and maximum conflict, the minimum wins. Parent clipping still limits visible output when a child minimum exceeds its viewport.
 
 ## Main-axis allocation
 
@@ -71,12 +71,12 @@ Vertical scrolling measures content at the viewport's width with unbounded heigh
 
 Scrollbars consume a column or row. Automatic gutters reserve space only for overflowing axes; stable gutters reserve it even without overflow. Adding a bar can cause the other axis to overflow, so measurement settles bar reservation before final placement.
 
-Offsets are clamped to content bounds. Vertical and horizontal regions use scalar offsets; both-axis regions use `{ x, y }`. Controlled offsets require `onScroll`; uncontrolled offsets begin at `defaultOffset`. Reserved scrollbar gutters remain outside the content clip. Track and thumb are drawn from the current content extent and offset.
+Offsets are clamped to content bounds. Vertical and horizontal regions use scalar offsets; both-axis regions use `{ x, y }`. Controlled offsets require `onScroll`; uncontrolled offsets begin at `defaultOffset`. Reserved scrollbar gutters remain outside the content clip. Track and thumb are drawn from the current content extent and offset with eighth-cell Unicode blocks. `scrollbar: "hidden"` suppresses both drawing and gutter reservation, even with a stable gutter.
 
 Virtual lists use the same scrolling primitive with fixed-height spacers and a window of mounted rows. Their item height and viewport height are explicit positive integers.
 
 ## Updates and failure boundaries
 
-Geometry invalidation includes dimensions, spacing, borders, alignment, text, wrapping, scrolling configuration, and mounted child identity. Foreground/background and text decoration changes repaint without layout. A geometry invalidation currently recomputes layout for the mounted tree; measurements are reused within that layout pass for identical constraints.
+Geometry invalidation includes dimensions, spacing, borders, alignment, text, wrapping, scrolling configuration, and mounted child identity. Foreground/background and text decoration changes repaint without layout. Offset-only changes translate the previously measured scroll subtree, including nested scroll regions. Text changes with identical wrapped line geometry also avoid layout. A geometry invalidation currently recomputes layout for the mounted tree; measurements are reused within that layout pass for identical constraints.
 
 Non-finite numeric style values and negative spacing/weights/limits are rejected before output commits. Terminal input decoding and stdout writes are outside layout; a layout error causes the app to unmount and release its terminal session.

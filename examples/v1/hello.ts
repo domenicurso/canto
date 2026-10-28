@@ -12,7 +12,10 @@ export function Hello() {
       .background("#4acfff")
       .color("black")
       .padding([1, 2]),
-    row(text("All data points update in real time,"), text("reflecting simulated metrics.").bold())
+    row(
+      text("All data points update in real time,"),
+      text("reflecting simulated metrics.").bold(),
+    )
       .gap(1)
       .style({ italic: true }),
     text("Ctrl+C to exit").dim(),

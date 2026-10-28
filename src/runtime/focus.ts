@@ -1,17 +1,20 @@
+import type { Mounted, Rect } from "./tree";
+
 import { contains, intersect } from "../layout/geometry";
 import { walk } from "./tree";
 
-import type { Mounted, Rect } from "./tree";
-
 export function disabled(node: Mounted): boolean {
   return Boolean(
-    node.element.data.props.input?.disabled || node.element.data.props.button?.disabled,
+    node.element.data.props.input?.disabled ||
+    node.element.data.props.button?.disabled,
   );
 }
 export function focusable(node: Mounted): boolean {
   const { kind, props } = node.element.data;
   return (
-    !disabled(node) && (props.focusable ?? ["button", "input", "textarea", "scroll"].includes(kind))
+    !disabled(node) &&
+    (props.focusable ??
+      ["button", "input", "textarea", "scroll"].includes(kind))
   );
 }
 export class Focus {
@@ -34,14 +37,26 @@ export class Focus {
   }
   refresh(root: Mounted): void {
     const nodes = walk(root);
-    if (this.current && (!this.current.active || !focusable(this.current))) this.set(undefined);
+    if (this.current && (!this.current.active || !focusable(this.current)))
+      this.set(undefined);
     if (!this.current)
-      this.set(nodes.find((node) => node.element.data.props.autoFocus && focusable(node)));
+      this.set(
+        nodes.find(
+          (node) => node.element.data.props.autoFocus && focusable(node),
+        ),
+      );
   }
   next(root: Mounted, reverse: boolean): void {
     const nodes = walk(root)
-      .filter((node) => focusable(node) && (node.element.data.props.tabIndex ?? 0) >= 0)
-      .sort((a, b) => (a.element.data.props.tabIndex ?? 0) - (b.element.data.props.tabIndex ?? 0));
+      .filter(
+        (node) =>
+          focusable(node) && (node.element.data.props.tabIndex ?? 0) >= 0,
+      )
+      .sort(
+        (a, b) =>
+          (a.element.data.props.tabIndex ?? 0) -
+          (b.element.data.props.tabIndex ?? 0),
+      );
     if (!nodes.length) return;
     const current = this.current ? nodes.indexOf(this.current) : -1;
     const index =
@@ -61,7 +76,10 @@ export class Focus {
             ? node.rect.y - ancestor.inner.y
             : Math.max(
                 0,
-                node.rect.y + node.rect.height - ancestor.inner.y - ancestor.inner.height,
+                node.rect.y +
+                  node.rect.height -
+                  ancestor.inner.y -
+                  ancestor.inner.height,
               );
         if (delta) setScroll(ancestor, ancestor.offset + delta);
       }
@@ -69,12 +87,18 @@ export class Focus {
     }
   }
 }
-export function setScroll(node: Mounted, offset: number | { x: number; y: number }): void {
+export function setScroll(
+  node: Mounted,
+  offset: number | { x: number; y: number },
+): void {
   const props = node.element.data.props.scroll;
   if (!props) return;
   const next = Math.max(
     0,
-    Math.min(node.maxOffset, Math.floor(typeof offset === "number" ? offset : offset.y)),
+    Math.min(
+      node.maxOffset,
+      Math.floor(typeof offset === "number" ? offset : offset.y),
+    ),
   );
   const x = Math.max(
     0,

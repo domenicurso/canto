@@ -1,26 +1,39 @@
-import { columns, graphemes, sanitize, take, width } from "./columns";
-
 import type { Style } from "../style/types";
 
-export function wrap(text: string, available: number, style: Style = {}): string[] {
+import { columns, graphemes, sanitize, take, width } from "./columns";
+
+export function wrap(
+  text: string,
+  available: number,
+  style: Style = {},
+): string[] {
   if (available <= 0) return [];
   const lines = sanitize(text)
     .split(/\r?\n/)
     .flatMap((line) => split(line, available, style.wrap ?? "word"));
   const limit =
-    style.maxLines === undefined ? lines.length : Math.max(0, Math.floor(style.maxLines));
+    style.maxLines === undefined
+      ? lines.length
+      : Math.max(0, Math.floor(style.maxLines));
   const result = lines.slice(0, limit);
   if (style.overflow === "ellipsis" && result.length) {
     for (let index = 0; index < result.length; index++) {
       const line = result[index] ?? "";
-      if (width(line) > available || (index === result.length - 1 && lines.length > limit)) {
+      if (
+        width(line) > available ||
+        (index === result.length - 1 && lines.length > limit)
+      ) {
         result[index] = take(line, available - 1) + "…";
       }
     }
   }
   return result.map((line) => take(line, available));
 }
-function split(line: string, available: number, mode: NonNullable<Style["wrap"]>): string[] {
+function split(
+  line: string,
+  available: number,
+  mode: NonNullable<Style["wrap"]>,
+): string[] {
   if (mode === "none" || !Number.isFinite(available)) return [line];
   const result: string[] = [];
   let current = "";
@@ -37,7 +50,9 @@ function split(line: string, available: number, mode: NonNullable<Style["wrap"]>
         continue;
       }
       const boundary = mode === "word" ? lastSpace : -1;
-      result.push(boundary > 0 ? current.slice(0, boundary).trimEnd() : current);
+      result.push(
+        boundary > 0 ? current.slice(0, boundary).trimEnd() : current,
+      );
       current = boundary > 0 ? current.slice(boundary).trimStart() : "";
       used = width(current);
       lastSpace = current.lastIndexOf(" ");

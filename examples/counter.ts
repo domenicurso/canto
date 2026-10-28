@@ -1,8 +1,16 @@
-import { button, column, createApp, row, style, text, useApp, useState } from "../index";
+import {
+  button,
+  column,
+  createApp,
+  row,
+  style,
+  text,
+  useApp,
+  useState,
+} from "../index";
 
 const panel = style().padding([1, 2]).border("rounded").borderColor("cyan");
 const action = style().focused(style().background("cyan").color("black"));
-
 
 function Counter() {
   const [count, setCount] = useState(0);

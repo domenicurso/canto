@@ -1,13 +1,14 @@
-import { Element, flatten } from "./node";
-
 import type { DrawingContext } from "./drawing";
 import type { Child } from "./node";
 import type { ButtonProps, InputProps, ScrollProps } from "./props";
 
+import { Element, flatten } from "./node";
+
 export function text(...content: Child[]): Element {
   const elements = flatten(content);
   const runs = elements.flatMap((element) => {
-    if (element.data.kind !== "text") throw new Error("Text spans must contain only text.");
+    if (element.data.kind !== "text")
+      throw new Error("Text spans must contain only text.");
     return (
       element.data.runs?.map((run) => ({
         text: run.text,
@@ -38,16 +39,39 @@ export function box(...children: Child[]): Element {
 export function overlay(...children: Child[]): Element {
   return new Element({ kind: "overlay", children, props: {} });
 }
-export function button(content: Child, options: ButtonProps | (() => void)): Element {
+export function button(
+  content: Child,
+  options: ButtonProps | (() => void),
+): Element {
   const props = typeof options === "function" ? { onPress: options } : options;
-  return new Element({ kind: "button", children: [content], props: { button: props } });
+  return new Element({
+    kind: "button",
+    children: [content],
+    props: { button: props },
+  });
 }
 export function input(props: InputProps = {}): Element {
   return new Element({ kind: "input", children: [], props: { input: props } });
 }
 export function textarea(props: InputProps = {}): Element {
-  return new Element({ kind: "textarea", children: [], props: { input: props } });
+  return new Element({
+    kind: "textarea",
+    children: [],
+    props: { input: props },
+  });
 }
 export function scroll(content: Child, props: ScrollProps = {}): Element {
-  return new Element({ kind: "scroll", children: [content], props: { scroll: props } });
+  const friction =
+    typeof props.physics === "object" ? props.physics.friction : undefined;
+  if (friction !== undefined && (!Number.isFinite(friction) || friction <= 0))
+    throw new Error("Scroll physics friction must be finite and positive.");
+  const momentum =
+    typeof props.physics === "object" ? props.physics.momentum : undefined;
+  if (momentum !== undefined && (!Number.isFinite(momentum) || momentum < 0))
+    throw new Error("Scroll physics momentum must be finite and nonnegative.");
+  return new Element({
+    kind: "scroll",
+    children: [content],
+    props: { scroll: props },
+  });
 }

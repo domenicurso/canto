@@ -1,11 +1,11 @@
+import type { Mounted, Rect } from "../runtime/tree";
+import type { Size } from "./geometry";
+
 import { wrap } from "../text/wrap";
 import { flow } from "./flow";
 import { bounded, dimension, inset } from "./geometry";
 import { beginMeasurement, content, measure } from "./measure";
 import { arrangeScroll } from "./scroll";
-
-import type { Mounted, Rect } from "../runtime/tree";
-import type { Size } from "./geometry";
 
 export function layout(root: Mounted, viewport: Size, fullscreen = true): void {
   beginMeasurement();
@@ -13,8 +13,12 @@ export function layout(root: Mounted, viewport: Size, fullscreen = true): void {
   place(root, {
     x: 0,
     y: 0,
-    width: fullscreen ? viewport.width : natural.width,
-    height: fullscreen ? viewport.height : natural.height,
+    width: fullscreen
+      ? viewport.width
+      : Math.min(viewport.width, natural.width),
+    height: fullscreen
+      ? viewport.height
+      : Math.min(viewport.height, natural.height),
   });
 }
 function place(node: Mounted, rect: Rect): void {
@@ -32,11 +36,15 @@ function place(node: Mounted, rect: Rect): void {
   if (kind === "scroll") arrangeScroll(node, place);
   else if (kind === "overlay") arrangeOverlay(node);
   else flow(node, place);
-  for (const child of node.children.filter((child) => child.style.position === "absolute"))
+  for (const child of node.children.filter(
+    (child) => child.style.position === "absolute",
+  ))
     absolute(child, node.inner);
 }
 function arrangeOverlay(node: Mounted): void {
-  for (const child of node.children.filter((child) => child.style.position !== "absolute")) {
+  for (const child of node.children.filter(
+    (child) => child.style.position !== "absolute",
+  )) {
     const size = measure(child, node.inner);
     place(child, { ...node.inner, ...size });
   }
@@ -46,15 +54,23 @@ function absolute(node: Mounted, area: Rect): void {
   const size = measure(node, area);
   const w =
     dimension(s.width, area.width) ??
-    (s.left !== undefined && s.right !== undefined ? area.width - s.left - s.right : size.width);
+    (s.left !== undefined && s.right !== undefined
+      ? area.width - s.left - s.right
+      : size.width);
   const h =
     dimension(s.height, area.height) ??
-    (s.top !== undefined && s.bottom !== undefined ? area.height - s.top - s.bottom : size.height);
+    (s.top !== undefined && s.bottom !== undefined
+      ? area.height - s.top - s.bottom
+      : size.height);
   const width = bounded(w, s.minWidth, s.maxWidth),
     height = bounded(h, s.minHeight, s.maxHeight);
   place(node, {
-    x: area.x + (s.left ?? (s.right === undefined ? 0 : area.width - s.right - width)),
-    y: area.y + (s.top ?? (s.bottom === undefined ? 0 : area.height - s.bottom - height)),
+    x:
+      area.x +
+      (s.left ?? (s.right === undefined ? 0 : area.width - s.right - width)),
+    y:
+      area.y +
+      (s.top ?? (s.bottom === undefined ? 0 : area.height - s.bottom - height)),
     width,
     height,
   });

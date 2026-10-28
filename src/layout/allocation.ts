@@ -1,7 +1,8 @@
-import { measure } from "./measure";
-
 import type { Mounted } from "../runtime/tree";
 import type { Size } from "./geometry";
+
+import { measure } from "./measure";
+import { minimum } from "./minimum";
 
 export interface Allocation {
   node: Mounted;
@@ -12,13 +13,17 @@ export interface Allocation {
   grow: number;
   shrink: number;
 }
-export function allocate(children: Mounted[], available: Size, horizontal: boolean): Allocation[] {
+export function allocate(
+  children: Mounted[],
+  available: Size,
+  horizontal: boolean,
+): Allocation[] {
   const axis = horizontal ? "width" : "height";
   const result = children.map((node) => {
     const s = node.style;
     const size = measure(node, available);
     const fill = s[axis] === "fill";
-    const min = (horizontal ? s.minWidth : s.minHeight) ?? 0;
+    const min = minimum(node, horizontal);
     const max = (horizontal ? s.maxWidth : s.maxHeight) ?? Infinity;
     const token = s[axis];
     return {
@@ -45,10 +50,15 @@ function distribute(items: Allocation[], free: number): void {
   if (!Number.isFinite(remaining)) return;
   while (remaining > 0) {
     const eligible = items.filter((item) =>
-      growing ? item.grow > 0 && item.flow < item.max : item.shrink > 0 && item.flow > item.min,
+      growing
+        ? item.grow > 0 && item.flow < item.max
+        : item.shrink > 0 && item.flow > item.min,
     );
     if (!eligible.length) break;
-    const total = eligible.reduce((sum, item) => sum + (growing ? item.grow : item.shrink), 0);
+    const total = eligible.reduce(
+      (sum, item) => sum + (growing ? item.grow : item.shrink),
+      0,
+    );
     const budget = remaining;
     for (const item of eligible) {
       const weight = growing ? item.grow : item.shrink;

@@ -3,8 +3,10 @@ export function graphemes(text: string): string[] {
   return Array.from(segmenter.segment(text), (part) => part.segment);
 }
 export function columns(grapheme: string): number {
-  if (!grapheme || /^[\p{Mark}\p{Cf}\x00-\x1f\x7f-\x9f]+$/u.test(grapheme)) return 0;
-  if (/\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20e3/u.test(grapheme)) return 2;
+  if (!grapheme || /^[\p{Mark}\p{Cf}\x00-\x1f\x7f-\x9f]+$/u.test(grapheme))
+    return 0;
+  if (/\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20e3/u.test(grapheme))
+    return 2;
   const point = grapheme.codePointAt(0) ?? 0;
   return point >= 0x1100 &&
     (point <= 0x115f ||

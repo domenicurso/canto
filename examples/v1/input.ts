@@ -8,7 +8,9 @@ export function Input() {
   );
   return column(
     text("Input Widget Demo").color("green").bold(),
-    text("Tab: focus · Arrows: move · Ctrl+A: select all · Shift+arrows: select").dim(),
+    text(
+      "Tab: focus · Arrows: move · Ctrl+A: select all · Shift+arrows: select",
+    ).dim(),
     row(
       text("Name:").width(10),
       input({ value: name, onChange: setName })
@@ -19,13 +21,22 @@ export function Input() {
     ).gap(1),
     row(
       text("Email:").width(10),
-      input({ value: email, onChange: setEmail }).width(30).background("yellow").color("black"),
+      input({ value: email, onChange: setEmail })
+        .width(30)
+        .background("yellow")
+        .color("black"),
     ).gap(1),
     row(
       text("Message:").width(10),
-      input({ value: message, onChange: setMessage }).width(40).background("magenta"),
+      input({ value: message, onChange: setMessage })
+        .width(40)
+        .background("magenta"),
     ).gap(1),
-    column(text(`Name: ${name}`), text(`Email: ${email}`), text(`Message: ${message}`)),
+    column(
+      text(`Name: ${name}`),
+      text(`Email: ${email}`),
+      text(`Message: ${message}`),
+    ),
     text("Ctrl+C to exit").dim(),
   ).gap(1);
 }

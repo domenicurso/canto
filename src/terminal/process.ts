@@ -1,9 +1,11 @@
-import { Decoder } from "./decoder";
-import { inlineOutput } from "./inline";
-
 import type { Screen } from "../render/screen";
+import type { CellSize } from "./cell-size";
 import type { TerminalEvent } from "./events";
 import type { Mode, Terminal } from "./transport";
+
+import { CellMetrics } from "./cell-size";
+import { Decoder } from "./decoder";
+import { InlineRegion } from "./inline-region";
 
 let owner: ProcessTerminal | undefined;
 export class ProcessTerminal implements Terminal {
@@ -14,8 +16,10 @@ export class ProcessTerminal implements Terminal {
   private decoder: Decoder | undefined;
   private escapeTimer: ReturnType<typeof setTimeout> | undefined;
   private emit: ((event: TerminalEvent) => void) | undefined;
-  private rows = 1;
+  private readonly inline = new InlineRegion();
   private origin: number | undefined;
+  private readonly metrics = new CellMetrics();
+  private queryMetrics = true;
   private report: ((row: number) => void) | undefined;
   get width(): number {
     return process.stdout.columns || 80;
@@ -23,16 +27,25 @@ export class ProcessTerminal implements Terminal {
   get height(): number {
     return process.stdout.rows || 24;
   }
+  get cellSize(): CellSize {
+    return this.metrics.size(this.width, this.height);
+  }
   private data = (bytes: Buffer): void => {
     this.decoder?.push(bytes);
     clearTimeout(this.escapeTimer);
     this.escapeTimer = setTimeout(() => this.decoder?.flushEscape(), 30);
   };
   private resize = (): void => {
+    this.inline.invalidate();
+    this.metrics.invalidate();
+    this.queryMetrics = true;
+    this.origin = undefined;
     this.emit?.({ type: "resize" });
   };
   async start(mode: Mode, emit: (event: TerminalEvent) => void): Promise<void> {
-    if (owner) throw new Error("The terminal already belongs to a running Canto app.");
+    if (owner)
+      throw new Error("The terminal already belongs to a running Canto app.");
+    // oxlint-disable-next-line typescript/no-this-alias -- The process terminal must have one explicit session owner.
     owner = this;
     this.started = true;
     this.mode = mode;
@@ -41,13 +54,19 @@ export class ProcessTerminal implements Terminal {
       (event) => {
         if (event.type === "mouse" && this.mode === "inline") {
           if (this.origin === undefined) return;
-          event = { type: "mouse", event: { ...event.event, y: event.event.y - this.origin } };
+          event = {
+            type: "mouse",
+            event: { ...event.event, y: event.event.y - this.origin },
+          };
         }
         emit(event);
       },
       (row) => {
         this.origin = row;
         this.report?.(row);
+      },
+      (report) => {
+        this.metrics.report(report);
       },
     );
     this.raw = process.stdin.isRaw ?? false;
@@ -70,23 +89,15 @@ export class ProcessTerminal implements Terminal {
       await this.write(screen.toString() + "\n");
       return;
     }
+    const query = this.queryMetrics ? "\x1b[16t\x1b[14t" : "";
+    this.queryMetrics = false;
     if (this.mode === "fullscreen") {
-      await this.write(output);
+      await this.write(query + output);
       return;
     }
-    let reserve = "";
-    if (screen.height > this.rows) {
-      const additional = screen.height - this.rows;
-      reserve =
-        "\x1b8" +
-        `\x1b[${this.rows - 1}B` +
-        "\n".repeat(additional) +
-        `\x1b[${screen.height - 1}A\r\x1b7`;
-      this.rows = screen.height;
-      if (this.origin !== undefined)
-        this.origin = Math.min(this.origin, Math.max(0, this.height - screen.height));
-    }
-    await this.write(reserve + inlineOutput(output));
+    await this.write(
+      query + this.inline.present(screen.height, output, this.height),
+    );
   }
   async stop(): Promise<void> {
     if (!this.started) return;
@@ -100,9 +111,7 @@ export class ProcessTerminal implements Terminal {
     if (process.stdout.isTTY)
       await this.write(
         "\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1006l\x1b[?25h" +
-          (this.mode === "fullscreen"
-            ? "\x1b[?1049l"
-            : "\x1b8" + `\x1b[${Math.max(0, this.rows - 1)}B\r\n`),
+          (this.mode === "fullscreen" ? "\x1b[?1049l" : this.inline.stop()),
       );
   }
   private async locate(): Promise<void> {
@@ -123,7 +132,9 @@ export class ProcessTerminal implements Terminal {
   private async write(output: string): Promise<void> {
     if (!output) return;
     await new Promise<void>((resolve, reject) =>
-      process.stdout.write(output, (error) => (error ? reject(error) : resolve())),
+      process.stdout.write(output, (error) =>
+        error ? reject(error) : resolve(),
+      ),
     );
   }
 }

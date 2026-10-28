@@ -5,9 +5,20 @@ export type Padding =
   | readonly [number, number]
   | readonly [number, number, number, number];
 export type Alignment = "start" | "center" | "end" | "stretch";
-export type Distribution = "start" | "center" | "end" | "between" | "around" | "evenly";
+export type Distribution =
+  | "start"
+  | "center"
+  | "end"
+  | "between"
+  | "around"
+  | "evenly";
 export type Border = "none" | "single" | "rounded" | "double" | "heavy";
-export type Interaction = "focused" | "hovered" | "pressed" | "disabled" | "selected";
+export type Interaction =
+  | "focused"
+  | "hovered"
+  | "pressed"
+  | "disabled"
+  | "selected";
 export interface Style {
   foreground?: Color | null;
   background?: Color | null;
@@ -49,10 +60,27 @@ export interface StyleDefinition {
   base: Readonly<Style>;
   variants: Partial<Record<Interaction, Readonly<Style>>>;
 }
-export function padding(value: Padding = 0): readonly [number, number, number, number] {
+export function padding(
+  value: Padding = 0,
+): readonly [number, number, number, number] {
   if (typeof value === "number")
-    return [Math.floor(value), Math.floor(value), Math.floor(value), Math.floor(value)];
+    return [
+      Math.floor(value),
+      Math.floor(value),
+      Math.floor(value),
+      Math.floor(value),
+    ];
   if (value.length === 2)
-    return [Math.floor(value[0]), Math.floor(value[1]), Math.floor(value[0]), Math.floor(value[1])];
-  return [Math.floor(value[0]), Math.floor(value[1]), Math.floor(value[2]), Math.floor(value[3])];
+    return [
+      Math.floor(value[0]),
+      Math.floor(value[1]),
+      Math.floor(value[0]),
+      Math.floor(value[1]),
+    ];
+  return [
+    Math.floor(value[0]),
+    Math.floor(value[1]),
+    Math.floor(value[2]),
+    Math.floor(value[3]),
+  ];
 }

@@ -1,5 +1,6 @@
-import { style, text } from "../../index";
 import { expect, test } from "bun:test";
+
+import { style, text } from "../../index";
 
 test("styles and elements are immutable and declarations merge left to right", () => {
   const panel = style().padding(1).color("red");
@@ -14,6 +15,9 @@ test("variant styles compose without modifying their source", () => {
   const a = style().focused(style().bold());
   const b = style().focused(style().color("cyan"));
   const merged = text("Hi").use(a, b);
-  expect(merged.definition.variants.focused).toEqual({ bold: true, foreground: "cyan" });
+  expect(merged.definition.variants.focused).toEqual({
+    bold: true,
+    foreground: "cyan",
+  });
   expect(a.definition.variants.focused).toEqual({ bold: true });
 });

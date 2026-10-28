@@ -11,24 +11,40 @@ import type {
 } from "./types";
 
 export class StyleBuilder {
-  constructor(readonly definition: StyleDefinition = { base: {}, variants: {} }) {}
+  constructor(
+    readonly definition: StyleDefinition = { base: {}, variants: {} },
+  ) {}
   protected copy(definition: StyleDefinition): this {
     return new StyleBuilder(definition) as this;
   }
   style(value: Readonly<Style>): this {
-    return this.copy({ ...this.definition, base: { ...this.definition.base, ...value } });
+    return this.copy({
+      ...this.definition,
+      base: { ...this.definition.base, ...value },
+    });
   }
   use(...styles: readonly StyleBuilder[]): this {
+    // oxlint-disable-next-line typescript/no-this-alias -- Immutable merges replace this accumulator with each new builder.
     let result: this = this;
     for (const value of styles) result = result.merge(value.definition);
     return result;
   }
   private merge(value: StyleDefinition): this {
     const variants = { ...this.definition.variants };
-    for (const key of ["focused", "hovered", "pressed", "disabled", "selected"] as const) {
-      if (value.variants[key]) variants[key] = { ...variants[key], ...value.variants[key] };
+    for (const key of [
+      "focused",
+      "hovered",
+      "pressed",
+      "disabled",
+      "selected",
+    ] as const) {
+      if (value.variants[key])
+        variants[key] = { ...variants[key], ...value.variants[key] };
     }
-    return this.copy({ base: { ...this.definition.base, ...value.base }, variants });
+    return this.copy({
+      base: { ...this.definition.base, ...value.base },
+      variants,
+    });
   }
   private variant(name: Interaction, value: StyleBuilder): this {
     return this.copy({

@@ -1,12 +1,15 @@
-import { setScroll } from "./focus";
-import { walk } from "./tree";
-
 import type { ElementRef } from "../element/events";
 import type { Focus } from "./focus";
 import type { Mounted } from "./tree";
 
+import { setScroll } from "./focus";
+import { walk } from "./tree";
+
 export class Refs {
-  private readonly attached = new Map<Mounted, (ref: ElementRef | null) => void>();
+  private readonly attached = new Map<
+    Mounted,
+    (ref: ElementRef | null) => void
+  >();
   constructor(
     private readonly focus: Focus,
     private readonly schedule: () => void,

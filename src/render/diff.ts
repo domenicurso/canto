@@ -1,6 +1,6 @@
-import { ansi } from "./ansi";
-
 import type { Cell, Screen } from "./screen";
+
+import { ansi } from "./ansi";
 
 export interface FrameOutput {
   output: string;
@@ -21,7 +21,8 @@ export function diff(previous: Screen | undefined, next: Screen): FrameOutput {
     let style = "";
     for (let x = 0; x < next.width; x++) {
       const cell = next.get(x, y);
-      if (!cell || equal(previous?.get(x, y), cell) || cell.continuation) continue;
+      if (!cell || equal(previous?.get(x, y), cell) || cell.continuation)
+        continue;
       if (x !== end) output += `\x1b[${y + 1};${x + 1}H`;
       const nextStyle = ansi(cell.style);
       if (nextStyle !== style) {

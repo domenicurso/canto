@@ -27,6 +27,7 @@ export interface Mounted {
   offset: number;
   maxOffset: number;
   offsetX: number;
+  scrollPlacement: { x: number; y: number };
   maxOffsetX: number;
   focused: boolean;
   hovered: boolean;
@@ -45,13 +46,17 @@ export function mounted(element: Element, parent: Mounted | null): Mounted {
     inner: { x: 0, y: 0, width: 0, height: 0 },
     style: {},
     lines: [],
-    value: element.data.props.input?.value ?? element.data.props.input?.defaultValue ?? "",
+    value:
+      element.data.props.input?.value ??
+      element.data.props.input?.defaultValue ??
+      "",
     cursor: 0,
     anchor: null,
     rendered: false,
     offset: 0,
     maxOffset: 0,
     offsetX: 0,
+    scrollPlacement: { x: 0, y: 0 },
     maxOffsetX: 0,
     focused: false,
     hovered: false,

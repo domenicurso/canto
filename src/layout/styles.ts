@@ -12,7 +12,8 @@ export function resolveStyles(node: Mounted, inherited: Style = {}): void {
     ...definition.base,
   };
   const disabled =
-    node.element.data.props.button?.disabled || node.element.data.props.input?.disabled;
+    node.element.data.props.button?.disabled ||
+    node.element.data.props.input?.disabled;
   for (const [name, active] of [
     ["hovered", node.hovered],
     ["focused", node.focused],
@@ -54,7 +55,8 @@ function validateStyle(style: Style): void {
     "maxWidth",
     "maxHeight",
   ] as const) {
-    if ((style[name] ?? 0) < 0) throw new Error(`Style ${name} cannot be negative.`);
+    if ((style[name] ?? 0) < 0)
+      throw new Error(`Style ${name} cannot be negative.`);
   }
   const p = style.padding;
   if (

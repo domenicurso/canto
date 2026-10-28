@@ -1,11 +1,11 @@
+import type { Mounted, Rect } from "../runtime/tree";
+import type { Style } from "../style/types";
+
 import { intersect } from "../layout/geometry";
 import { drawContent, drawText } from "./content";
 import { drawEditor } from "./editor";
 import { Screen } from "./screen";
 import { scrollbar } from "./scrollbar";
-
-import type { Mounted, Rect } from "../runtime/tree";
-import type { Style } from "../style/types";
 
 const borders = {
   single: "┌┐└┘─│",
@@ -13,25 +13,35 @@ const borders = {
   double: "╔╗╚╝═║",
   heavy: "┏┓┗┛━┃",
 };
-export function paint(root: Mounted, size: { width: number; height: number }): Screen {
+export function paint(
+  root: Mounted,
+  size: { width: number; height: number },
+): Screen {
   const screen = new Screen(size.width, size.height);
   draw(root, screen, { x: 0, y: 0, ...size });
   return screen;
 }
 function draw(node: Mounted, screen: Screen, clip: Rect): void {
   const ownClip = intersect(clip, node.rect);
-  if ((!ownClip.width || !ownClip.height) && node.style.overflow !== "visible") return;
+  if ((!ownClip.width || !ownClip.height) && node.style.overflow !== "visible")
+    return;
   background(node, screen, ownClip);
   border(node, screen, ownClip);
   const textClip = intersect(clip, node.inner);
   const kind = node.element.data.kind;
   if (kind === "text") drawText(node, screen, textClip);
-  else if (kind === "input" || kind === "textarea") drawEditor(node, screen, textClip);
+  else if (kind === "input" || kind === "textarea")
+    drawEditor(node, screen, textClip);
   drawContent(node, screen, textClip);
-  const childClip = node.style.overflow === "visible" && kind !== "scroll" ? clip : textClip;
+  const childClip =
+    node.style.overflow === "visible" && kind !== "scroll" ? clip : textClip;
   const children = node.children
     .map((child, index) => ({ child, index }))
-    .sort((a, b) => (a.child.style.zIndex ?? 0) - (b.child.style.zIndex ?? 0) || a.index - b.index);
+    .sort(
+      (a, b) =>
+        (a.child.style.zIndex ?? 0) - (b.child.style.zIndex ?? 0) ||
+        a.index - b.index,
+    );
   for (const { child } of children) draw(child, screen, childClip);
   if (kind === "scroll") scrollbar(node, screen, ownClip);
 }
@@ -57,13 +67,17 @@ function border(node: Mounted, screen: Screen, clip: Rect): void {
     put(
       r.x,
       r.y,
-      (tl ?? "") + (h ?? "").repeat(Math.max(0, r.width - 2)) + (r.width > 1 ? (tr ?? "") : ""),
+      (tl ?? "") +
+        (h ?? "").repeat(Math.max(0, r.width - 2)) +
+        (r.width > 1 ? (tr ?? "") : ""),
     );
   if (node.style.borderBottom !== false && r.height > 1)
     put(
       r.x,
       r.y + r.height - 1,
-      (bl ?? "") + (h ?? "").repeat(Math.max(0, r.width - 2)) + (r.width > 1 ? (br ?? "") : ""),
+      (bl ?? "") +
+        (h ?? "").repeat(Math.max(0, r.width - 2)) +
+        (r.width > 1 ? (br ?? "") : ""),
     );
   for (let y = r.y + 1; y < r.y + r.height - 1; y++) {
     if (node.style.borderLeft !== false) put(r.x, y, v ?? "");

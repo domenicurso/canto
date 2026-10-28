@@ -1,10 +1,10 @@
+import type { Mounted } from "../runtime/tree";
+import type { Size } from "./geometry";
+
 import { width } from "../text/columns";
 import { wrap } from "../text/wrap";
 import { allocate } from "./allocation";
 import { bounded, dimension, edges } from "./geometry";
-
-import type { Mounted } from "../runtime/tree";
-import type { Size } from "./geometry";
 
 export function content(node: Mounted): string {
   const props = node.element.data.props.input;
@@ -37,7 +37,12 @@ function measureSize(node: Mounted, available: Size): Size {
   );
   const inner = {
     width: Math.max(0, targetWidth - left - right),
-    height: Math.max(0, (dimension(s.height, available.height) ?? available.height) - top - bottom),
+    height: Math.max(
+      0,
+      (dimension(s.height, available.height) ?? available.height) -
+        top -
+        bottom,
+    ),
   };
   const natural = intrinsic(node, inner);
   return {
@@ -57,21 +62,27 @@ function measureSize(node: Mounted, available: Size): Size {
 function intrinsic(node: Mounted, available: Size): Size {
   const kind = node.element.data.kind;
   if (kind === "text" || kind === "input" || kind === "textarea") {
-    const value = content(node) || node.element.data.props.input?.placeholder || "";
+    const value =
+      content(node) || node.element.data.props.input?.placeholder || "";
     const lines = wrap(
       value,
       available.width,
       kind === "input" ? { ...node.style, wrap: "none" } : node.style,
     );
     return {
-      width: Math.max(kind === "text" ? 0 : 1, ...lines.map(width)) + Number(kind === "input"),
+      width:
+        Math.max(kind === "text" ? 0 : 1, ...lines.map(width)) +
+        Number(kind === "input"),
       height: Math.max(1, lines.length),
     };
   }
   const scroll = node.element.data.props.scroll;
   const childAvailable = scroll
     ? {
-        width: scroll.axis === "horizontal" || scroll.axis === "both" ? Infinity : available.width,
+        width:
+          scroll.axis === "horizontal" || scroll.axis === "both"
+            ? Infinity
+            : available.width,
         height: scroll.axis === "horizontal" ? available.height : Infinity,
       }
     : available;
@@ -109,7 +120,9 @@ function measureRow(node: Mounted, available: Size, gaps: number): Size {
     height: Math.max(
       0,
       ...items.map(
-        (item) => measure(item.node, { width: item.flow, height: available.height }).height,
+        (item) =>
+          measure(item.node, { width: item.flow, height: available.height })
+            .height,
       ),
     ),
   };

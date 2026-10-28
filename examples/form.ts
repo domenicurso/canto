@@ -28,35 +28,28 @@ export function Form() {
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
   const app = useApp();
-  const valid = name.trim().length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const valid =
+    name.trim().length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   return column(
     text("Create a contact").bold().color("cyan"),
     text("Name"),
-    input({
-      value: name,
-      onChange: (value) => {
-        setName(value);
-        setSaved(false);
-      },
-      placeholder: "Ada Lovelace",
-    })
-      .use(field)
-      .autoFocus(),
+    contactInput(name, setName, "Ada Lovelace", () =>
+      setSaved(false),
+    ).autoFocus(),
     text("Email"),
-    input({
-      value: email,
-      onChange: (value) => {
-        setEmail(value);
-        setSaved(false);
-      },
-      placeholder: "ada@example.com",
-    }).use(field),
+    contactInput(email, setEmail, "ada@example.com", () => setSaved(false)),
     text("Notes · Shift+arrows select · Enter adds a line").dim(),
-    textarea({ value: notes, onChange: setNotes, placeholder: "What are you working on?" })
+    textarea({
+      value: notes,
+      onChange: setNotes,
+      placeholder: "What are you working on?",
+    })
       .use(field)
       .height(5),
     row(
-      button("Save", { disabled: !valid, onPress: () => setSaved(true) }).use(action),
+      button("Save", { disabled: !valid, onPress: () => setSaved(true) }).use(
+        action,
+      ),
       button("Quit", () => app.stop()).use(action),
     ).gap(2),
     text(
@@ -71,3 +64,19 @@ export function Form() {
 }
 
 if (import.meta.main) await createApp(Form, { mode: "inline" }).run();
+
+function contactInput(
+  value: string,
+  change: (value: string) => void,
+  placeholder: string,
+  invalidate: () => void,
+) {
+  return input({
+    value,
+    placeholder,
+    onChange: (next) => {
+      change(next);
+      invalidate();
+    },
+  }).use(field);
+}

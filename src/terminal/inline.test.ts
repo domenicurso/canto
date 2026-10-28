@@ -1,12 +1,13 @@
+import { expect, test } from "bun:test";
+
+import type { Style } from "../style/types";
+
 import { Styles } from "../../examples/styles";
 import { createApp, keyEvent, MemoryTerminal } from "../../index";
 import { ansi } from "../render/ansi";
 import { diff } from "../render/diff";
 import { Screen } from "../render/screen";
 import { inlineOutput } from "./inline";
-import { expect, test } from "bun:test";
-
-import type { Style } from "../style/types";
 
 interface Cursor {
   x: number;
@@ -17,9 +18,13 @@ interface Cursor {
 class TerminalState {
   private cursor: Cursor = { x: 0, y: 0, rendition: "\x1b[0m" };
   private saved = { ...this.cursor };
-  private readonly cells = new Map<string, { text: string; rendition: string }>();
+  private readonly cells = new Map<
+    string,
+    { text: string; rendition: string }
+  >();
   feed(output: string): void {
-    const tokens = output.match(/\x1b(?:[78]|\[[\d;?]*[A-Za-z])|[^\x1b]/gu) ?? [];
+    const tokens =
+      output.match(/\x1b(?:[78]|\[[\d;?]*[A-Za-z])|[^\x1b]/gu) ?? [];
     for (const token of tokens) {
       if (token === "\x1b7") this.saved = { ...this.cursor };
       else if (token === "\x1b8") this.cursor = { ...this.saved };
@@ -48,7 +53,8 @@ class TerminalState {
     for (let y = 0; y < screen.height; y++) {
       for (let x = 0; x < screen.width; x++) {
         const expected = screen.get(x, y);
-        if (!expected) throw new Error("Expected a cell inside the screen bounds.");
+        if (!expected)
+          throw new Error("Expected a cell inside the screen bounds.");
         expect(this.cells.get(`${x},${y}`)).toEqual({
           text: expected.text,
           rendition: ansi(expected.style),
@@ -64,7 +70,12 @@ function frame(border: string, extra: Style = {}): Screen {
   screen.put(area, "╭──────╮  ╭──────╮", borderStyle, area);
   screen.put({ ...area, y: 1 }, "│      │  │      │", borderStyle, area);
   screen.put({ ...area, y: 2 }, "╰──────╯  ╰──────╯", borderStyle, area);
-  screen.put({ ...area, x: 2, y: 1 }, "Quit", { foreground: "white", background: "black" }, area);
+  screen.put(
+    { ...area, x: 2, y: 1 },
+    "Quit",
+    { foreground: "white", background: "black" },
+    area,
+  );
   return screen;
 }
 test("sparse inline border updates retain the intended color after each cursor restore", () => {
@@ -86,7 +97,9 @@ test("inline updates restore border faint and background attributes across uncha
   terminal.expectFrame(next);
 });
 test("inline movement preserves coordinates for first-row and first-column targets", () => {
-  expect(inlineOutput("\x1b[1;1HA\x1b[2;4HB")).toBe("\x1b8A\x1b8\x1b[1B\x1b[3CB");
+  expect(inlineOutput("\x1b[1;1HA\x1b[2;4HB")).toBe(
+    "\x1b8A\x1b8\x1b[1B\x1b[3CB",
+  );
 });
 
 test("the styling example keeps every cell's rendition through inline focus and hover updates", async () => {
@@ -97,9 +110,11 @@ test("the styling example keeps every cell's rendition through inline focus and 
   emulated.feed("\x1b7");
   let presented = 0;
   const verify = (): void => {
-    for (const output of terminal.output.slice(presented)) emulated.feed(inlineOutput(output));
+    for (const output of terminal.output.slice(presented))
+      emulated.feed(inlineOutput(output));
     presented = terminal.output.length;
-    if (!terminal.screen) throw new Error("Expected a committed styling frame.");
+    if (!terminal.screen)
+      throw new Error("Expected a committed styling frame.");
     emulated.expectFrame(terminal.screen);
   };
   try {
@@ -110,11 +125,18 @@ test("the styling example keeps every cell's rendition through inline focus and 
       await app.flush();
       verify();
     }
-    const quit = terminal.screen?.cells.findIndex((cell) => cell.text === "Q") ?? -1;
+    const quit =
+      terminal.screen?.cells.findIndex((cell) => cell.text === "Q") ?? -1;
     expect(quit).toBeGreaterThan(0);
     terminal.dispatch({
       type: "mouse",
-      event: { x: quit % 80, y: Math.floor(quit / 80), action: "move", button: 0, deltaY: 0 },
+      event: {
+        x: quit % 80,
+        y: Math.floor(quit / 80),
+        action: "move",
+        button: 0,
+        deltaY: 0,
+      },
     });
     await app.flush();
     verify();

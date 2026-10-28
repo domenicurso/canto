@@ -25,7 +25,11 @@ export function Prompt() {
             .autoFocus(),
     ).gap(1),
     !complete && error && text(error).color("red"),
-    text(complete ? "Answer accepted · Ctrl+C to exit" : "Enter to submit · Ctrl+C to exit").dim(),
+    text(
+      complete
+        ? "Answer accepted · Ctrl+C to exit"
+        : "Enter to submit · Ctrl+C to exit",
+    ).dim(),
   );
 }
 if (import.meta.main) await createApp(Prompt, { mode: "inline" }).run();

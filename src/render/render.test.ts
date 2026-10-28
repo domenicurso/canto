@@ -1,6 +1,7 @@
+import { expect, test } from "bun:test";
+
 import { diff } from "./diff";
 import { Screen } from "./screen";
-import { expect, test } from "bun:test";
 
 const clip = { x: 0, y: 0, width: 10, height: 2 };
 test("unchanged frames emit nothing and adjacent changes form a run", () => {

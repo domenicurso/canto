@@ -16,19 +16,23 @@ interface Task {
   id: number;
   title: string;
 }
-const action = style().color("cyan").focused(style().background("#164e63").bold());
-const TaskRow = component(({ task, remove }: { task: Task; remove: (id: number) => void }) => {
-  const [done, setDone] = useState(false);
-  return row(
-    button(done ? "[✓]" : "[ ]", () => setDone(!done)).use(action),
-    text(task.title)
-      .color(done ? "green" : "white")
-      .width("fill"),
-    button("Remove", () => remove(task.id)).use(action),
-  )
-    .gap(2)
-    .width("fill");
-});
+const action = style()
+  .color("cyan")
+  .focused(style().background("#164e63").bold());
+const TaskRow = component(
+  ({ task, remove }: { task: Task; remove: (id: number) => void }) => {
+    const [done, setDone] = useState(false);
+    return row(
+      button(done ? "[✓]" : "[ ]", () => setDone(!done)).use(action),
+      text(task.title)
+        .color(done ? "green" : "white")
+        .width("fill"),
+      button("Remove", () => remove(task.id)).use(action),
+    )
+      .gap(2)
+      .width("fill");
+  },
+);
 export function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([
     { id: 1, title: "Try a keyed component" },
@@ -66,7 +70,9 @@ export function Tasks() {
       .height("fill")
       .width("fill"),
     row(
-      button("Reverse", () => setTasks((previous) => previous.toReversed())).use(action),
+      button("Reverse", () =>
+        setTasks((previous) => previous.toReversed()),
+      ).use(action),
       button("Quit", () => app.stop()).use(action),
     ).gap(2),
     text(`${tasks.length} tasks · Check an item, then reverse the list.`).dim(),

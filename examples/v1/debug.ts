@@ -10,7 +10,9 @@ export function Debug(inspect?: () => string) {
       text("Debug Panel Tests").background("blue").padding([1, 2]).bold(),
       text(`Counter: ${counter}`).color("green"),
       text("F3 shows the last committed frame's actual rendering statistics."),
-      text("Console and debug panels are composed from ordinary v2 elements.").color("cyan"),
+      text(
+        "Console and debug panels are composed from ordinary v2 elements.",
+      ).color("cyan"),
     )
       .gap(1)
       .height("fill"),

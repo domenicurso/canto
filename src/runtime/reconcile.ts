@@ -1,17 +1,20 @@
-import { flatten } from "../element/node";
-import { cleanupHooks, enter } from "./hooks";
-import { mounted } from "./tree";
-
 import type { Element } from "../element/node";
 import type { AppControl } from "./hooks";
 import type { Mounted } from "./tree";
+
+import { flatten } from "../element/node";
+import { cleanupHooks, enter } from "./hooks";
+import { mounted } from "./tree";
 
 export interface ReconcileContext {
   schedule(): void;
   app: AppControl;
 }
 function same(a: Element, b: Element): boolean {
-  return a.data.kind === b.data.kind && a.data.call?.identity === b.data.call?.identity;
+  return (
+    a.data.kind === b.data.kind &&
+    a.data.call?.identity === b.data.call?.identity
+  );
 }
 export function unmount(node: Mounted): void {
   if (!node.active) return;
@@ -34,16 +37,22 @@ export function unmount(node: Mounted): void {
   } catch (error) {
     errors.push(error);
   }
-  if (errors.length) throw new AggregateError(errors, "Component cleanup failed.");
+  if (errors.length)
+    throw new AggregateError(errors, "Component cleanup failed.");
 }
-export function reconcile(node: Mounted, element: Element, context: ReconcileContext): void {
+export function reconcile(
+  node: Mounted,
+  element: Element,
+  context: ReconcileContext,
+): void {
   const previous = node.element;
   node.element = element;
   const call = element.data.call;
   let descriptions: Element[];
   if (call) {
     if (!node.dirty && previous === element) {
-      for (const child of node.children) reconcile(child, child.element, context);
+      for (const child of node.children)
+        reconcile(child, child.element, context);
       return;
     }
     node.dirty = false;
@@ -63,7 +72,9 @@ function reconcileChildren(
   context: ReconcileContext,
 ): void {
   const old = new Map<string, Mounted>();
-  parent.children.forEach((node, index) => old.set(identity(node.element, index), node));
+  parent.children.forEach((node, index) =>
+    old.set(identity(node.element, index), node),
+  );
   const keys = new Set<string>();
   const next: Mounted[] = [];
   parent.children = next;
@@ -75,7 +86,9 @@ function reconcileChildren(
       const existing = old.get(key);
       old.delete(key);
       const child =
-        existing && same(existing.element, element) ? existing : mounted(element, parent);
+        existing && same(existing.element, element)
+          ? existing
+          : mounted(element, parent);
       if (existing && child !== existing) unmount(existing);
       next.push(child);
       // Publish acquired children immediately so a render failure can still release them.

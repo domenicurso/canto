@@ -1,4 +1,11 @@
-import { column, createApp, list, MemoryTerminal, text, useState } from "../../index";
+import {
+  column,
+  createApp,
+  list,
+  MemoryTerminal,
+  text,
+  useState,
+} from "../../index";
 
 const items = Array.from({ length: 10_000 }, (_, id) => ({ id }));
 let update = (_value: number): void => {};

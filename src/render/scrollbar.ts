@@ -11,7 +11,11 @@ export function scrollbar(node: Mounted, screen: Screen, clip: Rect): void {
   const stable = props?.gutter === "stable" || props?.scrollbar === "visible";
   if (props?.axis !== "horizontal" && (node.maxOffset || stable))
     drawBar({ node, screen, clip, horizontal: false });
-  if (props?.axis !== undefined && props.axis !== "vertical" && (node.maxOffsetX || stable))
+  if (
+    props?.axis !== undefined &&
+    props.axis !== "vertical" &&
+    (node.maxOffsetX || stable)
+  )
     drawBar({ node, screen, clip, horizontal: true });
 }
 function drawBar({
@@ -66,10 +70,15 @@ function thumbCell({
   const thumb = style.foreground ?? "#cbd5e1";
   const track = style.background ?? "#4b5563";
   // Unicode has left and lower eighth blocks; swap the two colors for the opposite edge.
-  const inverted = coverage > 0 && coverage < 8 && (horizontal ? from > 0 : from === 0);
+  const inverted =
+    coverage > 0 && coverage < 8 && (horizontal ? from > 0 : from === 0);
   const glyph = inverted ? 8 - coverage : coverage;
   return {
     text: (horizontal ? leftBlocks : lowerBlocks)[glyph] ?? " ",
-    style: { ...style, foreground: inverted ? track : thumb, background: inverted ? thumb : track },
+    style: {
+      ...style,
+      foreground: inverted ? track : thumb,
+      background: inverted ? thumb : track,
+    },
   };
 }

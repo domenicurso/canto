@@ -1,7 +1,16 @@
-import { column, createApp, row, scroll, text, useApp, useEffect, useState } from "../../index";
-import { readGitStatus } from "./git-status";
-
 import type { GitFile } from "./git-status";
+
+import {
+  column,
+  createApp,
+  row,
+  scroll,
+  text,
+  useApp,
+  useEffect,
+  useState,
+} from "../../index";
+import { readGitStatus } from "./git-status";
 
 type Status =
   | { kind: "loading" }
@@ -24,22 +33,7 @@ export function Git() {
             ? `${files.length} files:`
             : "No changes",
     ).color("yellow"),
-    scroll(
-      column(
-        files.map((file, index) =>
-          row(text(file.path).width("fill"), text(file.status).color(file.color))
-            .gap(2)
-            .padding([0, 1])
-            .background(selected === index ? "#444" : "#222")
-            .style({ bold: selected === index })
-            .key(file.path),
-        ),
-      ),
-      { axis: "vertical", offset: Math.max(0, selected - 10), onScroll: () => {} },
-    )
-      .height("fill")
-      .width("fill")
-      .tabIndex(-1),
+    fileTable(files, selected),
     text("q: quit · r: refresh · ↑↓: navigate · read-only Git status").dim(),
   )
     .fill()
@@ -54,7 +48,8 @@ export function Git() {
         setRevision((value) => value + 1);
       }
       if (event.key === "up") setSelected(Math.max(0, selected - 1));
-      if (event.key === "down") setSelected(Math.min(Math.max(0, files.length - 1), selected + 1));
+      if (event.key === "down")
+        setSelected(Math.min(Math.max(0, files.length - 1), selected + 1));
     });
 }
 if (import.meta.main) await createApp(Git).run();
@@ -80,4 +75,27 @@ function useGitStatus(revision: number): Status {
     return () => controller.abort();
   }, [revision]);
   return status;
+}
+
+function fileTable(files: GitFile[], selected: number) {
+  return scroll(
+    column(
+      files.map((file, index) =>
+        row(text(file.path).width("fill"), text(file.status).color(file.color))
+          .gap(2)
+          .padding([0, 1])
+          .background(selected === index ? "#444" : "#222")
+          .style({ bold: selected === index })
+          .key(file.path),
+      ),
+    ),
+    {
+      axis: "vertical",
+      offset: Math.max(0, selected - 10),
+      onScroll: () => {},
+    },
+  )
+    .height("fill")
+    .width("fill")
+    .tabIndex(-1);
 }

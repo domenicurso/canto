@@ -23,7 +23,11 @@ export function sampleRaster(): Raster {
   }
   return { width, height, data };
 }
-function pixel(raster: Raster, x: number, y: number): readonly [number, number, number] {
+function pixel(
+  raster: Raster,
+  x: number,
+  y: number,
+): readonly [number, number, number] {
   const offset = (y * raster.width + x) * 4;
   const alpha = (raster.data[offset + 3] ?? 0) / 255;
   return [
@@ -33,7 +37,10 @@ function pixel(raster: Raster, x: number, y: number): readonly [number, number, 
   ];
 }
 export function drawRaster(draw: DrawingContext, raster: Raster): void {
-  const scale = Math.min(draw.width / raster.width, (draw.height * 2) / raster.height);
+  const scale = Math.min(
+    draw.width / raster.width,
+    (draw.height * 2) / raster.height,
+  );
   const width = Math.floor(raster.width * scale);
   const height = Math.floor((raster.height * scale) / 2);
   const left = Math.floor((draw.width - width) / 2);
@@ -41,7 +48,10 @@ export function drawRaster(draw: DrawingContext, raster: Raster): void {
     for (let x = 0; x < width; x++) {
       const sourceX = Math.min(raster.width - 1, Math.floor(x / scale));
       const top = Math.min(raster.height - 1, Math.floor((y * 2) / scale));
-      const bottom = Math.min(raster.height - 1, Math.floor((y * 2 + 1) / scale));
+      const bottom = Math.min(
+        raster.height - 1,
+        Math.floor((y * 2 + 1) / scale),
+      );
       draw.write(left + x, y, "▀", {
         foreground: pixel(raster, sourceX, top),
         background: pixel(raster, sourceX, bottom),

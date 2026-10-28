@@ -10,7 +10,7 @@ This is a breaking, from-scratch v2 alpha. The v1 renderer, signal runtime, widg
 bun install
 bun run demo          # Full-screen project dashboard
 bun run demo:inline   # Inline counter
-bun run check        # Type checking, lint, and tests
+bun run check        # Formatting, type checking, lint, and tests
 bun run bench        # Headless 10,000-item virtual list benchmark
 ```
 
@@ -58,10 +58,21 @@ bun examples/v1/image.ts /path/to/image.png
 
 Console and debug panels are composed explicitly from v2 elements. Use F3 for statistics, F12 or Ctrl+T for the console, and Escape to close it. Prompt and choice keep their accepted answer visible until Ctrl+C. The image example uses the example-only `pngjs` development dependency, composites transparency over black, and displays a built-in sample when no path is supplied; the original machine-specific image path is gone.
 
+The [side-by-side v1/v2 comparison](examples/v1/comparison.html) shows complete implementations of the same counter, including state, styling, controls, and lifecycle. The v1 listing targets the archived API; both listings are illustrative code, while `examples/counter.ts` is runnable v2 code.
+
 ## An application
 
 ```ts
-import { button, column, createApp, row, style, text, useApp, useState } from "canto";
+import {
+  button,
+  column,
+  createApp,
+  row,
+  style,
+  text,
+  useApp,
+  useState,
+} from "canto";
 
 const panel = style().padding([1, 2]).border("rounded").borderColor("cyan");
 
@@ -99,7 +110,9 @@ const Project = component(({ name }: { name: string }) => {
   return button(`${name}: ${stars}`, () => setStars((n) => n + 1));
 });
 
-column(projects.map((project) => Project({ name: project.name }).key(project.id)));
+column(
+  projects.map((project) => Project({ name: project.name }).key(project.id)),
+);
 ```
 
 `component()` creates a mounted state boundary; a plain helper function only composes descriptions. Define component factories outside render bodies. Stable types and sibling keys preserve state and focus during reordering. Removing a component disposes its state, refs, and effects.
@@ -145,6 +158,7 @@ Buttons, editors, and scrolling regions participate in Tab navigation. `.focusab
 ```ts
 scroll(content, { defaultOffset: 0 }).height(12);
 scroll(content, { axis: "both", offset: { x, y }, onScroll: setPosition });
+scroll(content, { scrollbar: "hidden", physics: { friction: 8, momentum: 2 } });
 
 list(projects, {
   height: 20,
@@ -154,9 +168,15 @@ list(projects, {
 });
 ```
 
-Scroll regions support controlled or default offsets, vertical/horizontal/both axes, automatic/hidden/visible scrollbars, and stable gutters. Arrow keys, Page Up/Down, mouse wheels, and refs move the viewport. Focus navigation reveals newly focused descendants.
+Scroll regions support controlled or default offsets, vertical/horizontal/both axes, automatic/hidden/visible scrollbars, and stable gutters. Arrow keys, Page Up/Down, mouse wheels, and refs move the viewport. Focus navigation reveals newly focused descendants. Hidden scrollbars reserve no gutter, including with `gutter: "stable"`; visible thumbs use eighth-cell Unicode blocks.
+
+Native wheel reports move in terminal-provided cell units; terminals that normalize trackpad movement already account for cell aspect ratio. Adapters can supply `deltaMode: "pixel"` with `deltaX` and `deltaY`, which Canto converts using `terminal.cellSize`. The process adapter queries cell dimensions and falls back to 8 × 16 pixels when unsupported. Arrow keys move one cell. Wheel bursts coalesce before rendering and preserve both axes of diagonal gestures.
+
+Physics defaults to `"instant"`, so Canto adds no motion after input stops. An object enables inertia: `friction` is the positive exponential decay rate per second (default 8), and `momentum` scales the added travel (default 2; zero disables it). Existing trackpad momentum can combine with this effect, so leave physics off when the terminal already supplies the desired motion. The scrollbars demo toggles inertia with I and bars with B.
 
 `list()` mounts visible rows plus one row of overscan on each side. Row heights must be fixed, positive integers. Off-screen rows unmount; keep persistent item state in the dataset or a parent component. Ordinary `.map()` intentionally evaluates every item and is appropriate for small collections.
+
+`useViewport()` returns `{ width, height }` in cells and rerenders its component on resize. Use it to stack panes or reduce padding under tight constraints; `examples/layout.ts` demonstrates both. Inline output is clipped to the available terminal height and repainted when the viewport changes.
 
 ## Custom drawing and testing
 
@@ -170,4 +190,8 @@ Scroll regions support controlled or default offsets, vertical/horizontal/both a
 
 State updates reconcile descriptions, resolve styles, check geometry changes, lay out when necessary, paint, diff, await output, attach refs, and commit effects. Failed renders or writes trigger app cleanup. All sibling cleanups are attempted even if one throws. Custom components, styles, canvas elements, and terminal adapters are the supported extension points.
 
-Paint-only updates skip layout, but geometry changes currently lay out the whole mounted tree. Painting and cell comparison cover the viewport each frame. Unicode segmentation uses `Intl.Segmenter`; wide-character classification uses a built-in approximation, so ambiguous widths and terminal-specific emoji presentation can differ. Inline rendering assumes exclusive writes to its reserved region. Clipboard integration, drag selection, scrollbar dragging, and cross-terminal conformance testing are not included in this alpha.
+Paint-only and offset-only scroll updates skip layout, but geometry changes currently lay out the whole mounted tree. Painting and cell comparison cover the viewport each frame. Unicode segmentation uses `Intl.Segmenter`; wide-character classification uses a built-in approximation, so ambiguous widths and terminal-specific emoji presentation can differ. Inline rendering assumes exclusive writes to its reserved region. Clipboard integration, drag selection, scrollbar dragging, and cross-terminal conformance testing are not included in this alpha.
+
+## Development tools
+
+`bun run format` uses Oxfmt and `bun run lint` uses Oxlint with the borrowed formatting and lint policies. ESLint runs only the file length, function length, nesting, and parameter limits that Oxlint does not provide. `bun run check` runs formatting checks, TypeScript, both lint passes, and tests. Terminal protocol parsers and their tests allow control-character regular expressions because ANSI decoding requires them.

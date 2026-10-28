@@ -1,3 +1,7 @@
+import { expect, test } from "bun:test";
+
+import type { App, Child } from "../../index";
+
 import { createApp, keyEvent, MemoryTerminal } from "../../index";
 import { AbsolutePosition } from "./absolute-position";
 import { Choice } from "./choice";
@@ -11,9 +15,6 @@ import { Input } from "./input";
 import { Prompt } from "./prompt";
 import { ScrollTest } from "./scroll-test";
 import { Scrollbars } from "./scrollbars";
-import { expect, test } from "bun:test";
-
-import type { App, Child } from "../../index";
 
 const examples = [
   { view: Hello, label: "Live Data Feed" },
@@ -45,7 +46,12 @@ async function mounted(
   }
   expect(terminal.stopped).toBe(true);
 }
-async function press(terminal: MemoryTerminal, app: App, key: string, text?: string) {
+async function press(
+  terminal: MemoryTerminal,
+  app: App,
+  key: string,
+  text?: string,
+) {
   terminal.dispatch({ type: "key", event: keyEvent(key, { text }) });
   await app.flush();
 }
@@ -61,11 +67,15 @@ test.each(examples)("$label mounts and resizes", async ({ view, label }) => {
 test("conditional sections toggle, reach thresholds, and reset", async () => {
   await mounted(Conditional, async (terminal, app) => {
     await press(terminal, app, "m");
-    expect(terminal.screen?.toString()).not.toContain("This message is conditionally rendered!");
+    expect(terminal.screen?.toString()).not.toContain(
+      "This message is conditionally rendered!",
+    );
     await press(terminal, app, "c");
     expect(terminal.screen?.toString()).toContain("Option C");
     for (let count = 0; count < 10; count++) await press(terminal, app, " ");
-    expect(terminal.screen?.toString()).toContain("Counter reached 10 or more!");
+    expect(terminal.screen?.toString()).toContain(
+      "Counter reached 10 or more!",
+    );
     await press(terminal, app, "r");
     expect(terminal.screen?.toString()).toContain("Counter: 0");
     expect(terminal.screen?.toString()).not.toContain("Option C");
@@ -108,7 +118,9 @@ test("console commands stay inside the app and debug reads supplied telemetry", 
       await press(terminal, app, "f12");
       await press(terminal, app, "paste", "help");
       await press(terminal, app, "enter");
-      expect(terminal.screen?.toString()).toContain("help · clear · status · quit");
+      expect(terminal.screen?.toString()).toContain(
+        "help · clear · status · quit",
+      );
       await press(terminal, app, "paste", "clear");
       await press(terminal, app, "enter");
       expect(terminal.screen?.toString()).not.toContain("> help");
@@ -132,7 +144,9 @@ test("scroll console can jump to the bottom and reset", async () => {
     expect(terminal.screen?.toString()).toContain("=== END OF CONTENT ===");
     await press(terminal, app, "paste", "reset");
     await press(terminal, app, "enter");
-    expect(terminal.screen?.toString()).toContain("=== SCROLLABLE CONTENT TEST ===");
+    expect(terminal.screen?.toString()).toContain(
+      "=== SCROLLABLE CONTENT TEST ===",
+    );
   });
 });
 test("Git loads the current checkout and refreshes without changing it", async () => {

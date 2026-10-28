@@ -1,3 +1,5 @@
+import { expect, test } from "bun:test";
+
 import {
   button,
   column,
@@ -12,7 +14,6 @@ import {
   useEffect,
   useState,
 } from "../../index";
-import { expect, test } from "bun:test";
 
 test("disabled controls are skipped and keyboard activation calls onPress once", async () => {
   const terminal = new MemoryTerminal(20, 4);

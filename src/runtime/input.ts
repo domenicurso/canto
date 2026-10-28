@@ -1,28 +1,39 @@
+import type { KeyEvent, PointerEvent } from "../element/events";
+import type { CellSize } from "../terminal/cell-size";
+import type { Mounted } from "./tree";
+
 import { take } from "../text/columns";
 import { edit } from "./editing";
 import { editorView } from "./editor-view";
 import { disabled, Focus, hit } from "./focus";
-import { scrollKey, scrollWheel } from "./scroll-input";
-
-import type { KeyEvent, PointerEvent } from "../element/events";
-import type { Mounted } from "./tree";
+import { ScrollInput } from "./scroll-input";
+import { WheelInput } from "./wheel-input";
 
 export class InputRouter {
   readonly focus: Focus;
+  private readonly scrolling: ScrollInput;
+  private readonly wheels: WheelInput;
   private pressed: Mounted | undefined;
-  constructor(private readonly schedule: () => void) {
+  constructor(
+    private readonly schedule: () => void,
+    cellSize: () => CellSize | undefined,
+  ) {
+    this.scrolling = new ScrollInput(schedule, cellSize);
+    this.wheels = new WheelInput(schedule);
     this.focus = new Focus(schedule);
   }
   key(root: Mounted, event: KeyEvent): void {
     let node = this.focus.current ?? root;
     while (node) {
       node.element.data.props.onKey?.(event);
-      if (!event.defaultPrevented && this.defaultKey(node, event)) event.preventDefault();
+      if (!event.defaultPrevented && this.defaultKey(node, event))
+        event.preventDefault();
       if (event.propagationStopped) break;
       if (!node.parent) break;
       node = node.parent;
     }
-    if (!event.defaultPrevented && event.key === "tab") this.focus.next(root, event.shift);
+    if (!event.defaultPrevented && event.key === "tab")
+      this.focus.next(root, event.shift);
     this.schedule();
   }
   private defaultKey(node: Mounted, event: KeyEvent): boolean {
@@ -32,19 +43,29 @@ export class InputRouter {
       node.element.data.props.button.onPress();
       return true;
     }
-    if (node.element.data.kind === "scroll") return scrollKey(node, event);
+    if (node.element.data.kind === "scroll")
+      return this.scrolling.key(node, event);
     return false;
   }
+  flushScroll(root: Mounted): void {
+    this.scrolling.advance();
+    for (const [node, event] of this.wheels.drain(root))
+      this.scrolling.wheel(node, event);
+  }
+  dispose(): void {
+    this.wheels.dispose();
+    this.scrolling.dispose();
+  }
   mouse(root: Mounted, event: PointerEvent): void {
+    if (event.action === "scroll") {
+      this.wheels.push(this.scrolling.normalize(event));
+      return;
+    }
     const target = hit(root, event, root.rect);
     this.hover(root, target);
     let node = target;
     while (node) {
       node.element.data.props.onMouse?.(event);
-      if (event.action === "scroll" && node.element.data.kind === "scroll") {
-        scrollWheel(node, event);
-        break;
-      }
       if (
         event.action === "press" &&
         (node.element.data.props.button || node.element.data.props.input)
@@ -63,7 +84,9 @@ export class InputRouter {
     if (node.element.data.props.input) {
       const line = editorView(node).lines[Math.max(0, event.y - node.inner.y)];
       if (line)
-        node.cursor = line.start + take(line.text, Math.max(0, event.x - node.inner.x)).length;
+        node.cursor =
+          line.start +
+          take(line.text, Math.max(0, event.x - node.inner.x)).length;
       node.anchor = null;
     }
     node.pressed = true;
@@ -76,7 +99,8 @@ export class InputRouter {
     this.pressed = undefined;
     let node = target;
     while (node && node !== pressed) node = node.parent ?? undefined;
-    if (node === pressed && !disabled(pressed)) pressed.element.data.props.button?.onPress();
+    if (node === pressed && !disabled(pressed))
+      pressed.element.data.props.button?.onPress();
   }
   private hover(node: Mounted, target: Mounted | undefined): void {
     let ancestor = target;

@@ -1,8 +1,8 @@
+import type { Child, Element } from "./node";
+
 import { useState } from "../runtime/hooks";
 import { box, column, scroll } from "./factories";
 import { component } from "./node";
-
-import type { Child, Element } from "./node";
 
 export interface ListOptions<T> {
   height: number;
@@ -24,13 +24,16 @@ const Window = component((options: WindowOptions) => {
     options.count,
     Math.ceil((offset + options.height) / options.itemHeight) + 1,
   );
-  const rows = Array.from({ length: Math.max(0, end - start) }, (_, position) => {
-    const index = start + position;
-    return box(options.render(index))
-      .height(options.itemHeight)
-      .width("fill")
-      .key(options.key(index));
-  });
+  const rows = Array.from(
+    { length: Math.max(0, end - start) },
+    (_, position) => {
+      const index = start + position;
+      return box(options.render(index))
+        .height(options.itemHeight)
+        .width("fill")
+        .key(options.key(index));
+    },
+  );
   return scroll(
     column(
       box()
@@ -53,19 +56,23 @@ export function list<T>(items: readonly T[], options: ListOptions<T>): Element {
     !Number.isInteger(options.height) ||
     options.height < 1
   ) {
-    throw new Error("A virtual list requires positive integer height and itemHeight values.");
+    throw new Error(
+      "A virtual list requires positive integer height and itemHeight values.",
+    );
   }
   return Window({
     ...options,
     count: items.length,
     render: (index) => {
       const item = items[index];
-      if (item === undefined) throw new Error("List items changed while rendering.");
+      if (item === undefined)
+        throw new Error("List items changed while rendering.");
       return options.render(item, index);
     },
     key: (index) => {
       const item = items[index];
-      if (item === undefined) throw new Error("List items changed while rendering.");
+      if (item === undefined)
+        throw new Error("List items changed while rendering.");
       return options.key(item);
     },
   });

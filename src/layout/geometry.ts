@@ -1,7 +1,7 @@
-import { padding } from "../style/types";
-
 import type { Rect } from "../runtime/tree";
 import type { Dimension, Style } from "../style/types";
+
+import { padding } from "../style/types";
 
 export interface Size {
   width: number;
@@ -26,11 +26,18 @@ export function inset(rect: Rect, style: Style): Rect {
     height: Math.max(0, rect.height - top - bottom),
   };
 }
-export function dimension(token: Dimension | undefined, available: number): number | undefined {
+export function dimension(
+  token: Dimension | undefined,
+  available: number,
+): number | undefined {
   if (typeof token === "number") return Math.max(0, Math.floor(token));
-  if (token === "fill") return Number.isFinite(available) ? available : undefined;
+  if (token === "fill")
+    return Number.isFinite(available) ? available : undefined;
   if (token?.endsWith("%") && Number.isFinite(available))
-    return Math.max(0, Math.floor((available * Number.parseFloat(token)) / 100));
+    return Math.max(
+      0,
+      Math.floor((available * Number.parseFloat(token)) / 100),
+    );
   return undefined;
 }
 export function bounded(value: number, min = 0, max = Infinity): number {
@@ -47,5 +54,10 @@ export function intersect(a: Rect, b: Rect): Rect {
   };
 }
 export function contains(rect: Rect, x: number, y: number): boolean {
-  return x >= rect.x && y >= rect.y && x < rect.x + rect.width && y < rect.y + rect.height;
+  return (
+    x >= rect.x &&
+    y >= rect.y &&
+    x < rect.x + rect.width &&
+    y < rect.y + rect.height
+  );
 }

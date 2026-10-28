@@ -1,8 +1,15 @@
-import { createApp, MemoryTerminal, text, useEffect, useState } from "../../index";
 import { expect, test } from "bun:test";
 
 import type { Mode, TerminalEvent } from "../../index";
 import type { Screen } from "../render/screen";
+
+import {
+  createApp,
+  MemoryTerminal,
+  text,
+  useEffect,
+  useState,
+} from "../../index";
 
 class SlowTerminal extends MemoryTerminal {
   releases: Array<() => void> = [];
@@ -41,7 +48,10 @@ test("output backpressure serializes frames and coalesces intervening state chan
 });
 test("startup failure releases the terminal and retains its original cause", async () => {
   class BrokenTerminal extends MemoryTerminal {
-    override async start(_mode: Mode, _emit: (event: TerminalEvent) => void): Promise<void> {
+    override async start(
+      _mode: Mode,
+      _emit: (event: TerminalEvent) => void,
+    ): Promise<void> {
       throw new Error("cannot acquire terminal");
     }
   }

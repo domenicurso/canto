@@ -14,7 +14,9 @@ import {
 } from "../index";
 
 const panel = style().border("rounded").borderColor("#334155").padding([0, 1]);
-const action = style().color("cyan").focused(style().background("#164e63").bold());
+const action = style()
+  .color("cyan")
+  .focused(style().background("#164e63").bold());
 const Project = component(({ name }: { name: string }) => {
   const [stars, setStars] = useState(0);
   return row(
@@ -22,7 +24,10 @@ const Project = component(({ name }: { name: string }) => {
     button(`★ ${stars}`, () => setStars((n) => n + 1)).use(action),
   ).gap(1);
 });
-const projects = Array.from({ length: 100 }, (_, index) => `Project ${index + 1}`);
+const projects = Array.from(
+  { length: 100 },
+  (_, index) => `Project ${index + 1}`,
+);
 function Dashboard() {
   const [query, setQuery] = useState("");
   const [time, setTime] = useState(() => new Date());
@@ -32,7 +37,10 @@ function Dashboard() {
     return () => clearInterval(timer);
   }, []);
   return column(
-    row(text("CANTO").bold().width("fill"), text(time.toLocaleTimeString()).dim()).padding([0, 2]),
+    row(
+      text("CANTO").bold().width("fill"),
+      text(time.toLocaleTimeString()).dim(),
+    ).padding([0, 2]),
     input({ value: query, onChange: setQuery, placeholder: "Find a project…" })
       .use(panel)
       .width("fill")

@@ -11,7 +11,8 @@ export function parseGitStatus(output: string): GitFile[] {
   for (let index = 0; index < fields.length; index++) {
     const field = fields[index];
     if (!field) continue;
-    if (field.length < 4 || field[2] !== " ") throw new Error("Malformed Git status record");
+    if (field.length < 4 || field[2] !== " ")
+      throw new Error("Malformed Git status record");
     const code = field.slice(0, 2);
     let path = field.slice(3);
     if (/[RC]/.test(code)) {
@@ -36,10 +37,13 @@ function statusLabel(code: string): { status: string; color: Color } {
   return { status: code.trim() || "UNKNOWN", color: "white" };
 }
 export async function readGitStatus(signal: AbortSignal): Promise<GitFile[]> {
-  const child = Bun.spawn(["git", "status", "--porcelain=v1", "-z", "--untracked-files=normal"], {
-    cwd: process.cwd(),
-    signal,
-  });
+  const child = Bun.spawn(
+    ["git", "status", "--porcelain=v1", "-z", "--untracked-files=normal"],
+    {
+      cwd: process.cwd(),
+      signal,
+    },
+  );
   const [output, error, exitCode] = await Promise.all([
     new Response(child.stdout).text(),
     new Response(child.stderr).text(),

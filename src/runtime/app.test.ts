@@ -1,3 +1,5 @@
+import { expect, test } from "bun:test";
+
 import {
   button,
   column,
@@ -11,7 +13,6 @@ import {
   useEffect,
   useState,
 } from "../../index";
-import { expect, test } from "bun:test";
 
 async function ready(app: ReturnType<typeof createApp>): Promise<void> {
   await app.flush();
@@ -84,7 +85,10 @@ test("keyed components retain state when reordered and clean up on removal", asy
     expect(terminal.screen?.toString()).toContain("a:1");
     reorder();
     await ready(app);
-    expect(terminal.screen?.toString().split("\n").slice(0, 2)).toEqual(["b:0", "a:1"]);
+    expect(terminal.screen?.toString().split("\n").slice(0, 2)).toEqual([
+      "b:0",
+      "a:1",
+    ]);
     remove();
     await ready(app);
     expect(cleaned).toEqual(["a"]);
@@ -155,7 +159,7 @@ test("conditional inputs join focus and edit whole graphemes", async () => {
   const app = createApp(
     () => {
       const [value, setValue] = useState("🙂");
-      return column(true && input({ value, onChange: setValue }), text(value));
+      return column(value && input({ value, onChange: setValue }), text(value));
     },
     { terminal },
   );

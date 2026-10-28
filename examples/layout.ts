@@ -1,5 +1,4 @@
 import {
-  box,
   button,
   column,
   createApp,
@@ -10,71 +9,117 @@ import {
   text,
   useApp,
   useState,
+  useViewport,
 } from "../index";
 
-const panel = style().border("rounded").borderColor("#475569").padding(1);
 const action = style().color("cyan").focused(style().background("#164e63"));
 
-function Navigation() {
-  return column(
-    text("WORKSPACE").bold(),
-    text("Overview").color("cyan"),
-    text("Projects"),
-    text("Activity"),
+function panel(compact: boolean) {
+  return style()
+    .border("rounded")
+    .borderColor("#475569")
+    .padding(compact ? [0, 1] : 1);
+}
+
+function Navigation(compact: boolean) {
+  return scroll(
+    column(
+      text("WORKSPACE").bold(),
+      text("Overview").color("cyan"),
+      text("Projects"),
+      text("Activity"),
+    ).gap(compact ? 0 : 1),
   )
-    .gap(1)
-    .use(panel)
+    .use(panel(compact))
     .width(20)
     .height("fill");
 }
-function Preview({ badge }: { badge: boolean }) {
+
+function Preview({ badge, compact }: { badge: boolean; compact: boolean }) {
   return overlay(
-    column(
-      text("A flexible content pane").bold(),
-      text(
-        "Resize the terminal. The sidebar stays at 20 columns, while these two panes share the remaining width in a 2:1 ratio. Text wraps before sibling heights are calculated.",
-      ),
-      box(text("Content → padding → border")).padding(1).border("double").color("cyan"),
-    )
-      .gap(1)
-      .fill(),
-    badge && text(" LIVE ").background("green").color("black").position("absolute").right(0).top(0),
+    scroll(
+      column(
+        text("A flexible content pane").bold(),
+        text(
+          "Resize the terminal. Wide views share space in a 2:1 ratio; smaller views stack the panes. Each pane scrolls instead of crushing its labels.",
+        ),
+        text("Content → padding → border")
+          .padding([0, 1])
+          .border("double")
+          .color("cyan"),
+      ).gap(1),
+    ).fill(),
+    badge &&
+      text(" LIVE ")
+        .background("green")
+        .color("black")
+        .position("absolute")
+        .right(0)
+        .top(0),
   )
-    .use(panel)
+    .use(panel(compact))
     .width("fill")
     .grow(2)
     .height("fill");
 }
+
+function Inspector(compact: boolean) {
+  return scroll(
+    column(
+      text("Inspector").bold(),
+      Array.from({ length: 20 }, (_, index) => text(`Property ${index + 1}`)),
+    ).gap(compact ? 0 : 1),
+  )
+    .use(panel(compact))
+    .width("fill")
+    .grow(1)
+    .height("fill");
+}
+
 export function Layout() {
   const [badge, setBadge] = useState(true);
   const app = useApp();
+  const { width, height } = useViewport();
+
+  const compact = height < 18;
+  const stacked = width < 80 || height < 10;
+
+  const body = stacked
+    ? scroll(
+        column(
+          text("WORKSPACE · Overview · Projects · Activity").color("cyan"),
+          Preview({ badge, compact }).height(9),
+          Inspector(compact).height(7),
+        ).gap(1),
+      )
+        .fill()
+        .key("stacked")
+    : row(Navigation(compact), Preview({ badge, compact }), Inspector(compact))
+        .gap(1)
+        .fill()
+        .key("panes");
+
   return column(
     row(
       text("Layout explorer").bold().width("fill"),
-      button("Toggle badge", () => setBadge(!badge)).use(action),
+      button(width < 50 ? "Badge" : "Toggle badge", () => setBadge(!badge)).use(
+        action,
+      ),
       button("Quit", () => app.stop()).use(action),
-    ).gap(2),
-    row(
-      Navigation(),
-      Preview({ badge }),
-      scroll(
-        column(
-          text("Inspector").bold(),
-          ...Array.from({ length: 20 }, (_, index) => text(`Property ${index + 1}`)),
-        ).gap(1),
+    ).gap(1),
+    body,
+    height >= 8 &&
+      text(
+        width < 60
+          ? "Tab: focus · ↑↓ / PgUp/PgDn: scroll"
+          : "Tab: focus pane · arrows / Page Up/Down: scroll",
       )
-        .use(panel)
-        .width("fill")
-        .grow(1)
-        .height("fill"),
-    )
-      .gap(1)
-      .width("fill")
-      .height("fill"),
-    text("Tab to focus the inspector · ↑↓ / Page Up / Page Down to scroll").dim(),
+        .dim()
+        .wrap("none")
+        .overflow("ellipsis"),
   )
-    .padding(1)
-    .gap(1)
+    .padding(compact ? 0 : 1)
+    .gap(compact ? 0 : 1)
     .fill();
 }
 

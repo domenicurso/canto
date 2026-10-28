@@ -1,15 +1,17 @@
+import type { Mounted, Rect } from "../runtime/tree";
+import type { Allocation } from "./allocation";
+
 import { allocate } from "./allocation";
 import { bounded, dimension } from "./geometry";
 import { measure } from "./measure";
-
-import type { Mounted, Rect } from "../runtime/tree";
-import type { Allocation } from "./allocation";
 
 export type Place = (node: Mounted, rect: Rect) => void;
 export function flow(node: Mounted, place: Place): void {
   const horizontal = node.element.data.kind === "row";
   const area = node.inner;
-  const children = node.children.filter((child) => child.style.position !== "absolute");
+  const children = node.children.filter(
+    (child) => child.style.position !== "absolute",
+  );
   const items = allocate(children, area, horizontal);
   const used =
     items.reduce((sum, item) => sum + item.flow, 0) +
@@ -48,7 +50,8 @@ function crossPlacement(
   const measured = horizontal
     ? measure(item.node, { width: item.flow, height: available }).height
     : item.size.width;
-  const natural = dimension(token, available) ?? (align === "stretch" ? available : measured);
+  const natural =
+    dimension(token, available) ?? (align === "stretch" ? available : measured);
   const size = bounded(
     natural,
     horizontal ? s.minHeight : s.minWidth,
@@ -58,7 +61,10 @@ function crossPlacement(
     size,
     offset: Math.max(
       0,
-      Math.floor((available - size) * (align === "center" ? 0.5 : align === "end" ? 1 : 0)),
+      Math.floor(
+        (available - size) *
+          (align === "center" ? 0.5 : align === "end" ? 1 : 0),
+      ),
     ),
   };
 }
@@ -75,7 +81,10 @@ function distribution(
     case "between":
       return { start: 0, extra: count > 1 ? free / (count - 1) : 0 };
     case "around":
-      return { start: count ? free / count / 2 : 0, extra: count ? free / count : 0 };
+      return {
+        start: count ? free / count / 2 : 0,
+        extra: count ? free / count : 0,
+      };
     case "evenly":
       return { start: free / (count + 1), extra: free / (count + 1) };
     default:

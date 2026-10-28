@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Canto v1 and v2 · same counter</title>
+    <style>
+      body {
+        margin: 0;
+        background: #11151f;
+        color: #e6e9f0;
+        font: 16px/1.5 system-ui;
+      }
+      main {
+        max-width: 1600px;
+        margin: auto;
+        padding: 32px;
+      }
+      h1 {
+        font-size: 28px;
+        margin-bottom: 8px;
+      }
+      p {
+        color: #b6bfce;
+        max-width: 85ch;
+      }
+      .compare {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+      article {
+        min-width: 0;
+        border: 1px solid #34415a;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      h2 {
+        margin: 0;
+        padding: 16px 20px;
+        background: #20293b;
+        font-size: 18px;
+      }
+      pre {
+        margin: 0;
+        padding: 20px;
+        overflow: auto;
+        font:
+          13px/1.7 ui-monospace,
+          monospace;
+        tab-size: 2;
+      }
+      code {
+        color: #b9ebdf;
+      }
+      .note {
+        padding: 16px 20px;
+        margin: 0;
+        border-top: 1px solid #34415a;
+      }
+      @media (max-width: 850px) {
+        .compare {
+          grid-template-columns: 1fr;
+        }
+        main {
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>The same counter in v1 and v2</h1>
+      <p>
+        Both programs show a count and its doubled value, with decrement,
+        increment, and quit buttons. They use the same cyan text, spacing, and
+        padding. Each listing includes its imports and application setup.
+      </p>
+      <div class="compare">
+        <article>
+          <h2>v1 · signals and a surface</h2>
+          <pre><code>import {
+  Button, computed, HStack, Renderer,
+  state, Surface, Text, VStack,
+} from &quot;canto&quot;;
+
+const count = state(0);
+const label = computed(
+  () =&gt; `Count: ${count.get()} · Doubled: ${count.get() * 2}`,
+);
+
+const view = VStack(
+  Text(&quot;Counter&quot;).style({ bold: true }),
+  Text(label),
+  HStack(
+    Button(&quot;−&quot;).props({
+      onPress: () =&gt; count.set(count.get() - 1),
+    }),
+    Button(&quot;+&quot;).props({
+      onPress: () =&gt; count.set(count.get() + 1),
+    }),
+    Button(&quot;Quit&quot;).props({
+      onPress: () =&gt; surface.dispose(),
+    }),
+  ).style({ gap: 2 }),
+).style({ gap: 1, padding: 1, foreground: &quot;cyan&quot; });
+
+const surface = new Surface(view, new Renderer(), {
+  disableConsole: true,
+});
+surface.startRender();
+</code></pre>
+          <p class="note">
+            State lives outside the view. A computed signal supplies the derived
+            label; Surface and Renderer own rendering and disposal. This listing
+            targets the archived v1 API.
+          </p>
+        </article>
+        <article>
+          <h2>v2 · component state and an app</h2>
+          <pre><code>import {
+  button, column, createApp, row,
+  text, useApp, useState,
+} from &quot;canto&quot;;
+
+function Counter() {
+  const [count, setCount] = useState(0);
+  const app = useApp();
+
+  return column(
+    text(&quot;Counter&quot;).bold(),
+    text(`Count: ${count} · Doubled: ${count * 2}`),
+    row(
+      button(&quot;−&quot;, () =&gt; setCount(n =&gt; n - 1)),
+      button(&quot;+&quot;, () =&gt; setCount(n =&gt; n + 1)),
+      button(&quot;Quit&quot;, () =&gt; app.stop()),
+    ).gap(2),
+  ).gap(1).padding(1).color(&quot;cyan&quot;);
+}
+
+await createApp(Counter, { mode: &quot;inline&quot; }).run();
+</code></pre>
+          <p class="note">
+            State belongs to the mounted component. Derived text is ordinary
+            TypeScript; run() owns terminal cleanup and resolves when the app
+            stops.
+          </p>
+        </article>
+      </div>
+      <p>
+        For this small app, both APIs are compact. v2 removes explicit computed
+        signals and separate rendering objects; it adds a component function and
+        state setter. Hooks must keep a stable order, and a component executes
+        again when its state changes.
+      </p>
+    </main>
+  </body>
+</html>

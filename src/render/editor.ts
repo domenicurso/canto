@@ -1,8 +1,8 @@
-import { editorView } from "../runtime/editor-view";
-import { columns, graphemes } from "../text/columns";
-
 import type { Mounted, Rect } from "../runtime/tree";
 import type { Screen } from "./screen";
+
+import { editorView } from "../runtime/editor-view";
+import { columns, graphemes } from "../text/columns";
 
 export function drawEditor(node: Mounted, screen: Screen, clip: Rect): void {
   const view = editorView(node);

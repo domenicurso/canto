@@ -1,7 +1,14 @@
-import { canvas, column, createApp, text, useEffect, useState } from "../../index";
-import { decodePng, drawRaster, sampleRaster } from "./image-raster";
-
 import type { Raster } from "./image-raster";
+
+import {
+  canvas,
+  column,
+  createApp,
+  text,
+  useEffect,
+  useState,
+} from "../../index";
+import { decodePng, drawRaster, sampleRaster } from "./image-raster";
 
 type ImageState =
   | { kind: "ready"; raster: Raster }
@@ -37,8 +44,12 @@ export function Image(path?: string) {
       ? canvas((draw) => drawRaster(draw, state.raster))
           .fill()
           .background("black")
-      : text(state.kind === "loading" ? "Loading…" : state.message).color("red"),
-    text(path ?? "Built-in sample · pass a PNG path to display your own image").dim(),
+      : text(state.kind === "loading" ? "Loading…" : state.message).color(
+          "red",
+        ),
+    text(
+      path ?? "Built-in sample · pass a PNG path to display your own image",
+    ).dim(),
     text("Transparency is composited over black · Ctrl+C to exit").dim(),
   ).fill();
 }

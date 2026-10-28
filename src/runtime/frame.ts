@@ -1,14 +1,15 @@
+import type { Mode, Terminal } from "../terminal/transport";
+import type { Mounted } from "./tree";
+
 import { layout } from "../layout/arrange";
 import { contains } from "../layout/geometry";
 import { LayoutInvalidation } from "../layout/invalidation";
+import { repositionScroll } from "../layout/scroll";
 import { resolveStyles } from "../layout/styles";
 import { diff } from "../render/diff";
 import { paint } from "../render/paint";
 import { Screen } from "../render/screen";
 import { editorView } from "./editor-view";
-
-import type { Mode, Terminal } from "../terminal/transport";
-import type { Mounted } from "./tree";
 
 export interface FrameStats {
   cellsWritten: number;
@@ -24,19 +25,22 @@ export class Frames {
     private readonly terminal: Terminal,
     private readonly mode: Mode,
   ) {}
+  invalidate(): void {
+    this.previous = undefined;
+  }
   async commit(root: Mounted, focused?: Mounted): Promise<void> {
     const start = performance.now();
     const screen = this.prepare(root);
     const previous =
-      this.previous?.width === screen.width && this.previous.height === screen.height
+      this.previous?.width === screen.width &&
+      this.previous.height === screen.height
         ? this.previous
         : undefined;
     const result = diff(previous, screen);
-    if (this.previous && this.previous.height > screen.height) {
-      for (let y = screen.height; y < this.previous.height; y++)
-        result.output += `\x1b[${y + 1};1H\x1b[2K`;
-    }
-    await this.terminal.present(screen, result.output + cursorOutput(focused, screen));
+    await this.terminal.present(
+      screen,
+      result.output + cursorOutput(focused, screen),
+    );
     this.previous = screen;
     this.stats = {
       ...this.stats,
@@ -55,6 +59,7 @@ export class Frames {
         { width: this.terminal.width, height: this.terminal.height },
         this.mode === "fullscreen",
       );
+    else repositionScroll(root);
     this.size = size;
     this.stats.layoutTime = changed ? performance.now() - start : 0;
     const height =
@@ -68,11 +73,20 @@ function cursorOutput(focused: Mounted | undefined, screen: Screen): string {
   if (!focused?.element.data.props.input) return "\x1b[?25l";
   const cursor = editorView(focused).cursor;
   cursor.x = Math.min(focused.inner.x + focused.inner.width - 1, cursor.x);
-  if (!contains({ x: 0, y: 0, width: screen.width, height: screen.height }, cursor.x, cursor.y))
+  if (
+    !contains(
+      { x: 0, y: 0, width: screen.width, height: screen.height },
+      cursor.x,
+      cursor.y,
+    )
+  )
     return "\x1b[?25l";
   let parent = focused.parent;
   while (parent) {
-    if (parent.style.overflow !== "visible" && !contains(parent.inner, cursor.x, cursor.y))
+    if (
+      parent.style.overflow !== "visible" &&
+      !contains(parent.inner, cursor.x, cursor.y)
+    )
       return "\x1b[?25l";
     parent = parent.parent;
   }

@@ -16,6 +16,7 @@ export interface PointerEvent {
   readonly button: number;
   readonly deltaY: number;
   readonly deltaX?: number;
+  readonly deltaMode?: "cell" | "pixel";
 }
 export interface ElementRef {
   focus(): void;

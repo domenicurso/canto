@@ -1,9 +1,14 @@
-import { StyleBuilder } from "../style/builder";
-
 import type { Style, StyleDefinition } from "../style/types";
 import type { DrawingContext } from "./drawing";
-import type { ElementEvents, ElementRef, KeyEvent, PointerEvent } from "./events";
+import type {
+  ElementEvents,
+  ElementRef,
+  KeyEvent,
+  PointerEvent,
+} from "./events";
 import type { ElementProps } from "./props";
+
+import { StyleBuilder } from "../style/builder";
 
 export type Kind =
   | "text"
@@ -17,7 +22,14 @@ export type Kind =
   | "scroll"
   | "component"
   | "canvas";
-export type Child = Element | string | number | null | undefined | false | readonly Child[];
+export type Child =
+  | Element
+  | string
+  | number
+  | null
+  | undefined
+  | false
+  | readonly Child[];
 export type Component<P> = (props: P) => Child;
 export interface ComponentCall {
   render: () => Child;
@@ -98,7 +110,14 @@ export function flatten(children: readonly Child[]): Element[] {
     if (Array.isArray(child)) result.push(...flatten(child));
     else if (child instanceof Element) result.push(child);
     else if (typeof child === "string" || typeof child === "number") {
-      result.push(new Element({ kind: "text", children: [], props: {}, text: String(child) }));
+      result.push(
+        new Element({
+          kind: "text",
+          children: [],
+          props: {},
+          text: String(child),
+        }),
+      );
     }
   }
   return result;

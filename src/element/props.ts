@@ -2,7 +2,11 @@ import type { ElementEvents } from "./events";
 
 export type ValueProps =
   | { value: string; onChange: (value: string) => void; defaultValue?: never }
-  | { defaultValue?: string; value?: never; onChange?: (value: string) => void };
+  | {
+      defaultValue?: string;
+      value?: never;
+      onChange?: (value: string) => void;
+    };
 export type InputProps = ValueProps & {
   placeholder?: string;
   disabled?: boolean;
@@ -23,6 +27,7 @@ type ScrollControl<T> =
 interface ScrollAppearance {
   scrollbar?: "auto" | "hidden" | "visible";
   gutter?: "auto" | "stable";
+  physics?: "instant" | { friction?: number; momentum?: number };
 }
 export type ScrollProps = ScrollAppearance &
   (

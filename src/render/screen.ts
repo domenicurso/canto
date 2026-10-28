@@ -1,8 +1,8 @@
-import { contains } from "../layout/geometry";
-import { columns, graphemes } from "../text/columns";
-
 import type { Rect } from "../runtime/tree";
 import type { Style } from "../style/types";
+
+import { contains } from "../layout/geometry";
+import { columns, graphemes } from "../text/columns";
 
 export interface Cell {
   text: string;
@@ -34,24 +34,44 @@ export class Screen {
       x += size;
     }
   }
-  private write(point: { x: number; y: number }, text: string, size: number, style: Style): void {
+  private write(
+    point: { x: number; y: number },
+    text: string,
+    size: number,
+    style: Style,
+  ): void {
     const { x, y } = point;
     style = {
       ...style,
       background:
-        style.background === undefined ? this.get(x, y)?.style.background : style.background,
+        style.background === undefined
+          ? this.get(x, y)?.style.background
+          : style.background,
     };
     if (x < 0 || y < 0 || x + size > this.width || y >= this.height) return;
     this.eraseWide(x, y);
     if (size === 2) this.eraseWide(x + 1, y);
     this.cells[y * this.width + x] = { text, style, continuation: false };
-    if (size === 2) this.cells[y * this.width + x + 1] = { text: "", style, continuation: true };
+    if (size === 2)
+      this.cells[y * this.width + x + 1] = {
+        text: "",
+        style,
+        continuation: true,
+      };
   }
   private eraseWide(x: number, y: number): void {
     const cell = this.get(x, y);
     if (cell?.continuation && x > 0)
-      this.cells[y * this.width + x - 1] = { text: " ", style: cell.style, continuation: false };
-    if (!cell?.continuation && this.get(x + 1, y)?.continuation && x + 1 < this.width) {
+      this.cells[y * this.width + x - 1] = {
+        text: " ",
+        style: cell.style,
+        continuation: false,
+      };
+    if (
+      !cell?.continuation &&
+      this.get(x + 1, y)?.continuation &&
+      x + 1 < this.width
+    ) {
       this.cells[y * this.width + x + 1] = {
         text: " ",
         style: cell?.style ?? {},

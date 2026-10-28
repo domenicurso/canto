@@ -1,6 +1,13 @@
 export { createApp, App } from "./src/runtime/app";
 export type { AppOptions, AppStatus } from "./src/runtime/app";
-export { useState, useEffect, useMemo, useRef, useApp } from "./src/runtime/hooks";
+export {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useApp,
+  useViewport,
+} from "./src/runtime/hooks";
 export { component, Element } from "./src/element/node";
 export type { Child, Component } from "./src/element/node";
 export {
@@ -15,7 +22,12 @@ export {
   textarea,
   scroll,
 } from "./src/element/factories";
-export type { InputProps, ButtonProps, ScrollProps, ScrollPosition } from "./src/element/props";
+export type {
+  InputProps,
+  ButtonProps,
+  ScrollProps,
+  ScrollPosition,
+} from "./src/element/props";
 export type { KeyEvent, PointerEvent, ElementRef } from "./src/element/events";
 export { style, StyleBuilder } from "./src/style/builder";
 export type {
@@ -34,3 +46,5 @@ export type { TerminalEvent } from "./src/terminal/events";
 export type { DrawingContext } from "./src/element/drawing";
 export { list } from "./src/element/list";
 export type { ListOptions } from "./src/element/list";
+
+export type { CellSize } from "./src/terminal/cell-size";

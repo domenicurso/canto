@@ -1,15 +1,16 @@
+import type { Child } from "../element/node";
+import type { TerminalEvent } from "../terminal/events";
+import type { Mode, Terminal } from "../terminal/transport";
+
 import { Element } from "../element/node";
 import { ProcessTerminal } from "../terminal/process";
 import { Frames } from "./frame";
 import { commitEffects } from "./hooks";
 import { InputRouter } from "./input";
-import { reconcile, unmount } from "./reconcile";
+import { reconcile } from "./reconcile";
 import { Refs } from "./refs";
-import { mounted } from "./tree";
-
-import type { Child } from "../element/node";
-import type { TerminalEvent } from "../terminal/events";
-import type { Mode, Terminal } from "../terminal/transport";
+import { SessionSignals, releaseSession } from "./session";
+import { mounted, walk } from "./tree";
 
 export interface AppOptions {
   mode?: Mode;
@@ -17,15 +18,24 @@ export interface AppOptions {
   signal?: AbortSignal;
   exitOnCtrlC?: boolean;
 }
-export type AppStatus = "created" | "starting" | "running" | "stopping" | "stopped";
+export type AppStatus =
+  | "created"
+  | "starting"
+  | "running"
+  | "stopping"
+  | "stopped";
 export class App {
   private state: AppStatus = "created";
   private readonly terminal: Terminal;
   private readonly root;
   private readonly frames: Frames;
-  private readonly router = new InputRouter(() => this.schedule());
+  private readonly router = new InputRouter(
+    () => this.schedule(),
+    () => this.terminal.cellSize,
+  );
   private readonly refs = new Refs(this.router.focus, () => this.schedule());
   private pending = false;
+  private preparing = false;
   private queued = false;
   private rendering: Promise<void> | undefined;
   private failure: unknown;
@@ -34,12 +44,17 @@ export class App {
   private readonly done = new Promise<void>((resolve) => {
     this.finish = resolve;
   });
-  private readonly interrupt = (): void => this.stop();
+  private readonly signals: SessionSignals;
   constructor(
     render: () => Child,
     private readonly options: AppOptions = {},
   ) {
     this.terminal = options.terminal ?? new ProcessTerminal();
+    this.signals = new SessionSignals(
+      options.signal,
+      () => this.stop(),
+      this.terminal instanceof ProcessTerminal,
+    );
     this.frames = new Frames(this.terminal, options.mode ?? "fullscreen");
     const element = new Element({
       kind: "component",
@@ -49,6 +64,9 @@ export class App {
     });
     this.root = mounted(element, null);
   }
+  get viewport(): { width: number; height: number } {
+    return { width: this.terminal.width, height: this.terminal.height };
+  }
   get status(): AppStatus {
     return this.state;
   }
@@ -57,10 +75,12 @@ export class App {
   }
   async run(): Promise<void> {
     if (this.state !== "created")
-      throw new Error("An app can only run once. Create another app to restart.");
+      throw new Error(
+        "An app can only run once. Create another app to restart.",
+      );
     this.state = "starting";
     try {
-      this.listen();
+      this.signals.start();
       if (!this.options.signal?.aborted) {
         await this.terminal.start(this.options.mode ?? "fullscreen", (event) =>
           this.dispatch(event),
@@ -69,7 +89,8 @@ export class App {
           this.state = "running";
           await this.flush();
         }
-        if (this.terminal instanceof ProcessTerminal && !process.stdout.isTTY) this.stop();
+        if (this.terminal instanceof ProcessTerminal && !process.stdout.isTTY)
+          this.stop();
       } else this.stop();
       await this.done;
     } catch (error) {
@@ -91,7 +112,7 @@ export class App {
     this.stop();
   }
   schedule(): void {
-    if (this.state !== "running") return;
+    if (this.state !== "running" || this.preparing) return;
     this.pending = true;
     if (this.queued || this.rendering) return;
     this.queued = true;
@@ -106,6 +127,12 @@ export class App {
       return;
     }
     if (this.state !== "running") return;
+    this.preparing = true;
+    try {
+      this.router.flushScroll(this.root);
+    } finally {
+      this.preparing = false;
+    }
     this.pending = false;
     this.rendering = this.render();
     try {
@@ -116,7 +143,10 @@ export class App {
     }
   }
   private async render(): Promise<void> {
-    reconcile(this.root, this.root.element, { app: this, schedule: () => this.schedule() });
+    reconcile(this.root, this.root.element, {
+      app: this,
+      schedule: () => this.schedule(),
+    });
     this.router.focus.refresh(this.root);
     await this.frames.commit(this.root, this.router.focus.current);
     if (this.state !== "running") return;
@@ -127,26 +157,30 @@ export class App {
     if (this.state !== "running") return;
     try {
       if (event.type === "key") {
-        if (this.options.exitOnCtrlC !== false && event.event.ctrl && event.event.key === "c")
+        if (
+          this.options.exitOnCtrlC !== false &&
+          event.event.ctrl &&
+          event.event.key === "c"
+        )
           this.stop();
         else this.router.key(this.root, event.event);
-      } else if (event.type === "mouse") this.router.mouse(this.root, event.event);
-      else this.schedule();
+      } else if (event.type === "mouse")
+        this.router.mouse(this.root, event.event);
+      else {
+        walk(this.root)
+          .filter((node) => node.element.data.kind === "component")
+          .forEach((node) => {
+            node.dirty = true;
+          });
+        this.frames.invalidate();
+        this.schedule();
+      }
     } catch (error) {
       this.fail(error);
     }
   }
-  private listen(): void {
-    this.options.signal?.addEventListener("abort", this.interrupt, { once: true });
-    if (this.terminal instanceof ProcessTerminal) {
-      process.on("SIGINT", this.interrupt);
-      process.on("SIGTERM", this.interrupt);
-    }
-  }
   private async cleanup(): Promise<void> {
-    this.options.signal?.removeEventListener("abort", this.interrupt);
-    process.off("SIGINT", this.interrupt);
-    process.off("SIGTERM", this.interrupt);
+    this.signals.stop();
     if (this.rendering) {
       try {
         await this.rendering;
@@ -154,21 +188,9 @@ export class App {
         this.fail(error);
       }
     }
-    try {
-      this.router.focus.set(undefined);
-    } catch (error) {
-      this.fail(error);
-    }
-    try {
-      unmount(this.root);
-    } catch (error) {
-      this.fail(error);
-    }
-    try {
-      await this.terminal.stop();
-    } catch (error) {
-      this.fail(error);
-    }
+    await releaseSession(this.root, this.router, this.terminal, (error) =>
+      this.fail(error),
+    );
     this.state = "stopped";
   }
 }

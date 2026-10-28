@@ -21,21 +21,11 @@ const messages = [
 ];
 
 export function Logs() {
-  const [lines, setLines] = useState<string[]>(["Waiting for simulated events…"]);
   const [paused, setPaused] = useState(false);
   const [following, setFollowing] = useState(true);
   const [offset, setOffset] = useState(0);
-  const sequence = useRef(0);
+  const [lines, setLines] = useEventStream(paused);
   const app = useApp();
-  useEffect(() => {
-    if (paused) return;
-    const timer = setInterval(() => {
-      const id = sequence.current++;
-      const entry = `${String(id + 1).padStart(4, "0")}  ${new Date().toLocaleTimeString()}  ${messages[id % messages.length]}`;
-      setLines((previous) => [...previous.slice(-199), entry]);
-    }, 350);
-    return () => clearInterval(timer);
-  }, [paused]);
   return column(
     row(
       text("Live event stream").bold().width("fill"),
@@ -72,3 +62,20 @@ export function Logs() {
 }
 
 if (import.meta.main) await createApp(Logs).run();
+
+function useEventStream(paused: boolean) {
+  const [lines, setLines] = useState<string[]>([
+    "Waiting for simulated events…",
+  ]);
+  const sequence = useRef(0);
+  useEffect(() => {
+    if (paused) return;
+    const timer = setInterval(() => {
+      const id = sequence.current++;
+      const entry = `${String(id + 1).padStart(4, "0")}  ${new Date().toLocaleTimeString()}  ${messages[id % messages.length]}`;
+      setLines((previous) => [...previous.slice(-199), entry]);
+    }, 350);
+    return () => clearInterval(timer);
+  }, [paused]);
+  return [lines, setLines] as const;
+}

@@ -15,7 +15,9 @@ export function Console(inspect?: () => string) {
         .background("#4acfff")
         .color("black")
         .padding([1, 2]),
-      text("Open the console and type help, status, clear, or quit.").color("yellow"),
+      text("Open the console and type help, status, clear, or quit.").color(
+        "yellow",
+      ),
     )
       .gap(1)
       .height("fill"),

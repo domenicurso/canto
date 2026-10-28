@@ -1,5 +1,6 @@
-import { box, canvas, createApp, MemoryTerminal, text } from "../../index";
 import { expect, test } from "bun:test";
+
+import { box, canvas, createApp, MemoryTerminal, text } from "../../index";
 
 test("mixed text styles wrap as one paragraph over a parent background", async () => {
   const terminal = new MemoryTerminal(10, 4);
@@ -13,7 +14,10 @@ test("mixed text styles wrap as one paragraph over a parent background", async (
   const running = app.run();
   try {
     await Bun.sleep(0);
-    expect(terminal.screen?.toString().split("\n").slice(0, 2)).toEqual(["Hello", "world"]);
+    expect(terminal.screen?.toString().split("\n").slice(0, 2)).toEqual([
+      "Hello",
+      "world",
+    ]);
     expect(terminal.screen?.get(0, 1)?.style.bold).toBe(true);
     expect(terminal.screen?.get(0, 1)?.style.background).toBe("blue");
   } finally {
@@ -47,7 +51,11 @@ test("custom drawing uses the same clipping and styles as built-in elements", as
 test("ellipsis is drawn for plain and mixed-style paragraphs", async () => {
   const terminal = new MemoryTerminal(4, 2);
   const app = createApp(
-    () => text("ab", text("cdef").bold()).width(4).wrap("none").overflow("ellipsis"),
+    () =>
+      text("ab", text("cdef").bold())
+        .width(4)
+        .wrap("none")
+        .overflow("ellipsis"),
     { terminal },
   );
   const running = app.run();

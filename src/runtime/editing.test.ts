@@ -1,5 +1,12 @@
-import { createApp, input, keyEvent, MemoryTerminal, textarea } from "../../index";
 import { expect, test } from "bun:test";
+
+import {
+  createApp,
+  input,
+  keyEvent,
+  MemoryTerminal,
+  textarea,
+} from "../../index";
 
 test("selection replaces whole graphemes and supports controlled-independent input", async () => {
   const terminal = new MemoryTerminal(12, 3);
@@ -30,9 +37,12 @@ test("selection replaces whole graphemes and supports controlled-independent inp
 });
 test("multiline cursor navigation uses display columns and keeps the caret visible", async () => {
   const terminal = new MemoryTerminal(10, 2);
-  const app = createApp(() => textarea({ defaultValue: "abc\ndef\nghi\njkl" }).fill().autoFocus(), {
-    terminal,
-  });
+  const app = createApp(
+    () => textarea({ defaultValue: "abc\ndef\nghi\njkl" }).fill().autoFocus(),
+    {
+      terminal,
+    },
+  );
   const running = app.run();
   try {
     await Bun.sleep(0);

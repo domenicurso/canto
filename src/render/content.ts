@@ -1,8 +1,8 @@
-import { intersect } from "../layout/geometry";
-import { width as displayWidth, sanitize } from "../text/columns";
-
 import type { Mounted, Rect } from "../runtime/tree";
 import type { Screen } from "./screen";
+
+import { intersect } from "../layout/geometry";
+import { width as displayWidth, sanitize } from "../text/columns";
 
 export function drawContent(node: Mounted, screen: Screen, clip: Rect): void {
   const draw = node.element.data.draw;
@@ -19,22 +19,25 @@ export function drawContent(node: Mounted, screen: Screen, clip: Rect): void {
           clip,
         ),
       fill: (rect, style = {}) => {
-        const bounds = intersect(clip, { ...rect, x: area.x + rect.x, y: area.y + rect.y });
+        const bounds = intersect(clip, {
+          ...rect,
+          x: area.x + rect.x,
+          y: area.y + rect.y,
+        });
         for (let y = bounds.y; y < bounds.y + bounds.height; y++)
-          screen.put({ ...bounds, y }, " ".repeat(bounds.width), { ...node.style, ...style }, clip);
+          screen.put(
+            { ...bounds, y },
+            " ".repeat(bounds.width),
+            { ...node.style, ...style },
+            clip,
+          );
       },
     });
 }
 export function drawText(node: Mounted, screen: Screen, clip: Rect): void {
   const runs = node.element.data.runs;
-  if (!runs?.length) {
-    node.lines.forEach((line, index) =>
-      screen.put({ ...node.inner, y: node.inner.y + index }, line, node.style, clip),
-    );
-    return;
-  }
-  if (runs.length === 1) {
-    const style = { ...node.style, ...runs[0]?.style };
+  if (!runs || runs.length < 2) {
+    const style = { ...node.style, ...runs?.[0]?.style };
     node.lines.forEach((line, index) =>
       screen.put({ ...node.inner, y: node.inner.y + index }, line, style, clip),
     );
@@ -68,7 +71,12 @@ export function drawText(node: Mounted, screen: Screen, clip: Rect): void {
       position = end;
     }
     if (truncated)
-      screen.put({ x, y: node.inner.y + row, width: 1, height: 1 }, "…", node.style, clip);
+      screen.put(
+        { x, y: node.inner.y + row, width: 1, height: 1 },
+        "…",
+        node.style,
+        clip,
+      );
     offset = start + source.length;
   }
 }

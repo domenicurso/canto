@@ -20,6 +20,7 @@ interface MemoHook {
 }
 export interface AppControl {
   stop(): void;
+  readonly viewport: { width: number; height: number };
 }
 export interface HookScope {
   node: Mounted;
@@ -38,7 +39,8 @@ export function enter<T>(scope: HookScope, render: () => T): T {
   }
 }
 function scope(): HookScope {
-  if (!current) throw new Error("Hooks must be called inside a mounted component.");
+  if (!current)
+    throw new Error("Hooks must be called inside a mounted component.");
   return current;
 }
 function next(kind: Hook["kind"]): {
@@ -49,7 +51,8 @@ function next(kind: Hook["kind"]): {
   const context = scope();
   const index = context.node.hookIndex++;
   const previous = context.node.hooks[index];
-  if (previous && previous.kind !== kind) throw new Error("Hook order changed between renders.");
+  if (previous && previous.kind !== kind)
+    throw new Error("Hook order changed between renders.");
   return { context, index, previous };
 }
 export function useState<T>(
@@ -61,7 +64,8 @@ export function useState<T>(
       ? previous
       : {
           kind: "state",
-          value: typeof initial === "function" ? (initial as () => T)() : initial,
+          value:
+            typeof initial === "function" ? (initial as () => T)() : initial,
         };
   context.node.hooks[index] = hook;
   // Stable hook ordering guarantees this slot contains this call's T on subsequent renders.
@@ -69,8 +73,13 @@ export function useState<T>(
   const set = (value: T | ((previous: T) => T)): void => {
     if (!context.node.active) return;
     if (current)
-      throw new Error("State cannot be updated during rendering. Update it in an event or effect.");
-    const updated = typeof value === "function" ? (value as (previous: T) => T)(read()) : value;
+      throw new Error(
+        "State cannot be updated during rendering. Update it in an event or effect.",
+      );
+    const updated =
+      typeof value === "function"
+        ? (value as (previous: T) => T)(read())
+        : value;
     if (Object.is(updated, hook.value)) return;
     hook.value = updated;
     context.node.dirty = true;
@@ -80,7 +89,10 @@ export function useState<T>(
   // The stable setter belongs to the same typed state slot as its value.
   return [read(), hook.setter as typeof set];
 }
-function equal(a: DependencyList | undefined, b: DependencyList | undefined): boolean {
+function equal(
+  a: DependencyList | undefined,
+  b: DependencyList | undefined,
+): boolean {
   return (
     a !== undefined &&
     b !== undefined &&
@@ -88,9 +100,13 @@ function equal(a: DependencyList | undefined, b: DependencyList | undefined): bo
     a.every((value, index) => Object.is(value, b[index]))
   );
 }
-export function useEffect(run: () => void | (() => void), dependencies?: DependencyList): void {
+export function useEffect(
+  run: () => void | (() => void),
+  dependencies?: DependencyList,
+): void {
   const { context, index, previous } = next("effect");
-  if (previous?.kind === "effect" && equal(previous.dependencies, dependencies)) return;
+  if (previous?.kind === "effect" && equal(previous.dependencies, dependencies))
+    return;
   context.node.hooks[index] = {
     kind: "effect",
     dependencies: dependencies?.slice(),
@@ -98,18 +114,28 @@ export function useEffect(run: () => void | (() => void), dependencies?: Depende
     run,
   };
 }
-export function useMemo<T>(calculate: () => T, dependencies: DependencyList): T {
+export function useMemo<T>(
+  calculate: () => T,
+  dependencies: DependencyList,
+): T {
   const { context, index, previous } = next("memo");
   if (previous?.kind === "memo" && equal(previous.dependencies, dependencies)) {
     // Hook ordering preserves the value type associated with this memo slot.
     return previous.value as T;
   }
   const value = calculate();
-  context.node.hooks[index] = { kind: "memo", value, dependencies: dependencies.slice() };
+  context.node.hooks[index] = {
+    kind: "memo",
+    value,
+    dependencies: dependencies.slice(),
+  };
   return value;
 }
 export function useRef<T>(initial: T): { current: T } {
   return useState(() => ({ current: initial }))[0];
+}
+export function useViewport(): Readonly<{ width: number; height: number }> {
+  return scope().app.viewport;
 }
 export function useApp(): AppControl {
   return scope().app;

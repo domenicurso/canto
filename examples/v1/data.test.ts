@@ -1,9 +1,10 @@
+import { expect, test } from "bun:test";
+import { PNG } from "pngjs";
+
 import { canvas, createApp, MemoryTerminal } from "../../index";
 import { parseGitStatus } from "./git-status";
 import { Image } from "./image";
 import { decodePng, drawRaster } from "./image-raster";
-import { expect, test } from "bun:test";
-import { PNG } from "pngjs";
 
 test("Git porcelain records preserve spaces, Unicode, newlines, and rename pairs", () => {
   const files = parseGitStatus(
@@ -24,7 +25,10 @@ test("PNG decoding paints upper/lower pixels and composites transparency over bl
   png.data.set([255, 0, 0, 255, 0, 255, 0, 128]);
   const raster = decodePng(PNG.sync.write(png));
   const terminal = new MemoryTerminal(1, 1);
-  const app = createApp(() => canvas((draw) => drawRaster(draw, raster)).fill(), { terminal });
+  const app = createApp(
+    () => canvas((draw) => drawRaster(draw, raster)).fill(),
+    { terminal },
+  );
   const running = app.run();
   try {
     await Bun.sleep(0);
@@ -40,7 +44,9 @@ test("PNG decoding paints upper/lower pixels and composites transparency over bl
 });
 test("image file errors appear in the view and still release the terminal", async () => {
   const terminal = new MemoryTerminal(80, 24);
-  const app = createApp(() => Image("/nonexistent-canto-example.png"), { terminal });
+  const app = createApp(() => Image("/nonexistent-canto-example.png"), {
+    terminal,
+  });
   const running = app.run();
   try {
     for (let attempt = 0; attempt < 20; attempt++) {
