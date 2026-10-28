@@ -51,12 +51,14 @@ export class PointerState {
     if (node === pressed && !disabled(pressed))
       pressed.element.data.props.button?.onPress();
   }
-  hover(target: Mounted | undefined): void {
+  hover(target: Mounted | undefined): boolean {
+    if (this.hovered[0] === target) return false;
     for (const node of this.hovered) node.hovered = false;
     this.hovered = [];
     for (let node = target; node; node = node.parent ?? undefined) {
       node.hovered = true;
       this.hovered.push(node);
     }
+    return true;
   }
 }

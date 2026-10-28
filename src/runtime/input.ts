@@ -141,10 +141,10 @@ export class InputRouter {
       return;
     }
     if (event.action === "press") this.pointer.select(target, event);
-    this.pointer.hover(target);
+    const changed = this.pointer.hover(target);
     this.notifyPointer(target, event);
     if (event.action === "release") this.pointer.release(target);
-    this.schedule();
+    if (changed || event.action !== "move") this.schedule();
   }
   private notifyPointer(
     target: Mounted | undefined,
@@ -166,13 +166,12 @@ export class InputRouter {
   }
   outside(event: PointerEvent): void {
     if (this.selectionModes.control.mode === "native") return;
-    this.pointer.hover(undefined);
-    if (event.action === "move" || event.action === "release") {
-      this.drag.move(event);
-      this.selection.move(event);
-    }
+    const changed = this.pointer.hover(undefined);
+    const captured =
+      (event.action === "move" || event.action === "release") &&
+      (this.drag.move(event) || this.selection.move(event));
     if (event.action === "release") this.pointer.release(undefined);
-    this.schedule();
+    if (changed || captured || event.action !== "move") this.schedule();
   }
   resize(root: Mounted): void {
     this.selection.clear();
