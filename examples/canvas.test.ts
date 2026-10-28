@@ -2,12 +2,25 @@ import { expect, test } from "bun:test";
 
 import { createApp, MemoryTerminal } from "../index";
 import { Canvas } from "./canvas";
-import { waveform } from "./waveform";
+import { waveform, waveformBackground } from "./waveform";
 
 test("waveform rasterization keeps antialiased edges at the requested resolution", () => {
   const pixels = waveform(800, 400, 0);
   expect(pixels.data).toHaveLength(800 * 400 * 4);
   expect(pixels.data[3]).toBe(255);
+  expect(Array.from(pixels.data.slice(0, 4))).toEqual([
+    ...waveformBackground,
+    255,
+  ]);
+  expect(Array.from(pixels.data.slice(4, 8))).toEqual([
+    ...waveformBackground,
+    255,
+  ]);
+  const secondRow = pixels.width * 4;
+  expect(Array.from(pixels.data.slice(secondRow, secondRow + 4))).toEqual([
+    ...waveformBackground,
+    255,
+  ]);
   const edge = Array.from(
     { length: 400 },
     (_, y) => pixels.data[(y * 800 + 101) * 4],
@@ -29,6 +42,15 @@ test("canvas example submits a native raster at its physical inner size", async 
     const image = terminal.screen?.rasters[0];
     expect(image).toBeDefined();
     // The outer layout has one padding cell; the border occupies the next cell.
+    expect(terminal.screen?.get(1, 3)?.style.background).toEqual(
+      waveformBackground,
+    );
+    expect(terminal.screen?.get(2, 3)?.style.background).toEqual(
+      waveformBackground,
+    );
+    expect(terminal.screen?.get(1, 4)?.style.background).toEqual(
+      waveformBackground,
+    );
     expect(image?.rect.x).toBe(2);
     expect(image?.rect.y).toBe(4);
     expect(image?.rect.width).toBe(terminal.width - 4);

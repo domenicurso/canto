@@ -13,7 +13,7 @@ import {
   useState,
   useRef,
 } from "../index";
-import { waveform } from "./waveform";
+import { waveform, waveformBackground } from "./waveform";
 
 const action = style().color("cyan").focused(style().background("#164e63"));
 export function Canvas() {
@@ -51,7 +51,7 @@ export function Canvas() {
     )
       .border("rounded")
       .borderColor("#475569")
-      // .padding(1)
+      .background(waveformBackground)
       .fill(),
     row(
       button(paused ? "Play" : "Pause", () => setPaused(!paused)).use(action),
