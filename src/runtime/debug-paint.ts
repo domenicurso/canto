@@ -1,6 +1,6 @@
 import type { Screen } from "../render/screen";
 import type { Style } from "../style/types";
-import type { FrameStats } from "./frame-stats";
+import type { DebugReadings } from "./debug-sampling";
 import type { Rect } from "./tree";
 
 import { border } from "../render/border";
@@ -11,7 +11,7 @@ const surface: Style = { foreground: "#cbd5e1", background: "#0f172a" };
 type Reading = readonly [string, string];
 export function paintDebugPanel(
   content: Screen,
-  stats: Readonly<FrameStats>,
+  stats: DebugReadings,
   rect: Rect,
 ): Screen {
   const layer = content.clone();
@@ -42,49 +42,46 @@ export function paintDebugPanel(
   composite(shown, layer, rect, 0.88);
   return shown;
 }
-function paintReadings(
-  layer: Screen,
-  stats: Readonly<FrameStats>,
-  inner: Rect,
-): void {
+function paintReadings(layer: Screen, stats: DebugReadings, inner: Rect): void {
+  const { content, completed } = stats;
   const ms = (value: number): string => `${value.toFixed(1)} ms`;
   const metric = (value?: number): string =>
     value === undefined ? "—" : ms(value);
   reading(
     layer,
-    [`${Math.round(stats.fps)} FPS`, ms(stats.renderTime)],
+    [`${Math.round(stats.fps)} FPS`, `${layer.width} × ${layer.height}`],
     inner,
     0,
   );
   reading(
     layer,
-    [`#${stats.frame}`, `${layer.width} × ${layer.height}`],
+    [`Content #${content.frame}`, `Output #${completed.frame}`],
     inner,
     1,
   );
   const left: Reading[] = [
-    ["Content", ms(stats.contentTime)],
-    [" View", ms(stats.updateTime)],
-    [" Style/layout", ms(stats.prepareTime)],
-    [" Paint", ms(stats.paintTime)],
-    [" Diff", ms(stats.diffTime)],
+    ["CPU", ms(content.contentTime)],
+    [" View", ms(content.updateTime)],
+    [" Style/layout", ms(content.prepareTime)],
+    [" Paint", ms(content.paintTime)],
+    [" Diff", ms(content.diffTime)],
     ["", ""],
-    ["Nodes", Math.round(stats.layoutNodes).toString()],
-    ["Painted", Math.round(stats.paintedCells).toString()],
+    ["Nodes", content.layoutNodes.toString()],
+    ["Painted", content.paintedCells.toString()],
+    ["Changed", content.contentCellsWritten.toString()],
   ];
   const right: Reading[] = [
-    ["Inspector", ms(stats.debugTime)],
-    ["Encode", metric(stats.encodeTime)],
-    ["Write", metric(stats.writeTime ?? stats.presentTime)],
-    ["Interval", ms(stats.intervalTime)],
+    ["Frame", ms(completed.renderTime)],
+    [" Inspector", ms(completed.debugTime)],
+    [" Encode", metric(completed.encodeTime)],
+    [" Write", metric(completed.writeTime ?? completed.presentTime)],
+    ["Interval", ms(completed.intervalTime)],
     [
       "Output",
-      stats.outputBytes === undefined
+      completed.outputBytes === undefined
         ? "—"
-        : `${(stats.outputBytes / 1024).toFixed(1)} KiB`,
+        : `${(completed.outputBytes / 1024).toFixed(1)} KiB`,
     ],
-    ["", ""],
-    ["Changed", Math.round(stats.contentCellsWritten).toString()],
   ];
   paintColumns(layer, { left, right }, inner);
 }

@@ -61,7 +61,7 @@ test.each(["fullscreen", "inline"] as const)(
     );
   },
 );
-test("the inspector samples completed frames while app stats track every submitted content frame", async () => {
+test("the inspector attributes current content and completed output to their own frames", async () => {
   let update = (_count: number): void => {};
   await inspect(
     () => {
@@ -70,7 +70,6 @@ test("the inspector samples completed frames while app stats track every submitt
       return column(text(`Count: ${count}`)).fill();
     },
     async (terminal, app) => {
-      const sampled = app.stats;
       app.debug.toggle();
       await app.flush();
       expect(app.stats.contentCellsWritten).toBe(0);
@@ -85,17 +84,23 @@ test("the inspector samples completed frames while app stats track every submitt
       expect(stats.contentCellsWritten).toBe(1);
       const lines = terminal.screen?.toString().split("\n") ?? [];
       expect(
-        lines.find((line) => line.includes(`#${sampled.frame}`)),
+        lines.find((line) => line.includes(`Content #${stats.frame}`)),
       ).toBeDefined();
       for (const [label, value] of [
-        ["Content", sampled.contentTime],
-        [" View", sampled.updateTime],
-        [" Paint", sampled.paintTime],
-        [" Diff", sampled.diffTime],
+        ["CPU", stats.contentTime],
+        [" View", stats.updateTime],
+        [" Paint", stats.paintTime],
+        [" Diff", stats.diffTime],
       ] as const)
         expect(lines.find((line) => line.includes(label))).toContain(
           `${value.toFixed(1)} ms`,
         );
+      expect(
+        lines.find((line) => line.includes(`Output #${previous.frame}`)),
+      ).toBeDefined();
+      expect(lines.find((line) => line.includes("Changed"))).toMatch(
+        /Changed\s+1\s*│$/,
+      );
       expect(previous.frame).toBe(stats.frame - 1);
     },
   );

@@ -16,7 +16,7 @@ class BlockedTerminal extends MemoryTerminal {
     this.pending.shift()?.release();
   }
 }
-test("backpressure keeps sampled diagnostics tied to completed frames while state updates coalesce", async () => {
+test("backpressure keeps current work and completed output correctly attributed while updates coalesce", async () => {
   const terminal = new BlockedTerminal(80, 24);
   let update = (_count: number): void => {};
   const app = createApp(
@@ -34,7 +34,8 @@ test("backpressure keeps sampled diagnostics tied to completed frames while stat
     await Bun.sleep(0);
     app.debug.setVisible(true);
     await Bun.sleep(0);
-    expect(terminal.pending[0]?.screen.toString()).toContain("#1");
+    expect(terminal.pending[0]?.screen.toString()).toContain("Content #2");
+    expect(terminal.pending[0]?.screen.toString()).toContain("Output #1");
     expect(app.stats.frame).toBe(1);
     update(1);
     update(2);
@@ -43,7 +44,9 @@ test("backpressure keeps sampled diagnostics tied to completed frames while stat
     expect(terminal.pending).toHaveLength(1);
     terminal.release();
     await Bun.sleep(0);
-    expect(terminal.pending[0]?.screen.toString()).toContain("#1");
+    expect(terminal.pending[0]?.screen.toString()).toContain("Content #3");
+    expect(terminal.pending[0]?.screen.toString()).toContain("Output #2");
+    expect(terminal.pending[0]?.screen.toString()).toMatch(/Changed\s+1\s*│/);
     expect(terminal.pending[0]?.screen.toString()).toContain("Count: 3");
     expect(app.stats.presentTime).toBeGreaterThanOrEqual(10);
     expect(app.stats.renderTime).toBeGreaterThan(app.stats.contentTime);

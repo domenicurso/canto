@@ -1,6 +1,6 @@
 import type { KeyEvent, PointerEvent } from "../element/events";
 import type { Screen } from "../render/screen";
-import type { FrameStats } from "./frame-stats";
+import type { ContentFrameStats, FrameStats } from "./frame-stats";
 import type { Rect } from "./tree";
 
 import { contains } from "../layout/geometry";
@@ -14,7 +14,7 @@ export interface DebugControl {
 }
 /** Diagnostics consume the current content snapshot without entering the app's tree. */
 export class DebugPanel implements DebugControl {
-  private readonly sampling = new DebugSampling();
+  private sampling = new DebugSampling();
   private shown = false;
   private presented?: Rect;
   private pressed = false;
@@ -31,6 +31,7 @@ export class DebugPanel implements DebugControl {
   setVisible(visible: boolean): void {
     if (this.shown === visible) return;
     this.shown = visible;
+    if (visible) this.sampling = new DebugSampling();
     this.changed();
   }
   toggle(): void {
@@ -65,7 +66,11 @@ export class DebugPanel implements DebugControl {
       this.setVisible(false);
     return true;
   }
-  compose(content: Screen, previous: FrameStats): Screen {
+  compose(
+    content: Screen,
+    stats: ContentFrameStats,
+    previous: FrameStats,
+  ): Screen {
     if (!this.shown) {
       this.presented = undefined;
       return content;
@@ -74,7 +79,7 @@ export class DebugPanel implements DebugControl {
     this.presented = rect;
     return paintDebugPanel(
       content,
-      this.sampling.read(previous, performance.now()),
+      this.sampling.read(stats, previous, performance.now()),
       rect,
     );
   }

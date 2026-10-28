@@ -63,7 +63,7 @@ export class Frames {
   async commit(input: FrameInput): Promise<void> {
     const { screen, stats, changes } = this.measureContent(input);
     const debugStart = performance.now();
-    const shown = this.debug.compose(screen, this.stats);
+    const shown = this.debug.compose(screen, stats, this.stats);
     if (shown !== screen) {
       shown.rasters = this.shownRasters.prepare(
         input.root,

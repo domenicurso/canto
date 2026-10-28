@@ -27,34 +27,78 @@ function frame(number: number, time: number): FrameStats {
     outputBytes: time * 1000,
   };
 }
-test("diagnostic readings refresh atomically at four Hz and average completed frames", () => {
-  const readings = new DebugSampling();
-  const first = readings.read(frame(1, 10), 0);
-  expect(first.frame).toBe(1);
-  for (let i = 2; i <= 15; i++)
-    expect(readings.read(frame(i, i), i * 16)).toBe(first);
-  const next = readings.read(frame(16, 16), 256);
-  expect(next.frame).toBe(16);
-  expect(next.renderTime).toBe(9);
-  expect(next.paintTime).toBe(9);
-  expect(next.outputBytes).toBe(9000);
-  expect(readings.read(frame(16, 16), 600)).toBe(next);
-  const resumed = readings.read(frame(17, 20), 1000);
-  expect(resumed.frame).toBe(17);
-  expect(resumed.renderTime).toBe(20);
-  expect(first.frame).toBe(1);
+test("fast streams retain real activity and latency peaks without averaging counts", () => {
+  const sampling = new DebugSampling();
+  const first = sampling.read(frame(1, 10), frame(0, 10), 0);
+  const activity = {
+    ...frame(2, 5),
+    contentCellsWritten: 36,
+    paintedCells: 80,
+    layoutNodes: 3,
+  };
+  const latency = frame(1, 100);
+  expect(sampling.read(activity, latency, 16)).toBe(first);
+  expect(sampling.read(frame(3, 12), frame(2, 4), 32)).toBe(first);
+  const next = sampling.read(frame(4, 8), frame(3, 3), 250);
+  expect(next.content).toBe(activity);
+  expect(next.content.contentCellsWritten).toBe(36);
+  expect(next.content.paintedCells).toBe(80);
+  expect(next.content.layoutNodes).toBe(3);
+  expect(next.completed).toBe(latency);
+  expect(next.completed.outputBytes).toBe(100000);
+  expect(first.content.frame).toBe(1);
 });
-test("adapters without encoding metrics remain unknown in sampled readings", () => {
-  const readings = new DebugSampling();
-  const sample = frame(1, 10);
-  delete sample.encodeTime;
-  delete sample.writeTime;
-  delete sample.outputBytes;
-  expect(readings.read(sample, 0).encodeTime).toBeUndefined();
-  readings.read(frame(2, 20), 100);
-  const incomplete = { ...sample, frame: 3 };
-  const next = readings.read(incomplete, 300);
-  expect(next.encodeTime).toBeUndefined();
-  expect(next.writeTime).toBeUndefined();
-  expect(next.renderTime).toBe(15);
+test("native animation with no changed cells retains its slowest actual CPU frame", () => {
+  const sampling = new DebugSampling();
+  sampling.read(frame(1, 1), frame(0, 1), 0);
+  const spike = { ...frame(2, 40), contentCellsWritten: 0 };
+  sampling.read(spike, frame(1, 1), 16);
+  const next = sampling.read(
+    { ...frame(3, 3), contentCellsWritten: 0 },
+    frame(2, 1),
+    250,
+  );
+  expect(next.content).toBe(spike);
+  expect(next.content.contentTime).toBe(40);
+  expect(next.content.contentCellsWritten).toBe(0);
+});
+test.each([0, 1, 7])(
+  "sparse %s FPS interactions publish exact current work even inside the readability window",
+  (fps) => {
+    const sampling = new DebugSampling();
+    const content = { ...frame(1, 10), fps };
+    sampling.read(content, frame(0, 1), 0);
+    const hover = {
+      ...content,
+      frame: 2,
+      contentCellsWritten: 36,
+      paintedCells: 80,
+    };
+    const completed = frame(1, 10);
+    const next = sampling.read(hover, completed, 10);
+    expect(next.content).toBe(hover);
+    expect(next.completed).toBe(completed);
+    const click = { ...hover, frame: 3, contentCellsWritten: 12 };
+    expect(sampling.read(click, frame(2, 5), 11).content).toBe(click);
+    const idle = { ...click, frame: 4, contentCellsWritten: 0 };
+    expect(sampling.read(idle, frame(3, 5), 12).content).toBe(idle);
+  },
+);
+test("dropping to low FPS discards the held animation peak and unavailable adapter metrics stay unknown", () => {
+  const sampling = new DebugSampling();
+  sampling.read(frame(1, 10), frame(0, 10), 0);
+  sampling.read(
+    { ...frame(2, 80), contentCellsWritten: 100 },
+    frame(1, 80),
+    10,
+  );
+  const sparse = { ...frame(3, 1), fps: 1 };
+  const completed = frame(2, 10);
+  delete completed.encodeTime;
+  delete completed.writeTime;
+  delete completed.outputBytes;
+  const next = sampling.read(sparse, completed, 20);
+  expect(next.content).toBe(sparse);
+  expect(next.completed).toBe(completed);
+  expect(next.completed.encodeTime).toBeUndefined();
 });
