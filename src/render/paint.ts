@@ -4,6 +4,7 @@ import type { Style } from "../style/types";
 import { intersect } from "../layout/geometry";
 import { drawContent, drawText } from "./content";
 import { drawEditor } from "./editor";
+import { joinedBorders } from "./joined-borders";
 import { Screen } from "./screen";
 import { scrollbar } from "./scrollbar";
 
@@ -43,6 +44,7 @@ export function draw(node: Mounted, screen: Screen, clip: Rect): void {
         a.index - b.index,
     );
   for (const { child } of children) draw(child, screen, childClip);
+  joinedBorders(node, screen, childClip);
   if (kind === "scroll") scrollbar(node, screen, ownClip);
 }
 function background(node: Mounted, screen: Screen, clip: Rect): void {

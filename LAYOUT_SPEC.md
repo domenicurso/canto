@@ -14,6 +14,8 @@ Width and height include borders and padding. A present border consumes one cell
 
 Padding accepts a number, `[vertical, horizontal]`, or `[top, right, bottom, left]`. Disabled border sides consume no border space. The inner rectangle is clamped to zero when borders and padding exhaust the available size.
 
+A row or column with `joinBorders: true` overlaps enabled facing borders of consecutive flow children by one cell when `gap` is zero. Measurement, automatic minimums, allocation, and placement all subtract the same overlap. Absolute children never participate. A decoration-free component wrapper can expose the border of a single child that fills both axes. Other unbordered containers do not expose descendant borders. Junctions are recomposed at actual shared edges after child painting, preserve rounded exterior corners, and respect clipping and overlays. The visible border owns the shared edge's stroke and colors. A positive gap or a disabled facing edge prevents joining.
+
 Text foreground, bold, italic, underline, and faint inherit. Padding, borders, dimensions, backgrounds, wrapping, positioning, and alignment do not inherit. Painting preserves underlying background colors through transparent child content.
 
 ## Dimensions

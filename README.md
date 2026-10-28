@@ -140,6 +140,17 @@ button("Deploy", { onPress: deploy, disabled: deploying }).use(action);
 text("Hello ", text("world").bold().color("cyan"));
 ```
 
+Join neighboring panels with `.joinBorders()` on a row or column:
+
+```ts
+row(
+  box(text("Queue")).border("rounded").fill(),
+  box(text("Details")).border("rounded").fill(),
+).joinBorders();
+```
+
+With zero gap, facing borders share one cell and connect with junctions. Explicit dimensions still include each panel's border; fill allocation accounts for the shared cell. Positive gaps and disabled facing edges keep panels separate. Rounded outer corners remain rounded. Single, double, and heavy borders are supported; the visible panel owns the shared edge's color and stroke. Studio uses joined panels on wide screens.
+
 Active interaction styles override base declarations in this order: hovered, focused, pressed, disabled. Later styles merge each variant independently. Editors additionally support `.selected(style())`. Text attributes inherit; layout, backgrounds, and borders do not. Transparent children preserve the background already painted beneath them. Colors support named ANSI colors, RGB tuples, and three- or six-digit hex strings.
 
 Read [the layout contract](LAYOUT_SPEC.md) for sizing, allocation, wrapping, clipping, and positioning rules.

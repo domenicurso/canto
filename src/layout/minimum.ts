@@ -1,5 +1,6 @@
 import type { Mounted } from "../runtime/tree";
 
+import { flowGaps } from "./border-joining";
 import { edges } from "./geometry";
 
 /** Preserve content and box decoration before assigning flexible space. */
@@ -23,7 +24,7 @@ export function minimum(node: Mounted, horizontal: boolean): number {
       sequence
         ? sizes.reduce(
             (sum, size) => sum + size,
-            (style.gap ?? 0) * Math.max(0, sizes.length - 1),
+            flowGaps(children, horizontal),
           )
         : Math.max(0, ...sizes),
     );

@@ -103,6 +103,9 @@ export class StyleBuilder {
   shrink(shrink = 1): this {
     return this.style({ shrink });
   }
+  joinBorders(joinBorders = true): this {
+    return this.style({ joinBorders });
+  }
   gap(gap: number): this {
     return this.style({ gap });
   }

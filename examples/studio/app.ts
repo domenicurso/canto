@@ -92,7 +92,7 @@ export function Studio(): Element {
         queue.width("fill"),
         detail?.width("fill"),
       )
-        .gap(1)
+        .joinBorders()
         .fill();
   return column(
     Header(workspace.create),

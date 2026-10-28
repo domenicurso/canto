@@ -2,6 +2,7 @@ import type { Mounted, Rect } from "../runtime/tree";
 import type { Allocation } from "./allocation";
 
 import { allocate } from "./allocation";
+import { borderOverlap, flowGaps } from "./border-joining";
 import { bounded, dimension } from "./geometry";
 import { measure } from "./measure";
 
@@ -15,11 +16,12 @@ export function flow(node: Mounted, place: Place): void {
   const items = allocate(children, area, horizontal);
   const used =
     items.reduce((sum, item) => sum + item.flow, 0) +
-    (node.style.gap ?? 0) * Math.max(0, items.length - 1);
+    flowGaps(children, horizontal);
   const free = Math.max(0, (horizontal ? area.width : area.height) - used);
   const { start, extra } = distribution(node, free, items.length);
   let cursor = start;
-  for (const item of items) {
+  for (const [index, item] of items.entries()) {
+    cursor -= borderOverlap(children[index - 1], item.node, horizontal);
     const cross = crossPlacement(item, node, horizontal);
     const rect = horizontal
       ? {

@@ -1,6 +1,7 @@
 import type { Mounted } from "../runtime/tree";
 import type { Size } from "./geometry";
 
+import { flowGaps } from "./border-joining";
 import { measure } from "./measure";
 import { minimum } from "./minimum";
 
@@ -36,10 +37,9 @@ export function allocate(
       shrink: s.shrink ?? (typeof token === "number" ? 0 : 1),
     };
   });
-  const gap = children[0]?.parent?.style.gap ?? 0;
   const remaining =
     available[axis] -
-    gap * Math.max(0, children.length - 1) -
+    flowGaps(children, horizontal) -
     result.reduce((sum, item) => sum + item.flow, 0);
   distribute(result, remaining);
   return result;

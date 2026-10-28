@@ -16,6 +16,7 @@ const geometry: readonly (keyof Style)[] = [
   "grow",
   "shrink",
   "gap",
+  "joinBorders",
   "padding",
   "border",
   "borderTop",

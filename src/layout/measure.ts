@@ -4,6 +4,7 @@ import type { Size } from "./geometry";
 import { width } from "../text/columns";
 import { wrap } from "../text/wrap";
 import { allocate } from "./allocation";
+import { flowGaps } from "./border-joining";
 import { bounded, dimension, edges } from "./geometry";
 
 export function content(node: Mounted): string {
@@ -88,11 +89,12 @@ function intrinsic(node: Mounted, available: Size): Size {
         height: scroll.axis === "horizontal" ? available.height : Infinity,
       }
     : available;
-  const sizes = node.children
-    .filter((child) => child.style.position !== "absolute")
-    .map((child) => measure(child, childAvailable));
+  const children = node.children.filter(
+    (child) => child.style.position !== "absolute",
+  );
+  const sizes = children.map((child) => measure(child, childAvailable));
   if (!sizes.length) return { width: 0, height: 0 };
-  const gaps = (node.style.gap ?? 0) * (sizes.length - 1);
+  const gaps = flowGaps(children, kind === "row");
   if (kind === "row") return measureRow(node, available, gaps);
   if (kind === "overlay")
     return {
