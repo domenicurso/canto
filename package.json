@@ -25,7 +25,8 @@
     "demo:canvas": "bun examples/canvas.ts",
     "demo:styles": "bun examples/styles.ts",
     "lint:structure": "eslint index.ts src examples",
-    "demo:interactions": "bun examples/interactions.ts"
+    "demo:interactions": "bun examples/interactions.ts",
+    "demo:studio": "bun examples/studio/app.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
