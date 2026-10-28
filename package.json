@@ -10,8 +10,8 @@
   "scripts": {
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "format": "oxfmt --write index.ts src examples package.json tsconfig.json eslint.config.js .oxfmtrc.json .oxlintrc.json README.md LAYOUT_SPEC.md",
-    "format:check": "oxfmt --check index.ts src examples package.json tsconfig.json eslint.config.js .oxfmtrc.json .oxlintrc.json README.md LAYOUT_SPEC.md",
+    "format": "oxfmt --write index.ts src examples package.json tsconfig.json eslint.config.js .oxfmtrc.json .oxlintrc.json README.md LAYOUT_SPEC.md STYLING.md",
+    "format:check": "oxfmt --check index.ts src examples package.json tsconfig.json eslint.config.js .oxfmtrc.json .oxlintrc.json README.md LAYOUT_SPEC.md STYLING.md",
     "lint": "oxlint index.ts src examples && bun run lint:structure",
     "check": "bun run format:check && bun run typecheck && bun run lint && bun test",
     "demo": "bun examples/dashboard.ts",

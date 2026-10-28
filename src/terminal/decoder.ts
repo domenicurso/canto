@@ -3,44 +3,14 @@ import { StringDecoder } from "node:string_decoder";
 import type { PixelReport } from "./cell-size";
 import type { TerminalEvent } from "./events";
 import type { GraphicsReply } from "./graphics-capabilities";
+import type { ThemeReport } from "./theme";
 
 import { parsePixelReport } from "./cell-size";
 import { keyEvent } from "./events";
 import { graphicsResponse } from "./graphics-capabilities";
+import { decodeKeySequence } from "./keys";
+import { themeResponse } from "./theme";
 
-const keys: Record<string, string> = {
-  A: "up",
-  B: "down",
-  C: "right",
-  D: "left",
-  H: "home",
-  F: "end",
-  Z: "tab",
-  "1~": "home",
-  "2~": "insert",
-  "3~": "delete",
-  "4~": "end",
-  "5~": "pageup",
-  "6~": "pagedown",
-  "7~": "home",
-  "8~": "end",
-  P: "f1",
-  Q: "f2",
-  R: "f3",
-  S: "f4",
-  "11~": "f1",
-  "12~": "f2",
-  "13~": "f3",
-  "14~": "f4",
-  "15~": "f5",
-  "17~": "f6",
-  "18~": "f7",
-  "19~": "f8",
-  "20~": "f9",
-  "21~": "f10",
-  "23~": "f11",
-  "24~": "f12",
-};
 export class Decoder {
   private buffer = "";
   private readonly utf8 = new StringDecoder("utf8");
@@ -48,7 +18,12 @@ export class Decoder {
     private readonly emit: (event: TerminalEvent) => void,
     private readonly cursor?: (row: number) => void,
     private readonly pixels?: (report: PixelReport) => void,
-    private readonly graphics?: (reply: GraphicsReply) => void,
+    private readonly reports?:
+      | ((reply: GraphicsReply) => void)
+      | {
+          graphics?: (reply: GraphicsReply) => void;
+          theme?: (report: ThemeReport) => void;
+        },
   ) {}
   push(bytes: Uint8Array): void {
     this.buffer += this.utf8.write(Buffer.from(bytes));
@@ -80,9 +55,21 @@ export class Decoder {
     }
   }
   private escape(): number {
+    const theme = themeResponse(this.buffer);
+    if (theme) {
+      if (typeof this.reports === "object")
+        for (const report of theme.reports) this.reports.theme?.(report);
+      return theme.length;
+    }
     const graphics = graphicsResponse(this.buffer);
     if (graphics) {
-      if (graphics.reply) this.graphics?.(graphics.reply);
+      if (graphics.reply) {
+        const graphicsHandler =
+          typeof this.reports === "function"
+            ? this.reports
+            : this.reports?.graphics;
+        graphicsHandler?.(graphics.reply);
+      }
       return graphics.length;
     }
     const mouse = /^\x1b\[<(\d+);(\d+);(\d+)([Mm])/.exec(this.buffer);
@@ -103,7 +90,8 @@ export class Decoder {
         this.cursor?.(Number(report[1]) - 1);
         return sequence[0].length;
       }
-      this.keySequence(token);
+      const event = decodeKeySequence(token);
+      if (event) this.emit({ type: "key", event });
       return sequence[0].length;
     }
     if (this.buffer.length === 1 || /^\x1b(?:\[[<\d;]*|O)$/.test(this.buffer))
@@ -115,25 +103,6 @@ export class Decoder {
       event: keyEvent(char.toLowerCase(), { alt: true, text: char }),
     });
     return 1 + char.length;
-  }
-  private keySequence(token: string): void {
-    const modifier = Number(token.split(";")[1]?.replace(/\D/g, "") ?? 1) - 1;
-    const code = token.includes(";")
-      ? token.endsWith("~")
-        ? token.split(";")[0] + "~"
-        : (token.at(-1) ?? "")
-      : token;
-    const key = keys[code];
-    if (key)
-      this.emit({
-        type: "key",
-        event: keyEvent(key, {
-          shift: token === "Z" || Boolean(modifier & 1),
-          alt: Boolean(modifier & 2),
-          ctrl: Boolean(modifier & 4),
-          meta: Boolean(modifier & 8),
-        }),
-      });
   }
   private character(): number {
     const char = Array.from(this.buffer)[0] ?? "";

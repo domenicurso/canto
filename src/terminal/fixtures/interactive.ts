@@ -34,6 +34,7 @@ function Interactive() {
       .autoFocus(),
     text(`offset=${offset.x},${offset.y}`),
     input({ defaultValue: "editable" }).width(20),
+    text("theme").opacity(0.5),
   ).onKey((event) => {
     if (event.key === "f2") {
       // Preserve a tracking failure so the PTY runner observes a failed child process.

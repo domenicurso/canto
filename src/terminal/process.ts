@@ -10,10 +10,15 @@ import { Decoder } from "./decoder";
 import { graphicsQuery } from "./graphics-capabilities";
 import { GraphicsOutput } from "./graphics-output";
 import { InlineRegion } from "./inline-region";
+import { TerminalColors, themeQuery } from "./theme";
 
 let owner: ProcessTerminal | undefined;
 export class ProcessTerminal implements Terminal {
   readonly graphics = { kitty: false, sixel: false };
+  private readonly colors = new TerminalColors();
+  get theme() {
+    return this.colors.theme;
+  }
   private readonly images = new GraphicsOutput();
   readonly clipboard = {
     writeText: async (text: string): Promise<void> => {
@@ -63,7 +68,26 @@ export class ProcessTerminal implements Terminal {
     this.started = true;
     this.mode = mode;
     this.emit = emit;
-    this.decoder = new Decoder(
+    this.decoder = this.createDecoder(emit);
+    this.raw = process.stdin.isRaw ?? false;
+    this.paused = process.stdin.readableFlowing !== true;
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
+    }
+    process.stdin.on("data", this.data);
+    process.stdout.on("resize", this.resize);
+    if (process.stdout.isTTY && mode === "inline") await this.locate();
+    if (process.stdout.isTTY)
+      await this.write(
+        (mode === "fullscreen" ? "\x1b[?1049h\x1b[2J\x1b[H" : "\r\x1b7") +
+          "\x1b[?25l\x1b[?2004h\x1b[?1003h\x1b[?1006h" +
+          graphicsQuery +
+          themeQuery,
+      );
+  }
+  private createDecoder(emit: (event: TerminalEvent) => void): Decoder {
+    return new Decoder(
       (event) => {
         if (event.type === "mouse" && this.mode === "inline") {
           if (this.origin === undefined) return;
@@ -82,28 +106,18 @@ export class ProcessTerminal implements Terminal {
         this.metrics.report(report);
         emit({ type: "resize" });
       },
-      (reply) => {
-        if (!this.graphics[reply]) {
-          this.graphics[reply] = true;
-          emit({ type: "resize" });
-        }
+      {
+        graphics: (reply) => {
+          if (!this.graphics[reply]) {
+            this.graphics[reply] = true;
+            emit({ type: "resize" });
+          }
+        },
+        theme: (report) => {
+          if (this.colors.report(report)) emit({ type: "resize" });
+        },
       },
     );
-    this.raw = process.stdin.isRaw ?? false;
-    this.paused = process.stdin.readableFlowing !== true;
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(true);
-      process.stdin.resume();
-    }
-    process.stdin.on("data", this.data);
-    process.stdout.on("resize", this.resize);
-    if (process.stdout.isTTY && mode === "inline") await this.locate();
-    if (process.stdout.isTTY)
-      await this.write(
-        (mode === "fullscreen" ? "\x1b[?1049h\x1b[2J\x1b[H" : "\r\x1b7") +
-          "\x1b[?25l\x1b[?2004h\x1b[?1003h\x1b[?1006h" +
-          graphicsQuery,
-      );
   }
   async setMouseTracking(enabled: boolean): Promise<void> {
     if (this.started && process.stdout.isTTY)

@@ -35,6 +35,17 @@ function visible(emulator: Emulator): string {
     (_, y) => buffer.getLine(buffer.baseY + y)?.translateToString(true) ?? "",
   ).join("\n");
 }
+function verifyTheme(emulator: Emulator, bytes: string): void {
+  expect(visible(emulator)).toContain("offset=0,0");
+  expect(bytes).toContain("\x1b]10;?\x1b\\");
+  expect(bytes).toContain("\x1b]11;?\x1b\\");
+  expect(bytes).toContain("\x1b]4;15;?\x1b\\");
+  const cell = emulator.buffer.active
+    .getLine(emulator.buffer.active.baseY + 9)
+    ?.getCell(0);
+  expect(cell?.getFgColor()).toBe(0x828282);
+  expect(cell?.getBgColor()).toBe(0x14283c);
+}
 test.skipIf(!available).each([
   ["fullscreen", 8, 16],
   ["inline", 9, 21],
@@ -71,7 +82,7 @@ test.skipIf(!available).each([
         await write(emulator, bytes);
         if (index < 8) expect(bytes).toContain("\x1b[?2026h");
         expect(bytes).toContain("\x1b[?2026l");
-        if (index === 0) expect(visible(emulator)).toContain("offset=0,0");
+        if (index === 0) verifyTheme(emulator, bytes);
         if (index === 1) expect(visible(emulator)).toContain("offset=3,3");
         if (index === 2) expect(visible(emulator)).toContain("offset=3,35");
         if (index === 3)

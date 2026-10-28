@@ -2,6 +2,8 @@
 
 This document describes the implemented layout engine. All geometry uses terminal cells, and coordinates are local to the application viewport until the terminal adapter presents a frame.
 
+See [the styling reference](STYLING.md) for appearance, state combinations, control parts, and terminal theme queries.
+
 ## Composition and ownership
 
 `overlay({ content, ... })` is a viewport layer: it escapes ancestor clipping and flow, centers by default, and can anchor to a live rectangle with top/bottom start/end placement and an offset. Placement flips when the preferred edge lacks space, then clamps the layer dimensions and position to the viewport. Ordinary content paints first, then behavior layers in `zIndex` and tree order; modal input boundaries are owned by runtime.
@@ -14,11 +16,11 @@ Children may contain nested arrays, strings, numbers, `null`, `undefined`, or `f
 
 Width and height include borders and padding. A present border consumes one cell on each enabled side. Padding lies inside it; background covers the whole outer box. Border color and background override the box's corresponding colors for the border itself.
 
-Padding accepts a number, `[vertical, horizontal]`, or `[top, right, bottom, left]`. Disabled border sides consume no border space. The inner rectangle is clamped to zero when borders and padding exhaust the available size.
+Padding accepts a number, `[vertical, horizontal]`, or `[top, right, bottom, left]`; `paddingTop`, `paddingRight`, `paddingBottom`, and `paddingLeft` override individual sides. Disabled border sides consume no border space. The inner rectangle is clamped to zero when borders and padding exhaust the available size.
 
-A row or column with `joinBorders: true` overlaps enabled facing borders of consecutive flow children by one cell when `gap` is zero. Measurement, automatic minimums, allocation, and placement all subtract the same overlap. Absolute children never participate. A decoration-free component wrapper can expose the border of a single child that fills both axes. Other unbordered containers do not expose descendant borders. Junctions are recomposed at actual shared edges after child painting, preserve rounded exterior corners, and respect clipping and overlays. The visible border owns the shared edge's stroke and colors. A positive gap or a disabled facing edge prevents joining.
+A row or column with `joinBorders: true` overlaps enabled facing borders of consecutive flow children by one cell when the effective axis gap is zero. Measurement, automatic minimums, allocation, and placement all subtract the same overlap. Absolute children never participate. A decoration-free component wrapper can expose the border of a single child that fills both axes. Other unbordered containers do not expose descendant borders. Junctions are recomposed at actual shared edges after child painting, preserve rounded exterior corners, and respect clipping and overlays. The visible border owns the shared edge's stroke and colors. A positive gap or a disabled facing edge prevents joining.
 
-Text foreground, bold, italic, underline, and faint inherit. Padding, borders, dimensions, backgrounds, wrapping, positioning, and alignment do not inherit. Painting preserves underlying background colors through transparent child content.
+Text foreground, bold, italic, underline, underline color, faint, strikethrough, inverse, and `textAlign` inherit. Padding, borders, dimensions, backgrounds, wrapping, positioning, and box alignment do not inherit. Painting preserves underlying background colors through transparent child content.
 
 ## Dimensions
 
@@ -33,7 +35,7 @@ Percentage sizing under an unbounded dimension falls back to content sizing. Fil
 
 ## Main-axis allocation
 
-1. Exclude absolute children and reserve `gap` between remaining children.
+1. Exclude absolute children and reserve `columnGap ?? gap` in rows or `rowGap ?? gap` in columns between remaining children.
 2. Measure each child. Fill children begin at their minimum; other children begin at their measured size.
 3. Divide positive remaining space according to `grow`, respecting maximums.
 4. Resolve excess size according to `shrink`, respecting minimums.
@@ -48,6 +50,8 @@ A row measures wrapped child heights again using allocated widths. A column meas
 `justify` controls positive free space along the main axis: start, center, end, between, around, evenly. Gap remains present in addition to distributed space.
 
 `align` controls the cross axis: start, center, end, stretch. A child can override it with `alignSelf`. Stretch affects content-sized cross dimensions; numeric, percentage, and fill dimensions retain their sizing semantics. Cross-axis sizes still obey minimums and maximums.
+
+`textAlign` positions each line at the left, center, or right of the inner width after wrapping; it does not alter measurement.
 
 ## Wrapping and text
 
@@ -68,6 +72,10 @@ Sibling `zIndex` changes paint order within the parent. Equal values retain sibl
 An absolute child consumes no normal flow space or gap. Top, right, bottom, and left resolve against the parent's inner rectangle. Opposing offsets determine a dimension when no definite explicit dimension is supplied. A left/top offset takes precedence when a definite dimension and both opposing offsets are present.
 
 Absolute children still obey minimums, maximums, ancestor clipping, and sibling stacking order.
+
+## Translation
+
+`translate(x, y)` shifts allocated geometry in terminal cells, including descendants, refs, input targets, selection, and carets. Offsets are floored and may be negative. Translation preserves sibling allocation and scroll extents, obeys ancestor clipping, and accumulates through ordinary descendants. Viewport overlays use their separate placement lifecycle.
 
 ## Scrolling
 

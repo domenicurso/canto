@@ -46,6 +46,17 @@ class Session:
             if match.start() not in self.queries:
                 self.queries.add(match.start())
                 os.write(self.master, replies[match.group(1)])
+        for match in re.finditer(rb"\x1b\](10|11|4;\d+);\?\x1b\\", self.output):
+            if match.start() in self.queries:
+                continue
+            self.queries.add(match.start())
+            target = match.group(1)
+            color = b"rgb:c8/00/00"
+            if target == b"10":
+                color = b"rgb:f0/dc/c8"
+            elif target == b"11":
+                color = b"rgb:14/28/3c"
+            os.write(self.master, b"\x1b]" + target + b";" + color + b"\x1b\\")
 
     def collect(self, duration: float = 0.10) -> None:
         start = len(self.output)
