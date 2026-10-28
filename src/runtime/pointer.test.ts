@@ -19,7 +19,7 @@ async function mounted(
   check: (terminal: MemoryTerminal, app: App) => Promise<void>,
 ) {
   const terminal = new MemoryTerminal(20, 6);
-  const app = createApp(view, { terminal });
+  const app = createApp(() => column(view()).selectable(), { terminal });
   const running = app.run();
   try {
     await Bun.sleep(0);

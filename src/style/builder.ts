@@ -106,6 +106,9 @@ export class StyleBuilder {
   joinBorders(joinBorders = true): this {
     return this.style({ joinBorders });
   }
+  selectable(selectable = true): this {
+    return this.style({ selectable });
+  }
   gap(gap: number): this {
     return this.style({ gap });
   }

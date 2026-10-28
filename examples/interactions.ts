@@ -65,9 +65,9 @@ function useSelectionToggle() {
     },
   };
 }
-const selectedText = style().selected(
-  style().background("blue").color("white"),
-);
+const selectedText = style()
+  .selectable()
+  .selected(style().background("blue").color("white"));
 export function Interactions() {
   const selection = useSelectionToggle();
   return column(

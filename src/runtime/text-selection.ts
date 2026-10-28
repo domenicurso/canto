@@ -32,7 +32,7 @@ export class TextSelection {
     screen: Screen,
     clicks: number,
   ): boolean {
-    if (node.element.data.kind !== "text") return false;
+    if (!selectable(node)) return false;
     let root = node;
     while (root.parent) root = root.parent;
     this.capture(root, screen);
@@ -119,6 +119,7 @@ export class TextSelection {
       this.sources.every(
         (source) =>
           source.node.active &&
+          selectable(source.node) &&
           sanitize(source.node.element.data.text ?? "") === source.value,
       )
     );
@@ -158,8 +159,11 @@ export class TextSelection {
 }
 function selectable(node: Mounted): boolean {
   if (node.element.data.kind !== "text") return false;
-  for (let owner: Mounted | null = node; owner; owner = owner.parent)
+  let enabled: boolean | undefined;
+  for (let owner: Mounted | null = node; owner; owner = owner.parent) {
     if (owner.element.data.props.input || owner.element.data.props.button)
       return false;
-  return true;
+    enabled ??= owner.style.selectable;
+  }
+  return enabled ?? false;
 }

@@ -53,7 +53,7 @@ Text is segmented into grapheme clusters and measured in terminal columns. Wrapp
 
 `maxLines` limits the result. `overflow("ellipsis")` adds an ellipsis when an unwrapped line or line-limited paragraph is truncated. Ellipsis and clipping never split a grapheme. Wide glyphs that cannot fit wholly inside a clip are omitted.
 
-Editors reserve caret space and maintain a visible editing window. Textareas wrap within their inner width and scroll their visible lines to follow the caret. Selection uses editor-specific styles and does not alter layout.
+Editors reserve caret space and maintain a visible editing window. Textareas wrap within their inner width and scroll their visible lines to follow the caret. Selection uses editor-specific styles and does not alter layout. Plain text selection defaults off; `selectable` resolves from the nearest explicit declaration on the text node or an ancestor. Button labels never participate. Editor selection remains built in, independently of that policy.
 
 ## Overflow and layering
 

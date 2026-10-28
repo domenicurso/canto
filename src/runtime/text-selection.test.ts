@@ -19,7 +19,7 @@ async function session(
   check: (terminal: MemoryTerminal, app: App) => Promise<void>,
 ) {
   const terminal = new MemoryTerminal(30, 10);
-  const app = createApp(view, { terminal });
+  const app = createApp(() => column(view()).selectable(), { terminal });
   const running = app.run();
   try {
     await Bun.sleep(0);

@@ -14,7 +14,7 @@ function Interactive() {
   const app = useApp();
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   return column(
-    text("Select 界 text"),
+    text("Select 界 text").selectable(),
     scroll(
       text(
         Array.from(

@@ -36,6 +36,7 @@ export interface Style {
   shrink?: number;
   gap?: number;
   joinBorders?: boolean;
+  selectable?: boolean;
   padding?: Padding;
   border?: Border;
   borderColor?: Color | null;

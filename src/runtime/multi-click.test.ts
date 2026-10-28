@@ -18,7 +18,7 @@ async function selection(
   events: PointerEvent[],
 ): Promise<string> {
   const terminal = new MemoryTerminal(40, 10);
-  const app = createApp(view, { terminal });
+  const app = createApp(() => column(view()).selectable(), { terminal });
   const running = app.run();
   try {
     await Bun.sleep(0);

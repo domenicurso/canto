@@ -31,7 +31,7 @@ export function Logs() {
       text("Live event stream").bold().width("fill"),
       text(paused ? "PAUSED" : "LIVE").color(paused ? "yellow" : "green"),
     ),
-    scroll(text(lines.join("\n")).wrap("none"), {
+    scroll(text(lines.join("\n")).wrap("none").selectable(), {
       axis: "vertical",
       offset: following ? Number.MAX_SAFE_INTEGER : offset,
       onScroll: (value) => {
