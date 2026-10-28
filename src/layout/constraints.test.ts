@@ -6,6 +6,7 @@ import type { Mounted } from "../runtime/tree";
 import { column, overlay, row, scroll, text } from "../../index";
 import { Element } from "../element/node";
 import { paint } from "../render/paint";
+import { DebugPanel } from "../runtime/debug-panel";
 import { reconcile } from "../runtime/reconcile";
 import { mounted, walk } from "../runtime/tree";
 import { unavailableClipboard } from "../terminal/clipboard";
@@ -67,6 +68,7 @@ test("nested scrolling and flexible constraints match fresh layout through repea
       stop() {},
       viewport: { width: 80, height: 24 },
       clipboard: unavailableClipboard,
+      debug: new DebugPanel(false, () => {}),
       selection: { mode: "text" as const, setMode: async () => {} },
     },
     schedule() {},

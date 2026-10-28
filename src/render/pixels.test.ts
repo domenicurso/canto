@@ -94,7 +94,7 @@ test.each(["auto", "sixel", "quadrants"] as const)(
     expect(fallback.screen?.rasters).toHaveLength(0);
   },
 );
-test("native canvases respect clipping and fall back when text or a portal covers them", async () => {
+test("native canvases respect clipping and preserve text and portal overlays", async () => {
   const terminal = new MemoryTerminal(8, 4);
   terminal.graphics.kitty = true;
   await render(
@@ -115,7 +115,8 @@ test("native canvases respect clipping and fall back when text or a portal cover
       ).fill(),
     terminal,
   );
-  expect(terminal.screen?.rasters).toHaveLength(0);
+  expect(terminal.screen?.rasters).toHaveLength(1);
+  expect(terminal.screen?.toString()).toContain("front");
   await render(
     () =>
       column(
@@ -126,7 +127,7 @@ test("native canvases respect clipping and fall back when text or a portal cover
       ).fill(),
     terminal,
   );
-  expect(terminal.screen?.rasters).toHaveLength(0);
+  expect(terminal.screen?.rasters).toHaveLength(1);
   expect(terminal.screen?.toString()).toContain("portal");
 });
 test("new pixel buffers repaint retained cells and native alpha uses the inherited surface background", async () => {

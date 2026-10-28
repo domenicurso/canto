@@ -1,10 +1,16 @@
 import type { Rect } from "../runtime/tree";
 import type { ColorTheme, RGB } from "../style/colors";
 import type { Style } from "../style/types";
-import type { Screen } from "./screen";
+import type { PixelSurface } from "./pixel-surface";
+import type { Cell, Screen } from "./screen";
 
 import { intersect } from "../layout/geometry";
 import { rgb } from "../style/colors";
+
+type SurfaceCache = Map<
+  string | PixelSurface,
+  Map<string | PixelSurface, PixelSurface>
+>;
 
 function colors(
   style: Style,
@@ -35,12 +41,9 @@ export function composite(
   clip: Rect,
   opacity: number,
 ): void {
-  const area = intersect(clip, {
-    x: 0,
-    y: 0,
-    width: screen.width,
-    height: screen.height,
-  });
+  const { width, height } = screen;
+  const area = intersect(clip, { x: 0, y: 0, width, height });
+  const surfaces: SurfaceCache = new Map();
   for (let y = area.y; y < area.y + area.height; y++) {
     for (let x = area.x; x < area.x + area.width; x++) {
       const index = y * screen.width + x;
@@ -51,6 +54,12 @@ export function composite(
         b = colors(bottom.style, screen.theme);
       screen.cells[index] = {
         ...top,
+        pixels: compositePixels(top, bottom, {
+          a: a.background,
+          b: b.background,
+          opacity,
+          surfaces,
+        }),
         style: {
           ...top.style,
           inverse: false,
@@ -72,4 +81,36 @@ export function composite(
       };
     }
   }
+}
+
+function compositePixels(
+  top: Cell,
+  bottom: Cell,
+  blend: {
+    a: RGB;
+    b: RGB;
+    opacity: number;
+    surfaces: Map<
+      string | PixelSurface,
+      Map<string | PixelSurface, PixelSurface>
+    >;
+  },
+): Cell["pixels"] {
+  const owner = top.pixels?.owner ?? bottom.pixels?.owner;
+  if (!owner) return undefined;
+  if (top.pixels?.surface === bottom.pixels?.surface) return top.pixels;
+  const base = bottom.pixels?.surface ?? blend.b;
+  const key = top.pixels?.surface ?? String(blend.a);
+  const baseKey = bottom.pixels?.surface ?? String(blend.b);
+  const variants =
+    blend.surfaces.get(baseKey) ??
+    new Map<string | PixelSurface, PixelSurface>();
+  blend.surfaces.set(baseKey, variants);
+  const surface = variants.get(key) ?? {
+    top: top.pixels?.surface ?? blend.a,
+    bottom: base,
+    opacity: blend.opacity,
+  };
+  variants.set(key, surface);
+  return { owner, text: top.pixels?.text ?? top.text !== " ", surface };
 }

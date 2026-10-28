@@ -1,4 +1,5 @@
 import type { Clipboard } from "../terminal/clipboard";
+import type { DebugControl } from "./debug-panel";
 import type { SelectionControl } from "./selection-mode";
 import type { Mounted } from "./tree";
 
@@ -23,6 +24,7 @@ interface MemoHook {
 export interface AppControl {
   stop(): void;
   readonly clipboard: Clipboard;
+  readonly debug: DebugControl;
   readonly selection: SelectionControl;
   readonly viewport: { width: number; height: number };
 }

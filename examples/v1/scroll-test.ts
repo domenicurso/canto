@@ -8,10 +8,9 @@ const lines = Array.from(
   (_, index) =>
     `Line ${String(index + 1).padStart(2, "0")}: This long line extends beyond the viewport to test horizontal scrolling. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
 );
-export function ScrollTest(inspect?: () => string) {
+export function ScrollTest() {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   return DeveloperTools({
-    inspect,
     command: (value) => scrollCommand(offset, setOffset, value),
     children: column(
       text("Scroll Test Application").background("green").color("black").bold(),

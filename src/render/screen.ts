@@ -3,6 +3,8 @@ import type { Rect } from "../runtime/tree";
 import type { ColorTheme, RGB } from "../style/colors";
 import type { Style } from "../style/types";
 import type { CellSize } from "../terminal/cell-size";
+import type { GraphicsCapabilities } from "../terminal/graphics-capabilities";
+import type { PixelCell } from "./pixel-surface";
 import type { RasterPlacement } from "./raster-placement";
 
 import { contains } from "../layout/geometry";
@@ -12,9 +14,11 @@ export interface Cell {
   text: string;
   style: Style;
   continuation: boolean;
+  pixels?: PixelCell;
 }
 export class Screen {
   theme?: ColorTheme;
+  graphics?: GraphicsCapabilities;
   readonly cells: Cell[];
   readonly pixelSources: WeakMap<object, PixelBuffer>;
   rasters: RasterPlacement[] = [];
@@ -29,6 +33,7 @@ export class Screen {
     },
   ) {
     this.theme = previous?.theme;
+    this.graphics = previous?.graphics;
     this.pixelSources = previous?.pixelSources ?? new WeakMap();
     this.pixelBackgrounds = previous?.pixelBackgrounds ?? new WeakMap();
     this.cells = previous
@@ -72,6 +77,8 @@ export class Screen {
     style: Style,
   ): void {
     const { x, y } = point;
+    const pixels =
+      style.background === undefined ? this.get(x, y)?.pixels : undefined;
     style = {
       ...style,
       background:
@@ -82,12 +89,25 @@ export class Screen {
     if (x < 0 || y < 0 || x + size > this.width || y >= this.height) return;
     this.eraseWide(x, y);
     if (size === 2) this.eraseWide(x + 1, y);
-    this.cells[y * this.width + x] = { text, style, continuation: false };
+    this.cells[y * this.width + x] = {
+      text,
+      style,
+      continuation: false,
+      pixels: pixels
+        ? {
+            ...pixels,
+            text:
+              text !== " " ||
+              Boolean(style.underline || style.strikethrough || style.inverse),
+          }
+        : undefined,
+    };
     if (size === 2)
       this.cells[y * this.width + x + 1] = {
         text: "",
         style,
         continuation: true,
+        pixels: pixels ? { ...pixels, text: true } : undefined,
       };
   }
   private eraseWide(x: number, y: number): void {

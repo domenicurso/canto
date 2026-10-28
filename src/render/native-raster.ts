@@ -1,80 +1,61 @@
 import type { PixelBuffer } from "../element/pixels";
-import type { Mounted, Rect } from "../runtime/tree";
+import type { Rect } from "../runtime/tree";
+import type { CellSize } from "../terminal/cell-size";
+import type { PixelImage, PixelSurface } from "./pixel-surface";
 import type { RasterPlacement } from "./raster-placement";
 import type { Screen } from "./screen";
 
-import { rgb } from "../style/colors";
-import { nativeSize, samplePixel } from "./pixel-sampling";
+import { nativeSize } from "./pixel-sampling";
+import { opaquePixels, rasterSurface } from "./raster-surface";
 
 export function rasterize(
-  node: Mounted,
   rect: Rect,
   screen: Screen,
   renderer: RasterPlacement["renderer"],
 ): PixelBuffer {
-  const cell = screen.cellSize;
-  const source = screen.pixelSources.get(node);
-  if (!source) throw new Error("A native canvas must have a pixel buffer.");
-  const { width, height } = nativeSize(source, {
-    area: node.inner,
-    rect,
-    cell,
-    fit: node.element.data.props.canvas?.fit,
-    renderer,
-  });
-  if (matchesSurface(source, { area: node.inner, rect, width, height }))
-    return source;
-  const data = new Uint8Array(width * height * 4);
-  const target = {
-    width: node.inner.width * cell.width,
-    height: node.inner.height * cell.height,
-    fit: node.element.data.props.canvas?.fit,
-  };
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const color = samplePixel(
-        source,
-        {
-          x:
-            (rect.x - node.inner.x) * cell.width +
-            ((x + 0.5) * rect.width * cell.width) / width,
-          y:
-            (rect.y - node.inner.y) * cell.height +
-            ((y + 0.5) * rect.height * cell.height) / height,
-        },
-        target,
-        screen.pixelBackgrounds
-          .get(node)
-          ?.get(
-            (rect.y + Math.floor((y * rect.height) / height)) * screen.width +
-              rect.x +
-              Math.floor((x * rect.width) / width),
-          ) ?? rgb(node.style.background),
-      );
-      data.set([...color, 255], (y * width + x) * 4);
-    }
+  const surface = screen.get(rect.x, rect.y)?.pixels?.surface;
+  if (!surface)
+    throw new Error("A native raster region must contain pixel surfaces.");
+  const size = surfaceSize(surface, { rect, cell: screen.cellSize, renderer });
+  if ("source" in surface && matchesSurface(surface, rect, size))
+    return surface.source;
+  return rasterSurface(surface, { rect, cell: screen.cellSize, ...size });
+}
+function surfaceSize(
+  surface: PixelSurface,
+  target: { rect: Rect; cell: CellSize; renderer: RasterPlacement["renderer"] },
+): { width: number; height: number } {
+  if ("top" in surface) {
+    const a = surfaceSize(surface.top, target),
+      b = surfaceSize(surface.bottom, target);
+    return {
+      width: Math.max(a.width, b.width),
+      height: Math.max(a.height, b.height),
+    };
   }
-  return { width, height, data };
+  if (!("source" in surface)) return { width: 1, height: 1 };
+  const size = nativeSize(surface.source, {
+    ...target,
+    area: surface.area,
+    fit: surface.fit,
+  });
+  const background = surfaceSize(surface.background, target);
+  return {
+    width: Math.max(size.width, background.width),
+    height: Math.max(size.height, background.height),
+  };
 }
-
-function opaque(source: PixelBuffer): boolean {
-  for (let offset = 3; offset < source.data.length; offset += 4)
-    if (source.data[offset] !== 255) return false;
-  return true;
-}
-
 function matchesSurface(
-  source: PixelBuffer,
-  surface: { area: Rect; rect: Rect; width: number; height: number },
+  surface: PixelImage,
+  rect: Rect,
+  size: { width: number; height: number },
 ): boolean {
-  const { area, rect, width, height } = surface;
-  return (
-    rect.x === area.x &&
-    rect.y === area.y &&
-    rect.width === area.width &&
-    rect.height === area.height &&
-    width === source.width &&
-    height === source.height &&
-    opaque(source)
-  );
+  const { source, area } = surface;
+  if (
+    JSON.stringify(rect) !== JSON.stringify(area) ||
+    size.width !== source.width ||
+    size.height !== source.height
+  )
+    return false;
+  return opaquePixels(source);
 }

@@ -14,12 +14,10 @@ import {
 interface DeveloperToolsProps {
   children: Child;
   command?: (command: string) => string;
-  inspect?: () => string;
 }
 export const DeveloperTools = component(
-  ({ children, command, inspect }: DeveloperToolsProps) => {
+  ({ children, command }: DeveloperToolsProps) => {
     const app = useApp();
-    const [debug, setDebug] = useState(false);
     const [visible, setVisible] = useState(false);
     const [history, setHistory] = useState(["Type help for commands."]);
     const submit = (value: string): void => {
@@ -45,17 +43,12 @@ export const DeveloperTools = component(
       text(
         "F3: debug · F12 / Ctrl+T: console · Esc: close console · q: quit",
       ).dim(),
-      debug &&
-        text(inspect?.() ?? "No app statistics supplied")
-          .border("single")
-          .borderColor("cyan"),
       visible && consolePanel(history, submit),
     )
       .fill()
       .focusable()
       .autoFocus(!command)
       .onKey((event) => {
-        if (event.key === "f3") setDebug(!debug);
         if (event.key === "f12" || (event.ctrl && event.key === "t"))
           setVisible(!visible);
         if (event.key === "escape") setVisible(false);
@@ -77,16 +70,8 @@ function consolePanel(history: string[], submit: (value: string) => void) {
     .borderColor("cyan")
     .padding([0, 1]);
 }
-export async function runDeveloperExample(
-  view: (inspect: () => string) => Child,
-): Promise<void> {
-  const app = createApp(() =>
-    view(() => {
-      const stats = app.stats;
-      return `Previous frame: Render ${stats.renderTime.toFixed(2)}ms · Layout ${stats.layoutTime.toFixed(2)}ms · ${stats.cellsWritten} cells`;
-    }),
-  );
-  await app.run();
+export async function runDeveloperExample(view: () => Child): Promise<void> {
+  await createApp(view).run();
 }
 
 function focusCommand(ref: ElementRef | null): void {

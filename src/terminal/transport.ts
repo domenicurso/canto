@@ -4,6 +4,7 @@ import type { CellSize } from "./cell-size";
 import type { Clipboard } from "./clipboard";
 import type { TerminalEvent } from "./events";
 import type { GraphicsCapabilities } from "./graphics-capabilities";
+import type { PresentationStats } from "./presentation";
 
 export type Mode = "fullscreen" | "inline";
 export interface Terminal {
@@ -12,6 +13,7 @@ export interface Terminal {
   readonly cellSize?: CellSize;
   readonly theme?: ColorTheme;
   readonly graphics?: GraphicsCapabilities;
+  readonly presentation?: Readonly<PresentationStats>;
   readonly clipboard?: Clipboard;
   setMouseTracking?(enabled: boolean): Promise<void>;
   start(mode: Mode, emit: (event: TerminalEvent) => void): Promise<void>;

@@ -1,10 +1,12 @@
 import type { PixelBuffer } from "../element/pixels";
 import type { Mounted, Rect } from "../runtime/tree";
 import type { RGB } from "../style/colors";
+import type { PixelImage, PixelSurface } from "./pixel-surface";
 import type { Screen } from "./screen";
 
 import { rgb } from "../style/colors";
-import { samplePixel } from "./pixel-sampling";
+import { imageSurface, sampleSurface } from "./pixel-surface";
+import { rasterRenderer } from "./raster-renderer";
 
 const samplePoints = [
   [0.25, 0.25],
@@ -23,29 +25,25 @@ export function drawPixels(
   screen.pixelSources.set(node, source);
   const backgrounds = new Map(screen.pixelBackgrounds.get(node));
   screen.pixelBackgrounds.set(node, backgrounds);
-  const { inner: area } = node,
-    cell = screen.cellSize;
-  const target = {
-    width: node.inner.width * cell.width,
-    height: node.inner.height * cell.height,
-    fit: node.element.data.props.canvas?.fit,
-  };
+  const native =
+    rasterRenderer(
+      node.element.data.props.canvas?.renderer,
+      screen.graphics,
+    ) === "kitty";
+  const surfaces = new Map<string | PixelSurface, PixelImage>();
   for (let y = clip.y; y < clip.y + clip.height; y++) {
     for (let x = clip.x; x < clip.x + clip.width; x++) {
-      const background = rgb(screen.get(x, y)?.style.background);
+      const previous = screen.get(x, y);
+      const background = rgb(previous?.style.background, screen.theme);
+      const surface = imageSurface(node, source, {
+        background,
+        previous,
+        surfaces,
+      });
       backgrounds.set(y * screen.width + x, background);
-      const samples = samplePoints.map(([dx, dy]) =>
-        samplePixel(
-          source,
-          {
-            x: (x - area.x + dx) * cell.width,
-            y: (y - area.y + dy) * cell.height,
-          },
-          target,
-          background,
-        ),
-      );
-      const encoded = quadrant(samples);
+      const encoded = native
+        ? { text: " ", foreground: background, background }
+        : sampleQuadrants(surface, { x, y }, screen.cellSize);
       screen.put(
         { x, y, width: 1, height: 1 },
         encoded.text,
@@ -56,8 +54,21 @@ export function drawPixels(
         },
         clip,
       );
+      const written = screen.get(x, y);
+      if (written) written.pixels = { owner: node, surface, text: false };
     }
   }
+}
+function sampleQuadrants(
+  surface: PixelImage,
+  point: { x: number; y: number },
+  cell: { width: number; height: number },
+): ReturnType<typeof quadrant> {
+  return quadrant(
+    samplePoints.map(([dx, dy]) =>
+      sampleSurface(surface, { x: point.x + dx, y: point.y + dy }, cell),
+    ),
+  );
 }
 export function quadrant(samples: readonly RGB[]): {
   text: string;

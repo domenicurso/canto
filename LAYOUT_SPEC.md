@@ -65,7 +65,7 @@ Editors reserve caret space and maintain a visible editing window. Textareas wra
 
 The default overflow is clip. Containers clip descendants to their inner rectangle. `overflow("visible")` permits descendants to draw beyond that container, but ancestor clips and the terminal viewport remain enforced. Scroll regions always clip their contents.
 
-Sibling `zIndex` changes paint order within the parent. Equal values retain sibling order. Subtrees paint together; a grandchild does not escape its parent's stacking order. Pointer hit testing follows the same ordering and clipping as painting.
+Sibling `zIndex` changes paint order within the parent. Equal values retain sibling order. Subtrees paint together; a grandchild does not escape its parent's stacking order. Pointer hit testing follows the same ordering and clipping as painting. Pixel surfaces retain their paint ordering through opacity; native output crops visible regions and composites translucent surfaces before terminal encoding. The built-in inspector composites after app content and captures pointer input within its bounds. It never reserves layout space or changes application focus.
 
 ## Absolute positioning
 

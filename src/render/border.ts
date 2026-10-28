@@ -1,5 +1,5 @@
-import type { Mounted, Rect } from "../runtime/tree";
-import type { BorderGlyphs, Style } from "../style/types";
+import type { Rect } from "../runtime/tree";
+import type { Border, BorderGlyphs, Style } from "../style/types";
 import type { Screen } from "./screen";
 
 const borders = {
@@ -25,8 +25,7 @@ function borderStyle(style: Style, side: Side): Style {
         : style.background,
   };
 }
-function glyphs(node: Mounted): Readonly<BorderGlyphs> | undefined {
-  const type = node.style.border;
+function glyphs(type: Border | undefined): Readonly<BorderGlyphs> | undefined {
   if (!type || type === "none") return undefined;
   if (typeof type === "object") return type;
   const [
@@ -48,8 +47,12 @@ function glyphs(node: Mounted): Readonly<BorderGlyphs> | undefined {
     right: v,
   };
 }
-export function border(node: Mounted, screen: Screen, clip: Rect): void {
-  const g = glyphs(node);
+export function border(
+  node: { rect: Rect; style: Style },
+  screen: Screen,
+  clip: Rect,
+): void {
+  const g = glyphs(node.style.border);
   const r = node.rect;
   if (!g || !r.width || !r.height) return;
   const put = (x: number, y: number, text: string, side: Side): void => {

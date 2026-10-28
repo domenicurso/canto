@@ -112,7 +112,7 @@ test("late theme replies and opacity changes repaint retained content without ch
     await running;
   }
 });
-test("translucent pixel canvases use composited quadrants and restore native graphics when opaque", async () => {
+test("translucent pixel canvases retain native graphics and composite group opacity", async () => {
   const source: PixelBuffer = {
     width: 1,
     height: 1,
@@ -128,10 +128,12 @@ test("translucent pixel canvases use composited quadrants and restore native gra
           .opacity(alpha),
       terminal,
     );
-    expect(terminal.screen?.rasters).toHaveLength(alpha === 1 ? 1 : 0);
+    expect(terminal.screen?.rasters).toHaveLength(alpha === 0 ? 0 : 1);
     if (alpha === 0) expect(terminal.screen?.toString().trim()).toBe("");
     if (alpha === 0.5)
-      expect(terminal.screen?.get(0, 0)?.style.background).toEqual([128, 0, 0]);
+      expect(
+        Array.from(terminal.screen?.rasters[0]?.buffer.data.slice(0, 4) ?? []),
+      ).toEqual([128, 0, 0, 255]);
   }
 });
 

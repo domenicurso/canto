@@ -1,13 +1,14 @@
-import type { Child } from "../element/node";
 import type { Clipboard } from "../terminal/clipboard";
 import type { TerminalEvent } from "../terminal/events";
 import type { Terminal } from "../terminal/transport";
 import type { SelectionControl } from "./selection-mode";
 import type { AppOptions, AppStatus } from "./session";
 
-import { Element } from "../element/node";
+import { component, type Child } from "../element/node";
 import { unavailableClipboard } from "../terminal/clipboard";
 import { ProcessTerminal } from "../terminal/process";
+import { dispatchInput } from "./app-events";
+import { DebugPanel, type DebugControl } from "./debug-panel";
 import { Frames } from "./frame";
 import { commitEffects } from "./hooks";
 import { InputRouter } from "./input";
@@ -22,6 +23,8 @@ export class App {
   private readonly terminal: Terminal;
   private readonly root;
   private readonly frames: Frames;
+  private readonly inspector: DebugPanel;
+  readonly debug: DebugControl;
   private readonly router = new InputRouter(
     () => this.schedule(),
     () => this.terminal.cellSize,
@@ -54,14 +57,16 @@ export class App {
       () => this.stop(),
       this.terminal instanceof ProcessTerminal,
     );
-    this.frames = new Frames(this.terminal, options.mode ?? "fullscreen");
-    const element = new Element({
-      kind: "component",
-      children: [],
-      props: {},
-      call: { identity: render, render },
-    });
-    this.root = mounted(element, null);
+    this.inspector = new DebugPanel(options.debug !== false, () =>
+      this.schedule(),
+    );
+    this.frames = new Frames(
+      this.terminal,
+      options.mode ?? "fullscreen",
+      this.inspector,
+    );
+    this.debug = this.inspector;
+    this.root = mounted(component(render)(), null);
   }
   get selection(): SelectionControl {
     return this.router.selectionModes.control;
@@ -72,7 +77,7 @@ export class App {
     );
   }
   get viewport(): { width: number; height: number } {
-    return { width: this.terminal.width, height: this.terminal.height };
+    return this.frames.viewport;
   }
   get status(): AppStatus {
     return this.state;
@@ -157,16 +162,18 @@ export class App {
     }
   }
   private async render(): Promise<void> {
+    const startedAt = performance.now();
     reconcile(this.root, this.root.element, {
       app: this,
       schedule: () => this.schedule(),
     });
     this.router.refresh(this.root);
-    await this.frames.commit(
-      this.root,
-      this.router.focus.current,
-      this.router.selection,
-    );
+    await this.frames.commit({
+      root: this.root,
+      startedAt,
+      focused: this.router.focus.current,
+      selection: this.router.selection,
+    });
     if (this.state !== "running") return;
     this.refs.commit(this.root);
     commitEffects(this.root);
@@ -174,22 +181,15 @@ export class App {
   private dispatch(event: TerminalEvent): void {
     if (this.state !== "running") return;
     try {
-      if (event.type === "key") {
-        if (
-          this.options.exitOnCtrlC !== false &&
-          event.event.ctrl &&
-          event.event.key === "c" &&
-          !event.event.shift
-        )
-          this.stop();
-        else this.router.key(this.root, event.event);
-      } else if (event.type === "mouse")
-        this.router.mouse(this.root, event.event);
-      else {
-        this.router.resize(this.root);
-        this.frames.invalidate();
-        this.schedule();
-      }
+      dispatchInput(event, {
+        root: this.root,
+        router: this.router,
+        frames: this.frames,
+        debug: this.inspector,
+        exitOnCtrlC: this.options.exitOnCtrlC !== false,
+        stop: () => this.stop(),
+        schedule: () => this.schedule(),
+      });
     } catch (error) {
       this.fail(error);
     }

@@ -21,7 +21,7 @@ export function kittyUpload(id: number, image: RasterPlacement): string {
 }
 export function kittyPlace(id: number, image: RasterPlacement): string {
   const r = image.rect;
-  return `\x1b[${r.y + 1};${r.x + 1}H\x1b_Ga=p,i=${id},c=${r.width},r=${r.height},C=1,q=2;\x1b\\`;
+  return `\x1b[${r.y + 1};${r.x + 1}H\x1b_Ga=p,i=${id},c=${r.width},r=${r.height},C=1,z=-1,q=2;\x1b\\`;
 }
 export function kittyDelete(id: number): string {
   return `\x1b_Ga=d,d=I,i=${id},q=2;\x1b\\`;

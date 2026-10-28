@@ -3,13 +3,11 @@ import type { CellSize } from "./cell-size";
 import type { TerminalEvent } from "./events";
 import type { Mode, Terminal } from "./transport";
 
-import { diff } from "../render/diff";
 import { CellMetrics } from "./cell-size";
 import { clipboardOutput } from "./clipboard";
 import { Decoder } from "./decoder";
 import { graphicsQuery } from "./graphics-capabilities";
-import { GraphicsOutput } from "./graphics-output";
-import { InlineRegion } from "./inline-region";
+import { Presentation } from "./presentation";
 import { TerminalColors, themeQuery } from "./theme";
 
 let owner: ProcessTerminal | undefined;
@@ -19,7 +17,10 @@ export class ProcessTerminal implements Terminal {
   get theme() {
     return this.colors.theme;
   }
-  private readonly images = new GraphicsOutput();
+  private readonly output = new Presentation();
+  get presentation() {
+    return this.output.stats;
+  }
   readonly clipboard = {
     writeText: async (text: string): Promise<void> => {
       if (!this.started || !process.stdout.isTTY)
@@ -34,7 +35,6 @@ export class ProcessTerminal implements Terminal {
   private decoder: Decoder | undefined;
   private escapeTimer: ReturnType<typeof setTimeout> | undefined;
   private emit: ((event: TerminalEvent) => void) | undefined;
-  private readonly inline = new InlineRegion();
   private origin: number | undefined;
   private readonly metrics = new CellMetrics();
   private queryMetrics = true;
@@ -54,7 +54,7 @@ export class ProcessTerminal implements Terminal {
     this.escapeTimer = setTimeout(() => this.decoder?.flushEscape(), 30);
   };
   private resize = (): void => {
-    this.inline.invalidate();
+    this.output.inline.invalidate();
     this.metrics.invalidate();
     this.queryMetrics = true;
     this.origin = undefined;
@@ -132,30 +132,16 @@ export class ProcessTerminal implements Terminal {
       await this.write(screen.toString() + "\n");
       return;
     }
-    const rows = Array.from(
-      output.matchAll(/\x1b\[(\d+);\d+H/g),
-      (match) => Number(match[1]) - 1,
-    );
-    const native = this.images.update(screen.rasters, rows);
-    const cursor =
-      output.match(/(?:\x1b\[\d+;\d+H)?\x1b\[\?25[hl]$/)?.[0] ?? "";
-    output =
-      (native.repaint ? diff(undefined, screen).output : output) +
-      native.output +
-      cursor;
     const query = this.queryMetrics ? "\x1b[16t\x1b[14t" : "";
     this.queryMetrics = false;
-    if (this.mode === "fullscreen") {
-      await this.write(query + "\x1b[?2026h" + output + "\x1b[?2026l");
-      return;
-    }
-    await this.write(
-      query +
-        "\x1b[?2026h" +
-        this.inline.present(screen.height, output, this.height) +
-        "\x1b[?2026l",
-    );
+    await this.output.present(screen, output, {
+      mode: this.mode,
+      height: this.height,
+      query,
+      write: (value) => this.write(value),
+    });
   }
+
   async stop(): Promise<void> {
     if (!this.started) return;
     this.started = false;
@@ -167,9 +153,11 @@ export class ProcessTerminal implements Terminal {
     if (owner === this) owner = undefined;
     if (process.stdout.isTTY)
       await this.write(
-        this.images.stop() +
+        this.output.stop() +
           "\x1b[?2026l\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1006l\x1b[?25h" +
-          (this.mode === "fullscreen" ? "\x1b[?1049l" : this.inline.stop()),
+          (this.mode === "fullscreen"
+            ? "\x1b[?1049l"
+            : this.output.inline.stop()),
       );
   }
   private async locate(): Promise<void> {

@@ -66,3 +66,8 @@ export type { PixelBuffer, CanvasOptions } from "./src/element/pixels";
 export type { GraphicsCapabilities } from "./src/terminal/graphics-capabilities";
 
 export type { ColorTheme } from "./src/style/colors";
+
+export type { DebugControl } from "./src/runtime/debug-panel";
+export type { FrameStats, ContentFrameStats } from "./src/runtime/frame-stats";
+
+export type { PresentationStats } from "./src/terminal/presentation";

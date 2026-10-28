@@ -2,6 +2,7 @@ import type { PixelBuffer } from "../element/pixels";
 import type { Mounted, Rect } from "../runtime/tree";
 import type { ColorTheme } from "../style/colors";
 import type { CellSize } from "../terminal/cell-size";
+import type { GraphicsCapabilities } from "../terminal/graphics-capabilities";
 
 import { intersect } from "../layout/geometry";
 import { content } from "../layout/measure";
@@ -28,11 +29,14 @@ export class RetainedPaint {
       height: number;
       cellSize?: CellSize;
       theme?: ColorTheme;
+      graphics?: GraphicsCapabilities;
     },
   ): Screen {
     const bounds = { x: 0, y: 0, ...size };
     const full =
       !this.previous ||
+      JSON.stringify(this.previous.graphics) !==
+        JSON.stringify(size.graphics) ||
       this.previous.theme !== size.theme ||
       this.previous.width !== size.width ||
       this.previous.height !== size.height ||
@@ -47,6 +51,7 @@ export class RetainedPaint {
     if (!screen)
       throw new Error("Retained painting requires a previous frame.");
     screen.theme = size.theme;
+    screen.graphics = size.graphics ? { ...size.graphics } : undefined;
     this.paintedCells = rows.size * size.width;
     for (const rect of rowRegions(rows, size.width)) {
       screen.clear(rect);

@@ -2,10 +2,9 @@ import { column, text } from "../../index";
 import { DeveloperTools, runDeveloperExample } from "./developer-tools";
 import { useTicker } from "./use-ticker";
 
-export function Console(inspect?: () => string) {
+export function Console() {
   const count = useTicker(100, 40);
   return DeveloperTools({
-    inspect,
     children: column(
       text("Live Data Feed with Console").background("red").padding([1, 2]),
       column(

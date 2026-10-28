@@ -109,25 +109,23 @@ test("editing a controlled field updates its preview", async () => {
     expect(terminal.screen?.toString()).toContain("Name: Ada Lovelace");
   });
 });
-test("console commands stay inside the app and debug reads supplied telemetry", async () => {
-  await mounted(
-    () => Debug(() => "Render 1.25ms · 42 cells"),
-    async (terminal, app) => {
-      await press(terminal, app, "f3");
-      expect(terminal.screen?.toString()).toContain("42 cells");
-      await press(terminal, app, "f12");
-      await press(terminal, app, "paste", "help");
-      await press(terminal, app, "enter");
-      expect(terminal.screen?.toString()).toContain(
-        "help · clear · status · quit",
-      );
-      await press(terminal, app, "paste", "clear");
-      await press(terminal, app, "enter");
-      expect(terminal.screen?.toString()).not.toContain("> help");
-      await press(terminal, app, "escape");
-      expect(terminal.screen?.toString()).not.toContain("│Console");
-    },
-  );
+test("console commands stay inside the app alongside the built-in inspector", async () => {
+  await mounted(Debug, async (terminal, app) => {
+    await press(terminal, app, "f3");
+    expect(terminal.screen?.toString()).toContain(" Debug ");
+    await press(terminal, app, "f3");
+    await press(terminal, app, "f12");
+    await press(terminal, app, "paste", "help");
+    await press(terminal, app, "enter");
+    expect(terminal.screen?.toString()).toContain(
+      "help · clear · status · quit",
+    );
+    await press(terminal, app, "paste", "clear");
+    await press(terminal, app, "enter");
+    expect(terminal.screen?.toString()).not.toContain("> help");
+    await press(terminal, app, "escape");
+    expect(terminal.screen?.toString()).not.toContain("│Console");
+  });
 });
 test("scrollbars move in both axes", async () => {
   await mounted(Scrollbars, async (terminal, app) => {

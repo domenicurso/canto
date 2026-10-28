@@ -6,8 +6,8 @@ import type { SelectionMode } from "./selection-mode";
 import type { Mounted } from "./tree";
 
 import { ClipboardInput } from "./clipboard";
-import { edit } from "./editing";
-import { disabled, Focus, hit, keyboardRoot } from "./focus";
+import { Focus, hit, keyboardRoot } from "./focus";
+import { defaultKey } from "./keyboard-defaults";
 import { OverlayInput } from "./overlay-input";
 import { PointerState } from "./pointer";
 import { ScrollDrag } from "./scroll-drag";
@@ -77,7 +77,7 @@ export class InputRouter {
         clipboardHandled = true;
         event.preventDefault();
       }
-      if (!event.defaultPrevented && this.defaultKey(node, event))
+      if (!event.defaultPrevented && defaultKey(node, event, this.scrolling))
         event.preventDefault();
       if (event.propagationStopped) break;
       if (!node.parent || node === this.focus.scope) break;
@@ -87,17 +87,6 @@ export class InputRouter {
     if (!event.defaultPrevented && event.key === "tab")
       this.focus.next(root, event.shift);
     this.schedule();
-  }
-  private defaultKey(node: Mounted, event: KeyEvent): boolean {
-    if (disabled(node)) return false;
-    if (node.element.data.props.input) return edit(node, event);
-    if (node.element.data.props.button && ["enter", " "].includes(event.key)) {
-      node.element.data.props.button.onPress();
-      return true;
-    }
-    if (node.element.data.kind === "scroll")
-      return this.scrolling.key(node, event);
-    return false;
   }
   flushScroll(root: Mounted): void {
     this.scrolling.advance();
@@ -153,9 +142,19 @@ export class InputRouter {
     }
     if (event.action === "press") this.pointer.select(target, event);
     this.pointer.hover(target);
-    let node = target;
-    while (node) {
-      node.element.data.props.onMouse?.(event);
+    this.notifyPointer(target, event);
+    if (event.action === "release") this.pointer.release(target);
+    this.schedule();
+  }
+  private notifyPointer(
+    target: Mounted | undefined,
+    event: PointerEvent,
+  ): void {
+    for (let node = target; node; node = node.parent ?? undefined) {
+      const handler = node.element.data.props.onMouse;
+      if (handler) {
+        handler(event);
+      }
       if (
         event.action === "press" &&
         (node.element.data.props.button || node.element.data.props.input)
@@ -163,9 +162,16 @@ export class InputRouter {
         this.pointer.press(node, event);
         break;
       }
-      node = node.parent ?? undefined;
     }
-    if (event.action === "release") this.pointer.release(target);
+  }
+  outside(event: PointerEvent): void {
+    if (this.selectionModes.control.mode === "native") return;
+    this.pointer.hover(undefined);
+    if (event.action === "move" || event.action === "release") {
+      this.drag.move(event);
+      this.selection.move(event);
+    }
+    if (event.action === "release") this.pointer.release(undefined);
     this.schedule();
   }
   resize(root: Mounted): void {
