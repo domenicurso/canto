@@ -13,24 +13,28 @@ Creation is inert: it doesn't acquire the terminal, render components, or run ef
 
 ## AppOptions
 
-| Property      | Type            | Default and behavior                                                                                   |
-| ------------- | --------------- | ------------------------------------------------------------------------------------------------------ |
-| `mode`        | `Mode`          | `"fullscreen"`; `"inline"` reserves normal-output space                                                |
-| `terminal`    | `Terminal`      | Process adapter; inject `MemoryTerminal` for tests                                                     |
-| `signal`      | `AbortSignal`   | None; abort requests shutdown, including before startup                                                |
-| `exitOnCtrlC` | `boolean`       | `true`; `false` releases the keyboard shortcut to the app, while process signal handling still applies |
-| `clipboard`   | `Clipboard`     | Overrides `terminal.clipboard`; without either adapter, writes reject                                  |
-| `selection`   | `SelectionMode` | `"text"`; `"native"` disables application mouse tracking                                               |
-| `debug`       | `boolean`       | `true`; `false` releases F3 while retaining programmatic inspector access                              |
+| Property      | Type            | Default              | Notes                   |
+| ------------- | --------------- | -------------------- | ----------------------- |
+| `mode`        | `Mode`          | `"fullscreen"`       |                         |
+| `terminal`    | `Terminal`      | Process adapter      |                         |
+| `signal`      | `AbortSignal`   | —                    | Abort requests shutdown |
+| `exitOnCtrlC` | `boolean`       | `true`               | Keyboard shortcut only  |
+| `clipboard`   | `Clipboard`     | `terminal.clipboard` | Override                |
+| `selection`   | `SelectionMode` | `"text"`             |                         |
+| `debug`       | `boolean`       | `true`               | F3 shortcut             |
+
+Disabling `exitOnCtrlC` releases the keyboard shortcut; process signals still request shutdown. `debug: false` releases F3 while retaining programmatic inspector access. Without a clipboard adapter, writes reject. An already-aborted signal prevents mounting.
 
 ## Methods
 
-| Member                   | Contract                                                                                                                                                      |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `run(): Promise<void>`   | Acquires the terminal, mounts the root, and waits for shutdown. Resolves after cleanup; rejects on failure after cleanup. Canto never calls `process.exit()`. |
-| `stop(): void`           | Requests shutdown; repeated calls while stopping or stopped do nothing                                                                                        |
-| `schedule(): void`       | Requests a frame while running and coalesces work; state setters normally do this automatically                                                               |
-| `flush(): Promise<void>` | Awaits the in-flight frame or renders work while running; doesn't start the app or wait for all future effect-driven frames                                   |
+| Method       | Returns         | Notes                |
+| ------------ | --------------- | -------------------- |
+| `run()`      | `Promise<void>` | Single-use session   |
+| `stop()`     | `void`          | Requests shutdown    |
+| `schedule()` | `void`          | Queues a frame       |
+| `flush()`    | `Promise<void>` | Awaits current frame |
+
+`run()` resolves after cleanup and rejects on failure; Canto never calls `process.exit()`. `stop()` is idempotent while stopping or stopped. `schedule()` coalesces requests while running; state setters call it automatically. `flush()` doesn't start the app or await future effect-driven frames.
 
 Only one process terminal session can run at once; injected adapters have independent ownership. Full-screen sessions restore the alternate screen; inline sessions retain their final frame in scrollback. Redirected process output presents one plain-text frame and stops. Ctrl+C, SIGINT, SIGTERM, an abort signal, and `stop()` enter cleanup.
 
@@ -38,14 +42,16 @@ Cleanup waits for active output, disposes input ownership, clears focus, unmount
 
 ## Read-only properties
 
-| Property    | Shape and meaning                                                              |
-| ----------- | ------------------------------------------------------------------------------ |
-| `status`    | `AppStatus`: `"created"`, `"starting"`, `"running"`, `"stopping"`, `"stopped"` |
-| `viewport`  | `{ width: number; height: number }`, in cells                                  |
-| `clipboard` | Effective `Clipboard`; direct callers own its promises and errors              |
-| `selection` | `SelectionControl`, below                                                      |
-| `debug`     | `DebugControl`: `visible`, `setVisible(boolean)`, `toggle()`                   |
-| `stats`     | `Readonly<FrameStats>` for the latest completed frame; initially zero counters |
+| Property    | Type                                | Notes                  |
+| ----------- | ----------------------------------- | ---------------------- |
+| `status`    | `AppStatus`                         | Session state          |
+| `viewport`  | `{ width: number; height: number }` | Cells                  |
+| `clipboard` | `Clipboard`                         | Effective adapter      |
+| `selection` | `SelectionControl`                  |                        |
+| `debug`     | `DebugControl`                      |                        |
+| `stats`     | `Readonly<FrameStats>`              | Latest completed frame |
+
+`AppStatus` is `"created" | "starting" | "running" | "stopping" | "stopped"`. Frame counters start at zero. Direct clipboard callers own their promises and errors.
 
 ## SelectionMode and SelectionControl
 

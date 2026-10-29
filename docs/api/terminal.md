@@ -28,11 +28,12 @@ interface Terminal {
 
 ## Capability types
 
-| Type                   | Fields and units                                                                                                                |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `CellSize`             | Read-only `width`, `height` in pixels per terminal cell                                                                         |
-| `GraphicsCapabilities` | `kitty: boolean`, `sixel: boolean`                                                                                              |
-| `ColorTheme`           | Optional read-only `foreground`, `background` RGB tuples and `palette`, a read-only partial map from ANSI indexes to RGB tuples |
+| Type                   | Field                        | Field type                                                             | Notes                      |
+| ---------------------- | ---------------------------- | ---------------------------------------------------------------------- | -------------------------- |
+| `CellSize`             | `width`, `height`            | `number`                                                               | Read-only; pixels per cell |
+| `GraphicsCapabilities` | `kitty`, `sixel`             | `boolean`                                                              |                            |
+| `ColorTheme`           | `foreground?`, `background?` | `readonly [number, number, number]`                                    | Read-only; RGB             |
+| `ColorTheme`           | `palette?`                   | `Readonly<Partial<Record<number, readonly [number, number, number]>>>` | Read-only; ANSI indexes    |
 
 The process adapter probes cell metrics, graphics, and colors. Missing metrics fall back to 8 × 16 pixels; graphics fall back to quadrants; missing theme entries use conventional colors. See [compatibility](../reference/compatibility.md) for limits.
 
@@ -42,21 +43,21 @@ The process adapter probes cell metrics, graphics, and colors. Missing metrics f
 new MemoryTerminal((width = 80), (height = 24));
 ```
 
-| Member                                 | Contract                                                 |
-| -------------------------------------- | -------------------------------------------------------- |
-| `dispatch(event: TerminalEvent): void` | Delivers a decoded event while started                   |
-| `resize(width, height): void`          | Updates cell dimensions and emits resize                 |
-| `screen`                               | Latest composed screen, or undefined before first output |
-| `frames`                               | All composed screens retained in order                   |
-| `output`                               | All corresponding raw output strings                     |
-| `started`, `stopped`                   | Lifecycle flags                                          |
-| `clipboardText`                        | In-memory clipboard contents                             |
-| `clipboard`                            | Async read/write adapter backed by `clipboardText`       |
-| `mouseTracking`                        | Current flag, initially true                             |
-| `setMouseTracking(enabled)`            | Async tracking flag update                               |
-| `cellSize`                             | Configurable; defaults to 8 × 16                         |
-| `graphics`                             | Configurable; both native protocols initially false      |
-| `theme`                                | Optional configurable theme                              |
+| Member                                  | Type                      | Notes                  |
+| --------------------------------------- | ------------------------- | ---------------------- |
+| `dispatch(event: TerminalEvent)`        | `void`                    | Input event            |
+| `resize(width: number, height: number)` | `void`                    | Emits resize           |
+| `screen`                                | `Screen \| undefined`     | Latest frame           |
+| `frames`                                | `Screen[]`                | Full history           |
+| `output`                                | `string[]`                | Raw output history     |
+| `started`, `stopped`                    | `boolean`                 | Lifecycle flags        |
+| `clipboardText`                         | `string`                  | In-memory contents     |
+| `clipboard`                             | `Clipboard`               | Reads and writes       |
+| `mouseTracking`                         | `boolean`                 | Initially `true`       |
+| `setMouseTracking(enabled: boolean)`    | `Promise<void>`           |                        |
+| `cellSize`                              | `CellSize`                | Initially 8 × 16       |
+| `graphics`                              | `GraphicsCapabilities`    | Initially both `false` |
+| `theme`                                 | `ColorTheme \| undefined` | Configurable           |
 
 `width` and `height` are public mutable values, but use `resize()` when the app must observe a size change. `screen.toString()` returns rows of plain text with trailing spaces trimmed. `screen.get(x, y)` exposes a cell's text, style, and wide-glyph continuation state. Treat captured screens as read-only snapshots. Test adapters keep history for the entire session, so long-running tests retain those frames.
 

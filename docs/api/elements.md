@@ -35,12 +35,14 @@ Call `Counter({ name: "Builds" }).key("builds")` in a view. Type and sibling key
 
 ## Factories
 
-| Signature                               | Behavior                                                   |
-| --------------------------------------- | ---------------------------------------------------------- |
-| `text(...content: Child[]): Element`    | Joins plain and styled text spans; non-text elements throw |
-| `row(...children: Child[]): Element`    | Horizontal flow                                            |
-| `column(...children: Child[]): Element` | Vertical flow                                              |
-| `box(...children: Child[]): Element`    | Vertical flow with the same box model as a column          |
+| Factory  | Parameters             | Returns   | Notes           |
+| -------- | ---------------------- | --------- | --------------- |
+| `text`   | `...content: Child[]`  | `Element` | Text spans only |
+| `row`    | `...children: Child[]` | `Element` | Horizontal flow |
+| `column` | `...children: Child[]` | `Element` | Vertical flow   |
+| `box`    | `...children: Child[]` | `Element` | Vertical flow   |
+
+`text()` joins plain and styled spans and throws for non-text children. `box` uses the same box model as `column`.
 
 `text("Hello ", text("world").bold().color("cyan"))` preserves span appearance. Text defaults to non-selectable; `.selectable()` opts in. Other factories appear under [controls](controls.md), [collections](collections.md), [overlays](overlays.md), and [graphics](graphics.md).
 
@@ -48,17 +50,16 @@ Call `Counter({ name: "Builds" }).key("builds")` in a view. Type and sibling key
 
 `Element` extends `StyleBuilder`. Fluent methods return new descriptions; calling `.width(20)` without using its return value doesn't mutate the element.
 
-| Method                                                 | Contract                                                         |
-| ------------------------------------------------------ | ---------------------------------------------------------------- |
-| `.key(key: string \| number)`                          | Sets sibling identity                                            |
-| `.onKey(handler: (event: KeyEvent) => void)`           | Handles bubbling keyboard events                                 |
-| `.onMouse(handler: (event: PointerEvent) => void)`     | Handles targeted pointer events                                  |
-| `.onFocus(handler: () => void)`                        | Called when focus arrives                                        |
-| `.onBlur(handler: () => void)`                         | Called when focus leaves                                         |
-| `.ref(handler: (element: ElementRef \| null) => void)` | Receives a live handle after commit and `null` on detach         |
-| `.focusable(value = true)`                             | Controls explicit focus eligibility                              |
-| `.tabIndex(value: number)`                             | Orders traversal; negative values retain programmatic focus only |
-| `.autoFocus(value = true)`                             | Requests initial focus                                           |
+| Method                    | Argument type                           | Notes                        |
+| ------------------------- | --------------------------------------- | ---------------------------- |
+| `key`                     | `string \| number`                      | Sibling identity             |
+| `onKey`                   | `(event: KeyEvent) => void`             | Bubbles                      |
+| `onMouse`                 | `(event: PointerEvent) => void`         |                              |
+| `onFocus`, `onBlur`       | `() => void`                            |                              |
+| `ref`                     | `(element: ElementRef \| null) => void` | After commit; null on detach |
+| `focusable(value = true)` | `boolean`                               |                              |
+| `tabIndex`                | `number`                                | Negative: programmatic only  |
+| `autoFocus(value = true)` | `boolean`                               |                              |
 
 Buttons, editors, and scroll regions have built-in focus eligibility. See [events and refs](events.md) and [style methods](styles.md).
 

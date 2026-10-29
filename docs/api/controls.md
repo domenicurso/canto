@@ -23,17 +23,19 @@ textarea(props?: InputProps): Element
 
 Both default to empty uncontrolled editors. Value modes are mutually exclusive:
 
-| Mode         | Required                                         | Optional                                                                | Disallowed     |
-| ------------ | ------------------------------------------------ | ----------------------------------------------------------------------- | -------------- |
-| Controlled   | `value: string`, `onChange(value: string): void` | Common options                                                          | `defaultValue` |
-| Uncontrolled | Nothing                                          | `defaultValue: string`, `onChange(value: string): void`, common options | `value`        |
+| Mode         | Required            | Optional                                   | Excludes       |
+| ------------ | ------------------- | ------------------------------------------ | -------------- |
+| Controlled   | `value`, `onChange` | Common options                             | `defaultValue` |
+| Uncontrolled | —                   | `defaultValue`, `onChange`, common options | `value`        |
 
-| Common option | Type                      | Default and behavior                                |
-| ------------- | ------------------------- | --------------------------------------------------- |
-| `placeholder` | `string`                  | None; shown when empty                              |
-| `disabled`    | `boolean`                 | `false`; disables editing and normal interaction    |
-| `readOnly`    | `boolean`                 | `false`; allows reading and selection without edits |
-| `onSubmit`    | `(value: string) => void` | No handler; single-line input submits on Enter      |
+| Property      | Type                      | Default | Notes                       |
+| ------------- | ------------------------- | ------- | --------------------------- |
+| `placeholder` | `string`                  | —       | Shown when empty            |
+| `disabled`    | `boolean`                 | `false` | Disables interaction        |
+| `readOnly`    | `boolean`                 | `false` | Selection remains available |
+| `onSubmit`    | `(value: string) => void` | —       | Single-line input only      |
+
+`value` and `defaultValue` are strings; `onChange` has type `(value: string) => void`.
 
 Textareas insert newlines on Enter rather than submitting. Controlled handlers publish accepted values through state. `defaultValue` seeds state on mount rather than continually controlling the editor.
 

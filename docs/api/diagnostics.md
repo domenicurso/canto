@@ -18,34 +18,36 @@ Available as `app.debug` and `useApp().debug`. The inspector starts hidden, togg
 
 All durations are milliseconds. Work counts describe operations performed, so unchanged layout can report zero nodes even when pixels animate.
 
-| Field                 | Meaning                                                                                                      |
-| --------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `frame`               | Content frame number                                                                                         |
-| `fps`                 | Completed adapter presentations in the last second                                                           |
-| `updateTime`          | View reconciliation                                                                                          |
-| `layoutTime`          | Layout call only when geometry or viewport changes; excludes style resolution and scroll placement           |
-| `prepareTime`         | Style resolution, invalidation, layout, scroll repositioning, and overlay placement; excludes reconciliation |
-| `paintTime`           | Content painting and raster preparation                                                                      |
-| `diffTime`            | Content cell comparison                                                                                      |
-| `contentTime`         | Content preparation, painting, and diff; excludes inspector and I/O                                          |
-| `layoutNodes`         | Layout work count                                                                                            |
-| `paintedCells`        | Painted cell work count                                                                                      |
-| `contentCellsWritten` | Changed content cells, excluding inspector                                                                   |
+| Field                 | Type     | Unit     | Notes                          |
+| --------------------- | -------- | -------- | ------------------------------ |
+| `frame`               | `number` | —        | Frame number                   |
+| `fps`                 | `number` | frames/s | Completed presentations        |
+| `updateTime`          | `number` | ms       | Reconciliation                 |
+| `layoutTime`          | `number` | ms       | Layout call                    |
+| `prepareTime`         | `number` | ms       | Style and geometry preparation |
+| `paintTime`           | `number` | ms       | Paint and raster preparation   |
+| `diffTime`            | `number` | ms       | Content diff                   |
+| `contentTime`         | `number` | ms       | Total content work             |
+| `layoutNodes`         | `number` | nodes    | Layout work                    |
+| `paintedCells`        | `number` | cells    | Paint work                     |
+| `contentCellsWritten` | `number` | cells    | Content changes                |
+
+`fps` counts presentations over the last second. `layoutTime` excludes style resolution and scroll placement, and is zero when layout is reused. `prepareTime` includes style resolution, invalidation, layout, scroll repositioning, and overlay placement, excluding reconciliation. `contentTime` includes reconciliation through the content diff, excluding inspector and I/O; `contentCellsWritten` also excludes inspector changes.
 
 ## FrameStats
 
 `FrameStats` extends `ContentFrameStats`. `app.stats` exposes a read-only snapshot of the most recently completed frame.
 
-| Additional field | Meaning                                                        |
-| ---------------- | -------------------------------------------------------------- |
-| `cellsWritten`   | Final changed cells including inspector                        |
-| `renderTime`     | Frame start through completed output                           |
-| `debugTime`      | Inspector composition, raster preparation, and final cell diff |
-| `presentTime`    | Entire adapter `present()` call                                |
-| `intervalTime`   | Completion-to-completion interval, including idle time         |
-| `encodeTime?`    | Adapter-provided native/output encoding time                   |
-| `writeTime?`     | Adapter-provided stream write and backpressure time            |
-| `outputBytes?`   | Adapter-provided output byte count, including native graphics  |
+| Field          | Type     | Unit  | Notes                      |
+| -------------- | -------- | ----- | -------------------------- |
+| `cellsWritten` | `number` | cells | Includes inspector         |
+| `renderTime`   | `number` | ms    | Start to output completion |
+| `debugTime`    | `number` | ms    | Inspector and final diff   |
+| `presentTime`  | `number` | ms    | Adapter call               |
+| `intervalTime` | `number` | ms    | Completion interval        |
+| `encodeTime?`  | `number` | ms    | Adapter encoding           |
+| `writeTime?`   | `number` | ms    | Writes and backpressure    |
+| `outputBytes?` | `number` | bytes | Includes graphics          |
 
 ## PresentationStats
 

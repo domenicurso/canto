@@ -6,54 +6,89 @@
 
 ## Dimensions and layout
 
-| Methods                                                      | Accepted values and meaning                                                              |
-| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| `width`, `height`                                            | `Dimension`: number, `"content"` (default), `"fill"`, or a percentage string             |
-| `minWidth`, `maxWidth`, `minHeight`, `maxHeight`             | Nonnegative cell limits; minimum wins a conflict                                         |
-| `fill()`                                                     | Sets both dimensions to `"fill"`                                                         |
-| `grow(value = 1)`, `shrink(value = 1)`                       | Nonnegative allocation weights                                                           |
-| `gap(number)`, `columnGap(number)`, `rowGap(number)`         | Nonnegative cell spacing; `gap` clears axis overrides                                    |
-| `padding(Padding)`                                           | Number, `[vertical, horizontal]`, or `[top, right, bottom, left]`; clears side overrides |
-| `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft` | Nonnegative side-specific cell spacing                                                   |
-| `justify(Distribution)`                                      | `"start"`, `"center"`, `"end"`, `"between"`, `"around"`, `"evenly"`                      |
-| `align(Alignment)`, `alignSelf(Alignment)`                   | `"start"`, `"center"`, `"end"`, `"stretch"`                                              |
-| `position(value)`                                            | `"static"` (default) or `"absolute"`                                                     |
-| `top`, `right`, `bottom`, `left`                             | Numeric offsets in cells                                                                 |
-| `translate(x, y)`                                            | Numeric cell translation after allocation; maps to `translateX` / `translateY`           |
-| `zIndex(number)`                                             | Sibling paint order; ties preserve tree order                                            |
-| `overflow(value)`                                            | `"clip"` (default), `"visible"`, `"ellipsis"`                                            |
-| `wrap(value)`                                                | `"word"`, `"character"`, `"none"`                                                        |
-| `maxLines(number)`                                           | Nonnegative line limit                                                                   |
-| `joinBorders(value = true)`                                  | Joins eligible adjacent borders at zero gap                                              |
-| `selectable(value = true)`                                   | Inherited plain-text selection policy; default off                                       |
+| Method                                                       | Argument type                       | Notes                     |
+| ------------------------------------------------------------ | ----------------------------------- | ------------------------- |
+| `width`, `height`                                            | `Dimension`                         | Outer size in cells       |
+| `minWidth`, `maxWidth`, `minHeight`, `maxHeight`             | `number`                            | ≥ 0 cells                 |
+| `fill()`                                                     | —                                   | Both dimensions: `"fill"` |
+| `grow(value = 1)`, `shrink(value = 1)`                       | `number`                            | ≥ 0                       |
+| `gap`, `columnGap`, `rowGap`                                 | `number`                            | ≥ 0 cells                 |
+| `padding`                                                    | `Padding`                           | ≥ 0 cells                 |
+| `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft` | `number`                            | ≥ 0 cells                 |
+| `justify`                                                    | `Distribution`                      | Main axis                 |
+| `align`, `alignSelf`                                         | `Alignment`                         | Cross axis                |
+| `position`                                                   | `"static" \| "absolute"`            |                           |
+| `top`, `right`, `bottom`, `left`                             | `number`                            | Cells                     |
+| `translate(x, y)`                                            | `number, number`                    | Cells                     |
+| `zIndex`                                                     | `number`                            | Sibling paint order       |
+| `overflow`                                                   | `"clip" \| "visible" \| "ellipsis"` |                           |
+| `wrap`                                                       | `"word" \| "character" \| "none"`   |                           |
+| `maxLines`                                                   | `number`                            | ≥ 0                       |
+| `joinBorders(value = true)`                                  | `boolean`                           | Zero gap required         |
+| `selectable(value = true)`                                   | `boolean`                           | Inherited                 |
+
+Dimensions default to `"content"`, position to `"static"`, and overflow to `"clip"`. Plain-text selection defaults off. `gap()` clears axis overrides, and `padding()` clears side overrides. Translation changes allocated geometry without changing flow; equal `zIndex` values preserve tree order.
+
+```ts
+type Dimension = number | "content" | "fill" | `${number}%`;
+type Padding =
+  | number
+  | readonly [number, number]
+  | readonly [number, number, number, number];
+type Distribution =
+  | "start"
+  | "center"
+  | "end"
+  | "between"
+  | "around"
+  | "evenly";
+type Alignment = "start" | "center" | "end" | "stretch";
+```
 
 The [layout contract](../reference/layout.md) defines measurement, default weights, automatic minimums, clipping, and inheritance. Non-finite numeric style values and negative spacing, weights, or limits reject before output commits. Geometry uses whole cells; supported fractional geometry values are floored.
 
 ## Colors and text
 
-| Methods                                                             | Accepted values and meaning                                                     |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `color(Color \| null)`                                              | Sets `Style.foreground`                                                         |
-| `background(Color \| null)`                                         | Background color                                                                |
-| `bold(value = true)`, `italic(value = true)`, `faint(value = true)` | Boolean rendition; false clears inheritance                                     |
-| `dim()`                                                             | Equivalent to `faint()`                                                         |
-| `strikethrough(value = true)`, `inverse(value = true)`              | Boolean rendition                                                               |
-| `underline(value = true)`                                           | `Underline`: boolean, `"single"`, `"double"`, `"curly"`, `"dotted"`, `"dashed"` |
-| `underlineColor(Color \| null)`                                     | Underline color; terminal support varies                                        |
-| `textAlign(TextAlignment)`                                          | `"left"`, `"center"`, `"right"`; aligns lines within inner width                |
-| `opacity(number)`                                                   | Finite alpha from 0 through 1; composites the subtree as a group                |
+| Method                                                              | Argument type   | Notes              |
+| ------------------------------------------------------------------- | --------------- | ------------------ |
+| `color`                                                             | `Color \| null` | `foreground`       |
+| `background`                                                        | `Color \| null` |                    |
+| `bold(value = true)`, `italic(value = true)`, `faint(value = true)` | `boolean`       |                    |
+| `dim()`                                                             | —               | `faint(true)`      |
+| `strikethrough(value = true)`, `inverse(value = true)`              | `boolean`       |                    |
+| `underline(value = true)`                                           | `Underline`     |                    |
+| `underlineColor`                                                    | `Color \| null` | Terminal-dependent |
+| `textAlign`                                                         | `TextAlignment` |                    |
+| `opacity`                                                           | `number`        | 0–1                |
+
+```ts
+type Underline = boolean | "single" | "double" | "curly" | "dotted" | "dashed";
+type TextAlignment = "left" | "center" | "right";
+```
+
+Text attributes inherit; `false` clears an inherited boolean and `null` resets a color. Opacity composites the subtree as a group.
 
 `Color` is a string or readonly RGB tuple `[number, number, number]`. Supported strings are `#rgb`, `#rrggbb`, ANSI names `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, `gray`, `grey`, and their bright variants `brightBlack` through `brightWhite`. Unsupported color names throw when resolved. `null` resets to the terminal default.
 
 ## Borders
 
-| Methods                                                                      | Accepted values and meaning                                                           |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `border(Border)`                                                             | `"none"`, `"single"`, `"rounded"`, `"double"`, `"heavy"`, or `Readonly<BorderGlyphs>` |
-| `borderColor(Color \| null)`                                                 | Default edge foreground                                                               |
-| `borderBackground(Color \| null)`                                            | Edge background                                                                       |
-| `borderTop(value = true)`, `borderRight`, `borderBottom`, `borderLeft`       | Enable sides, each consuming one cell                                                 |
-| `borderTopColor`, `borderRightColor`, `borderBottomColor`, `borderLeftColor` | Per-side `Color \| null` overriding `borderColor`                                     |
+| Method                                                                                                           | Argument type   | Notes                     |
+| ---------------------------------------------------------------------------------------------------------------- | --------------- | ------------------------- |
+| `border`                                                                                                         | `Border`        |                           |
+| `borderColor`                                                                                                    | `Color \| null` | Edge foreground           |
+| `borderBackground`                                                                                               | `Color \| null` | Edge background           |
+| `borderTop(value = true)`, `borderRight(value = true)`, `borderBottom(value = true)`, `borderLeft(value = true)` | `boolean`       | One cell per enabled side |
+| `borderTopColor`, `borderRightColor`, `borderBottomColor`, `borderLeftColor`                                     | `Color \| null` | Overrides `borderColor`   |
+
+```ts
+type Border =
+  | "none"
+  | "single"
+  | "rounded"
+  | "double"
+  | "heavy"
+  | Readonly<BorderGlyphs>;
+```
 
 `BorderGlyphs` requires string fields `topLeft`, `topRight`, `bottomLeft`, `bottomRight`, `top`, `right`, `bottom`, and `left`. Each glyph must be one printable grapheme occupying one cell. Custom borders remain separate under border joining because junction glyphs can't be inferred.
 

@@ -15,13 +15,20 @@ Give canvases explicit dimensions or fill space in a bounded parent. Callback ca
 
 ## DrawingContext
 
-| Member                                        | Contract                                                             |
-| --------------------------------------------- | -------------------------------------------------------------------- |
-| `readonly width`, `readonly height`           | Inner drawing dimensions in terminal cells                           |
-| `readonly pixelWidth`, `readonly pixelHeight` | Corresponding physical pixel dimensions using terminal cell metrics  |
-| `write(x, y, text, style?)`                   | Draw text at local cell coordinates, with optional `Readonly<Style>` |
-| `fill(rect, style?)`                          | Fill a local `{ x, y, width, height }` cell rectangle                |
-| `pixels(buffer: PixelBuffer)`                 | Add RGBA content; can be mixed with cell drawing                     |
+| Property                    | Type     | Units  |
+| --------------------------- | -------- | ------ |
+| `width`, `height`           | `number` | Cells  |
+| `pixelWidth`, `pixelHeight` | `number` | Pixels |
+
+Dimensions are read-only and describe the inner drawing area. The context also exposes these methods:
+
+```ts
+write(x: number, y: number, text: string, style?: Readonly<Style>): void;
+fill(rect: { x: number; y: number; width: number; height: number }, style?: Readonly<Style>): void;
+pixels(buffer: PixelBuffer): void;
+```
+
+`write` and `fill` use local cell coordinates. `pixels` adds RGBA content and can be mixed with cell drawing.
 
 Drawing is clipped through the canvas and its ancestors. Use reported pixel dimensions to render charts at the destination resolution. Callback work runs during painting and should be synchronous.
 
@@ -39,10 +46,12 @@ Dimensions are positive safe integers in pixels; data is row-major RGBA and must
 
 ## CanvasOptions
 
-| Property   | Values                                        | Default and behavior                                                             |
-| ---------- | --------------------------------------------- | -------------------------------------------------------------------------------- |
-| `fit`      | `"contain"`, `"cover"`, `"fill"`              | `"contain"`; fits use physical cell proportions                                  |
-| `renderer` | `"auto"`, `"kitty"`, `"sixel"`, `"quadrants"` | `"auto"`: Kitty → Sixel → quadrants; unsupported requests fall back to quadrants |
+| Property   | Type                                          | Default     |
+| ---------- | --------------------------------------------- | ----------- |
+| `fit`      | `"contain" \| "cover" \| "fill"`              | `"contain"` |
+| `renderer` | `"auto" \| "kitty" \| "sixel" \| "quadrants"` | `"auto"`    |
+
+Automatic rendering selects Kitty → Sixel → quadrants. Unsupported explicit native renderers fall back to quadrants. Fits use physical cell proportions.
 
 Contain preserves aspect ratio inside the destination; cover fills it with cropping; fill stretches. Alpha composites against painted content. Explicit RGB/hex backgrounds give predictable colors; theme queries supply terminal colors for blending when available.
 

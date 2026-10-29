@@ -4,15 +4,15 @@
 
 ## KeyEvent and keyEvent
 
-| Field or method                          | Contract                                                              |
-| ---------------------------------------- | --------------------------------------------------------------------- |
-| `key: string`                            | Decoded key name, such as `"enter"`, `"tab"`, `"escape"`, or `"left"` |
-| `text?: string`                          | Text payload for insertion, including pasted text                     |
-| `ctrl`, `alt`, `shift`                   | Required booleans                                                     |
-| `meta?: boolean`                         | Optional modifier; forwarding depends on terminal support             |
-| `defaultPrevented`, `propagationStopped` | Read-only event state                                                 |
-| `preventDefault(): void`                 | Suppresses default editing or control action                          |
-| `stopPropagation(): void`                | Stops ancestor bubbling                                               |
+| Member                                   | Type         | Notes                      |
+| ---------------------------------------- | ------------ | -------------------------- |
+| `key`                                    | `string`     | Decoded key name           |
+| `text?`                                  | `string`     | Insertion or paste payload |
+| `ctrl`, `alt`, `shift`                   | `boolean`    |                            |
+| `meta?`                                  | `boolean`    | Terminal-dependent         |
+| `defaultPrevented`, `propagationStopped` | `boolean`    | Read-only                  |
+| `preventDefault()`                       | `() => void` | Cancels default action     |
+| `stopPropagation()`                      | `() => void` | Stops bubbling             |
 
 `.onKey()` bubbles through ancestors. Preventing default and stopping propagation are independent. Default Ctrl+C shutdown and inspector shortcuts have session-level handling; see [AppOptions](app.md) when reserving shortcuts.
 
@@ -26,16 +26,16 @@ The helper creates mutable prevention state behind read-only getters. Modifiers 
 
 ## PointerEvent
 
-| Field                     | Type and units                                    |
-| ------------------------- | ------------------------------------------------- |
-| `x`, `y`                  | Viewport-relative terminal cell coordinates       |
-| `action`                  | `"press"`, `"release"`, `"move"`, `"scroll"`      |
-| `button`                  | Numeric button code; 0 is the primary button      |
-| `deltaY`                  | Required wheel delta; use 0 for non-scroll events |
-| `deltaX?`                 | Optional horizontal wheel delta                   |
-| `deltaMode?`              | `"cell"` or `"pixel"`; absent uses cell units     |
-| `shift?`, `alt?`, `ctrl?` | Optional modifiers                                |
-| `clicks?`                 | `1`, `2`, or `3`; adapters may supply click count |
+| Field                     | Type                                         | Notes                        |
+| ------------------------- | -------------------------------------------- | ---------------------------- |
+| `x`, `y`                  | `number`                                     | Viewport cells               |
+| `action`                  | `"press" \| "release" \| "move" \| "scroll"` |                              |
+| `button`                  | `number`                                     | Primary: `0`                 |
+| `deltaY`                  | `number`                                     | Required; `0` for non-scroll |
+| `deltaX?`                 | `number`                                     | Horizontal delta             |
+| `deltaMode?`              | `"cell" \| "pixel"`                          | Default: `"cell"`            |
+| `shift?`, `alt?`, `ctrl?` | `boolean`                                    |                              |
+| `clicks?`                 | `1 \| 2 \| 3`                                |                              |
 
 Hit testing follows painted clipping and stacking. Pixel deltas convert through terminal cell metrics. Native selection mode disables application pointer tracking. Pointer events don't expose keyboard prevention or bubbling methods. See [input](../guides/input.md) for selection, multiclick timing, and clipboard behavior.
 

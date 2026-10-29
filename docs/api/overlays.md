@@ -11,17 +11,21 @@ The child form stacks ordinary children at one origin and obeys ancestor clippin
 
 ## OverlayProps
 
-| Property           | Type                                                                                   | Default and behavior                                                                                                         |
-| ------------------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `content`          | `Child`                                                                                | Required                                                                                                                     |
-| `modal`            | `boolean`                                                                              | `false`; traps focus and blocks background pointer input when true                                                           |
-| `focus`            | `"first" \| "none"`                                                                    | Modal: autofocus or first control. Nonmodal: keep focus unless `"first"` is requested. Modal `"none"` focuses its container. |
-| `anchor`           | `() => Readonly<{ x: number; y: number; width: number; height: number }> \| undefined` | None; read at placement so live geometry is followed                                                                         |
-| `placement`        | `"center"`, `"bottom-start"`, `"bottom-end"`, `"top-start"`, `"top-end"`               | `"center"`                                                                                                                   |
-| `offset`           | `number`                                                                               | Zero-cell separation from the anchor                                                                                         |
-| `onDismiss`        | `() => void`                                                                           | None; application removes the layer in response                                                                              |
-| `dismissOnEscape`  | `boolean`                                                                              | Enabled unless false; needs `onDismiss`                                                                                      |
-| `dismissOnOutside` | `boolean`                                                                              | Enabled unless false; needs `onDismiss`                                                                                      |
+| Property           | Type                                                                     | Default           | Notes                   |
+| ------------------ | ------------------------------------------------------------------------ | ----------------- | ----------------------- |
+| `content`          | `Child`                                                                  | Required          |                         |
+| `modal`            | `boolean`                                                                | `false`           | Traps focus             |
+| `focus`            | `"first" \| "none"`                                                      | Context-dependent | See below               |
+| `anchor`           | `() => Readonly<ElementRef["rect"]> \| undefined`                        | —                 | Live geometry           |
+| `placement`        | `"center" \| "bottom-start" \| "bottom-end" \| "top-start" \| "top-end"` | `"center"`        |                         |
+| `offset`           | `number`                                                                 | `0`               | Cells                   |
+| `onDismiss`        | `() => void`                                                             | —                 | Application-owned state |
+| `dismissOnEscape`  | `boolean`                                                                | `true`            | Requires `onDismiss`    |
+| `dismissOnOutside` | `boolean`                                                                | `true`            | Requires `onDismiss`    |
+
+Placement accepts `"center"`, `"bottom-start"`, `"bottom-end"`, `"top-start"`, or `"top-end"`. Anchors are read during placement to follow geometry changes.
+
+Modals block background pointer input and focus an autofocus control or the first control; `focus: "none"` focuses the overlay container. Nonmodal overlays keep existing focus unless `focus: "first"` is requested. `onDismiss` must update application state to remove the layer.
 
 Placement flips when the preferred edge lacks room, then clamps to the viewport. Layers paint above ordinary content in `zIndex` and tree order. The topmost layer handles dismissal; outside dismissal consumes the press. Closing restores the previous active focus target when appropriate.
 
