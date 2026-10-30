@@ -56,7 +56,11 @@ export class Decoder {
       const length = this.buffer.startsWith("\x1b")
         ? this.escape()
         : this.character();
-      if (!length) return;
+      if (!length) {
+        // Queries and key reports are small; a continuous malformed packet must not grow forever.
+        if (this.buffer.length > 4096) this.buffer = "";
+        return;
+      }
       this.buffer = this.buffer.slice(length);
     }
   }
@@ -121,7 +125,7 @@ export class Decoder {
     if (this.buffer.length === 1 || /^\x1b(?:\[[<\d;]*|O)$/.test(this.buffer))
       return 0;
     if (this.buffer[1] === "[") return 2;
-    const char = Array.from(this.buffer.slice(1))[0] ?? "";
+    const char = String.fromCodePoint(this.buffer.codePointAt(1) ?? 0);
     this.emit({
       type: "key",
       event: keyEvent(char.toLowerCase(), { alt: true, text: char }),
@@ -129,7 +133,7 @@ export class Decoder {
     return 1 + char.length;
   }
   private character(): number {
-    const char = Array.from(this.buffer)[0] ?? "";
+    const char = String.fromCodePoint(this.buffer.codePointAt(0) ?? 0);
     const code = char.codePointAt(0) ?? 0;
     const key =
       char === "\r" || char === "\n"

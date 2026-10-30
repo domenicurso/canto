@@ -58,6 +58,16 @@ test("abandoned and oversized pastes recover without leaking paste shortcuts", (
   ).toEqual(["a", "b"]);
 });
 
+test("continuous malformed control input is bounded without an idle timeout", () => {
+  const keys: string[] = [];
+  const decoder = new Decoder((event) => {
+    if (event.type === "key") keys.push(event.event.key);
+  });
+  decoder.push(Buffer.from("\x1b[" + "1".repeat(4096)));
+  decoder.push(Buffer.from("hello"));
+  expect(keys).toEqual(["h", "e", "l", "l", "o"]);
+});
+
 test("wheel reports preserve both axes and Shift+wheel selects horizontal movement", () => {
   const events: TerminalEvent[] = [];
   const decoder = new Decoder((event) => events.push(event));
