@@ -2,24 +2,32 @@
 
 [Documentation](../README.md) · [Terminal API](../api/terminal.md)
 
-Canto targets Bun terminal sessions. Automated tests cover decoding, emulator output, and POSIX PTY sessions; Ghostty, iTerm2, Terminal.app, and tmux are manual targets rather than blanket verified compatibility claims.
+Canto targets Bun terminal sessions. Automated tests cover decoding, emulator output, POSIX PTY sessions, and isolated real tmux servers when tmux is installed. CI requires tmux on both Linux and macOS. Ghostty, iTerm2, and Terminal.app still need direct verification rather than blanket compatibility claims.
 
 ## Capabilities and fallbacks
 
-| Feature              | Behavior and limitation                                                                                                                                                |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Graphics             | Automatic choice is Kitty, then Sixel, then Unicode quadrant cells. Unsupported explicit native renderers also fall back to quadrants. Sixel uses a 216-color palette. |
-| Cell metrics         | Pixel queries supply cell size; missing replies use 8 × 16 pixels. Pixel wheel deltas and image proportions use these metrics.                                         |
-| Theme colors         | OSC 10/11 and OSC 4 queries discover defaults and the ANSI palette. Missing values use conventional colors, default foreground `#c0c0c0`, and background `#000000`.    |
-| Underlines           | Requested shape and color sequences are emitted without a support probe; presentation depends on the terminal.                                                         |
-| Clipboard            | Process output sends OSC 52 writes; the terminal decides whether to accept them. Reads require an injected adapter. Native paste normally arrives as bracketed input.  |
-| Inline pointer input | Coordinate mapping needs a cursor-position reply. Keyboard operation remains available without it.                                                                     |
-| Unicode              | Grapheme segmentation uses `Intl.Segmenter`; width classification is approximate. Ambiguous-width characters and terminal-specific emoji can differ.                   |
-| Redirected output    | One plain-text frame is written and the process session stops.                                                                                                         |
+| Feature              | Behavior and limitation                                                                                                                                                                                     |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Graphics             | Automatic choice is Kitty, then Sixel, then Unicode quadrant cells. Unsupported explicit native renderers also fall back to quadrants. Sixel uses a 216-color palette.                                      |
+| Cell metrics         | Pixel queries supply cell size; missing replies use 8 × 16 pixels. Pixel wheel deltas and image proportions use these metrics.                                                                              |
+| Theme colors         | OSC 10/11 and OSC 4 queries discover defaults and the ANSI palette. Missing values use conventional colors, default foreground `#c0c0c0`, and background `#000000`.                                         |
+| Underlines           | Requested shape and color sequences are emitted without a support probe; presentation depends on the terminal.                                                                                              |
+| Clipboard            | Process output sends OSC 52 writes; the terminal decides whether to accept them. Reads require an injected adapter. Native paste normally arrives as bracketed input.                                       |
+| Inline pointer input | Coordinate mapping needs a cursor-position reply. Keyboard operation remains available without it.                                                                                                          |
+| Unicode              | Grapheme segmentation uses `Intl.Segmenter`; widths use Bun's maintained `stringWidth` tables, including text versus emoji presentation. Ambiguous-width characters and terminal-specific emoji can differ. |
+| Redirected output    | One plain-text frame is written and the process session stops.                                                                                                                                              |
 
 Opacity blends reported terminal colors, so desktop transparency or wallpaper isn't part of the composition. Native image throughput depends on the terminal, image size, and update rate; a replacement buffer can require another upload.
 
-Incomplete escape sequences expire after 30 ms without input; only a lone Escape becomes a key event. Bracketed pastes allow a 5-second idle gap and at most 1,048,576 UTF-16 code units. An abandoned or oversized paste is discarded, so its contents cannot become application shortcuts; an oversized paste drains through its closing delimiter or idle timeout.
+Incomplete escape sequences expire after 30 ms without input; only a lone Escape becomes a key event. Incomplete control packets over 4,096 UTF-16 code units are discarded even while input continues. Bracketed pastes allow a 5-second idle gap and at most 1,048,576 UTF-16 code units. An abandoned or oversized paste is discarded, so its contents cannot become application shortcuts; an oversized paste drains through its closing delimiter or idle timeout.
+
+## Record a real-terminal check
+
+Run `bun run terminal:check` in each target terminal, then `bun run terminal:check inline`, and repeat inside tmux. The screen displays Unicode alignment samples, palette colors, modified-key reports, clipboard copy/paste, and mouse controls. Shrink and expand the terminal, then use Tab/Enter or click to cycle each observed verdict through pass, fail, and unverified. Ctrl+C restores the session and prints JSON with the terminal/version environment, Bun/platform, screen mode, cell metrics, graphics replies, and observed results. Missing environment fields stay `unknown`; unchecked items stay `unverified`.
+
+The report records observations rather than certifying a terminal automatically. Run the pixel demo separately for native Kitty/Sixel display and graphics performance. Redirected checklist runs cannot observe an emulator and leave results unverified. Keep reports outside the checkout unless a maintained compatibility record is being added deliberately.
+
+`bun test src/terminal/tmux.test.ts` runs fullscreen and inline sessions in private sockets. It exercises Unicode, text input, incomplete-sequence recovery, focus/activation, shrink/expand, and successful process exit without touching existing tmux sessions. It skips explicitly when tmux is absent; the CI workflow installs tmux so these cases must run there.
 
 ## Common symptoms
 

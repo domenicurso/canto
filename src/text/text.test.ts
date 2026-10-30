@@ -21,3 +21,11 @@ test("ellipsis respects cell widths and max lines", () => {
     "abc…",
   ]);
 });
+
+test("text symbols and emoji presentation use distinct cell widths", () => {
+  expect(width("©❤")).toBe(2);
+  expect(width("©️❤️")).toBe(4);
+  expect(wrap("©❤", 2)).toEqual(["©❤"]);
+  expect(take("©️x", 2)).toBe("©️");
+  expect(width("\u0301\u200d")).toBe(0);
+});

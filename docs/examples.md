@@ -6,6 +6,7 @@ Run these commands from the repository after `bun install`.
 
 | Command                     | What it demonstrates                                                          |
 | --------------------------- | ----------------------------------------------------------------------------- |
+| `bun run terminal:check`    | Interactive compatibility checks and a JSON observation report                |
 | `bun run demo:studio`       | Responsive release workspace with search, editable briefs, and issue creation |
 | `bun run demo:interactions` | Text/editor selection, clipboard actions, and draggable scrollbars            |
 | `bun run demo:form`         | Controlled inputs, multiline notes, validation, and disabled actions          |
