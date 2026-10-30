@@ -8,8 +8,8 @@ export function Console() {
     children: column(
       text("Live Data Feed with Console").background("red").padding([1, 2]),
       column(
-        text(`Avery ❤️ Dom: ${"#".repeat(count)}`),
-        text(`Dom ❤️ Avery (factual): ${"#".repeat(count * 4)}`).wrap("none"),
+        text(`Diddy: ${"#".repeat(count)}`),
+        text(`Blud: ${"#".repeat(count * 4)}`).wrap("none"),
       )
         .background("#4acfff")
         .color("black")
