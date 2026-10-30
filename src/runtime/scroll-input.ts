@@ -27,7 +27,9 @@ export class ScrollInput {
     this.interrupt();
     const axis = node.element.data.props.scroll?.axis ?? "vertical";
     const horizontal = axis === "horizontal";
-    const page = horizontal ? node.inner.width : node.inner.height;
+    const page = horizontal
+      ? node.layout.inner.width
+      : node.layout.inner.height;
     const amount =
       event.key === "pageup" ? -page : event.key === "pagedown" ? page : 0;
     const dx =
@@ -91,8 +93,8 @@ export class ScrollInput {
     const previous = this.requests.get(node);
     const axis = node.element.data.props.scroll?.axis;
     const actual = {
-      x: node.offsetX,
-      y: axis === "horizontal" ? 0 : node.offset,
+      x: node.scrolling.offsetX,
+      y: axis === "horizontal" ? 0 : node.scrolling.offset,
     };
     const pending =
       previous &&
@@ -101,8 +103,8 @@ export class ScrollInput {
           Math.floor(previous.position.y) === actual.y));
     const origin = pending ? previous.position : actual;
     const position = {
-      x: Math.max(0, Math.min(node.maxOffsetX, origin.x + delta.x)),
-      y: Math.max(0, Math.min(node.maxOffset, origin.y + delta.y)),
+      x: Math.max(0, Math.min(node.scrolling.maxOffsetX, origin.x + delta.x)),
+      y: Math.max(0, Math.min(node.scrolling.maxOffset, origin.y + delta.y)),
     };
     this.requests.set(node, { frame: this.frame, position });
     if (

@@ -79,20 +79,23 @@ test("nested scrolling and flexible constraints match fresh layout through repea
       height: 1 + ((step * 7) % 30),
     };
     reconcile(root, root.element, context);
-    root.dirty = true;
+    root.component.dirty = true;
     resolveStyles(root);
     invalidation.changed(root);
     layout(root, size);
     repositionScroll(root);
     const incremental = paint(root, size);
     const before = walk(root).map((node) => ({
-      rect: node.rect,
-      inner: node.inner,
+      rect: node.layout.rect,
+      inner: node.layout.inner,
     }));
     for (const node of walk(root)) invalidateLayout(node);
     layout(root, size);
     expect(
-      walk(root).map((node) => ({ rect: node.rect, inner: node.inner })),
+      walk(root).map((node) => ({
+        rect: node.layout.rect,
+        inner: node.layout.inner,
+      })),
     ).toEqual(before);
     expect(paint(root, size).cells).toEqual(incremental.cells);
     verifyGeometry(root);
@@ -100,15 +103,19 @@ test("nested scrolling and flexible constraints match fresh layout through repea
 });
 function verifyGeometry(root: Mounted): void {
   for (const node of walk(root)) {
-    for (const rect of [node.rect, node.inner]) {
+    for (const rect of [node.layout.rect, node.layout.inner]) {
       expect(Number.isFinite(rect.x) && Number.isFinite(rect.y)).toBe(true);
       expect(Number.isInteger(rect.width) && rect.width >= 0).toBe(true);
       expect(Number.isInteger(rect.height) && rect.height >= 0).toBe(true);
     }
     if (node.element.data.kind === "scroll") {
-      expect(node.offset).toBeGreaterThanOrEqual(0);
-      expect(node.offset).toBeLessThanOrEqual(node.maxOffset);
-      expect(node.offsetX).toBeLessThanOrEqual(node.maxOffsetX);
+      expect(node.scrolling.offset).toBeGreaterThanOrEqual(0);
+      expect(node.scrolling.offset).toBeLessThanOrEqual(
+        node.scrolling.maxOffset,
+      );
+      expect(node.scrolling.offsetX).toBeLessThanOrEqual(
+        node.scrolling.maxOffsetX,
+      );
     }
   }
 }

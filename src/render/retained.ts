@@ -1,5 +1,6 @@
 import type { PixelBuffer } from "../element/pixels";
-import type { Mounted, Rect } from "../runtime/tree";
+import type { Rect } from "../layout/geometry";
+import type { Mounted } from "../runtime/tree";
 import type { ColorTheme } from "../style/colors";
 import type { CellSize } from "../terminal/cell-size";
 import type { GraphicsCapabilities } from "../terminal/graphics-capabilities";
@@ -62,23 +63,24 @@ export class RetainedPaint {
   }
   private collect(node: Mounted, rows: Set<number>, bounds: Rect): void {
     const data = node.element.data;
+    const { offset, offsetX, maxOffset, maxOffsetX } = node.scrolling;
     const signature = JSON.stringify([
-      node.rect,
-      node.inner,
-      node.style,
+      node.layout.rect,
+      node.layout.inner,
+      node.layout.style,
       activeInteractions(node),
-      node.lines,
+      node.layout.lines,
       data.runs,
       content(node),
-      [node.cursor, node.anchor],
-      [node.offset, node.offsetX, node.maxOffset, node.maxOffsetX],
+      [node.editor.cursor, node.editor.anchor],
+      [offset, offsetX, maxOffset, maxOffsetX],
       data.props.scroll?.scrollbar,
       data.props.scroll?.gutter,
       node.element.definition,
     ]);
     const previous = this.snapshots.get(node);
     const escapes =
-      node.style.overflow === "visible" ||
+      node.layout.style.overflow === "visible" ||
       Boolean(node.element.data.props.overlay) ||
       node.children.some((child) => this.snapshots.get(child)?.escapes);
     const childrenChanged =
@@ -96,13 +98,13 @@ export class RetainedPaint {
       data.draw
     ) {
       damage(rows, previous.rect, bounds);
-      damage(rows, node.rect, bounds);
+      damage(rows, node.layout.rect, bounds);
     }
     this.snapshots.set(node, {
       signature,
       pixels: data.pixels,
       escapes,
-      rect: { ...node.rect },
+      rect: { ...node.layout.rect },
       children: node.children.slice(),
     });
     for (const child of node.children) this.collect(child, rows, bounds);

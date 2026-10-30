@@ -1,4 +1,4 @@
-import type { Rect } from "../runtime/tree";
+import type { Rect } from "../layout/geometry";
 import type { Child } from "./node";
 
 export interface OverlayProps {

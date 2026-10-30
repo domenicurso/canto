@@ -156,7 +156,7 @@ export class Frames {
         width: viewport.width,
         height:
           this.mode === "inline"
-            ? Math.min(viewport.height, Math.max(1, root.rect.height))
+            ? Math.min(viewport.height, Math.max(1, root.layout.rect.height))
             : viewport.height,
       },
       stats: {

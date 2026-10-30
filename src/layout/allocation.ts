@@ -21,7 +21,7 @@ export function allocate(
 ): Allocation[] {
   const axis = horizontal ? "width" : "height";
   const result = children.map((node) => {
-    const s = node.style;
+    const s = node.layout.style;
     const size = measure(node, available);
     const fill = s[axis] === "fill";
     const min = minimum(node, horizontal);

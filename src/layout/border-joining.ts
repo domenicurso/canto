@@ -4,15 +4,17 @@ import { edges } from "./geometry";
 
 /** A decoration-free component wrapper may expose its single child's border. */
 export function borderOwner(node: Mounted): Mounted | undefined {
-  if (node.style.border && node.style.border !== "none") return node;
+  if (node.layout.style.border && node.layout.style.border !== "none")
+    return node;
   if (
     node.element.data.kind !== "component" ||
     node.children.length !== 1 ||
-    edges(node.style).some(Boolean)
+    edges(node.layout.style).some(Boolean)
   )
     return undefined;
   const child = node.children[0];
-  return child?.style.width === "fill" && child.style.height === "fill"
+  return child?.layout.style.width === "fill" &&
+    child.layout.style.height === "fill"
     ? borderOwner(child)
     : undefined;
 }
@@ -24,7 +26,7 @@ export function borderOverlap(
   const parent = next.parent;
   if (
     !previous ||
-    !parent?.style.joinBorders ||
+    !parent?.layout.style.joinBorders ||
     axisGap(parent, horizontal) !== 0 ||
     !["row", "column"].includes(parent.element.data.kind)
   )
@@ -34,8 +36,8 @@ export function borderOverlap(
   if (
     !a ||
     !b ||
-    typeof a.style.border === "object" ||
-    typeof b.style.border === "object"
+    typeof a.layout.style.border === "object" ||
+    typeof b.layout.style.border === "object"
   )
     return 0;
   const axis = horizontal ? "width" : "height";
@@ -43,16 +45,18 @@ export function borderOverlap(
   if (
     [previous, next, a, b].some(
       (node) =>
-        node.style[axis] === 0 ||
-        node.style[axis] === "0%" ||
-        node.style[maximum] === 0,
+        node.layout.style[axis] === 0 ||
+        node.layout.style[axis] === "0%" ||
+        node.layout.style[maximum] === 0,
     )
   )
     return 0;
   return Number(
     horizontal
-      ? a.style.borderRight !== false && b.style.borderLeft !== false
-      : a.style.borderBottom !== false && b.style.borderTop !== false,
+      ? a.layout.style.borderRight !== false &&
+          b.layout.style.borderLeft !== false
+      : a.layout.style.borderBottom !== false &&
+          b.layout.style.borderTop !== false,
   );
 }
 export function flowGaps(
@@ -72,8 +76,8 @@ export function flowGaps(
 
 export function axisGap(node: Mounted, horizontal: boolean): number {
   return (
-    (horizontal ? node.style.columnGap : node.style.rowGap) ??
-    node.style.gap ??
+    (horizontal ? node.layout.style.columnGap : node.layout.style.rowGap) ??
+    node.layout.style.gap ??
     0
   );
 }

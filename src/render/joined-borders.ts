@@ -1,4 +1,5 @@
-import type { Mounted, Rect } from "../runtime/tree";
+import type { Rect } from "../layout/geometry";
+import type { Mounted } from "../runtime/tree";
 import type { Screen } from "./screen";
 
 import { borderOwner, borderOverlap } from "../layout/border-joining";
@@ -12,10 +13,10 @@ const glyphs = {
   double: " ╵╶╚╷║╔╠╴╝═╩╗╣╦╬",
 };
 export function joinedBorders(node: Mounted, screen: Screen, clip: Rect): void {
-  if (!node.style.joinBorders) return;
+  if (!node.layout.style.joinBorders) return;
   const horizontal = node.element.data.kind === "row";
   const children = node.children.filter(
-    (child) => child.style.position !== "absolute",
+    (child) => child.layout.style.position !== "absolute",
   );
   for (const [index, child] of children.entries()) {
     const previous = children[index - 1];
@@ -31,8 +32,8 @@ function seam(
   clip: Rect,
 ): void {
   const { a, b, horizontal } = pair;
-  const ar = a.rect,
-    br = b.rect;
+  const ar = a.layout.rect,
+    br = b.layout.rect;
   if (horizontal ? ar.x + ar.width - 1 !== br.x : ar.y + ar.height - 1 !== br.y)
     return;
   const start = Math.max(horizontal ? ar.y : ar.x, horizontal ? br.y : br.x);
@@ -54,7 +55,9 @@ function seam(
     const cell = screen.get(x, y);
     if (!cell) continue;
     const type =
-      owner.style.border === "rounded" ? "single" : owner.style.border;
+      owner.layout.style.border === "rounded"
+        ? "single"
+        : owner.layout.style.border;
     const text =
       type && type !== "none" && typeof type !== "object"
         ? glyphs[type][mask]
@@ -63,8 +66,8 @@ function seam(
   }
 }
 function directions(node: Mounted, x: number, y: number): number {
-  const r = node.rect,
-    s = node.style;
+  const r = node.layout.rect,
+    s = node.layout.style;
   const right = r.x + r.width - 1,
     bottom = r.y + r.height - 1;
   let mask = 0;
@@ -85,7 +88,7 @@ function hiddenBorder(node: Mounted, parent: Mounted): boolean {
     owner && owner !== parent;
     owner = owner.parent
   ) {
-    if (owner.style.opacity === 0) return true;
+    if (owner.layout.style.opacity === 0) return true;
   }
   return false;
 }

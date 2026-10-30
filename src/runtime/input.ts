@@ -141,7 +141,7 @@ export class InputRouter {
       this.wheels.dispose();
       this.scrolling.interrupt();
     }
-    const target = hit(root, event, root.rect);
+    const target = hit(root, event, root.layout.rect);
     const captured =
       event.action === "press" ? this.drag.press(target, event) : undefined;
     if (captured) {
@@ -186,6 +186,6 @@ export class InputRouter {
   resize(root: Mounted): void {
     this.selection.clear();
     for (const node of walk(root))
-      if (node.element.data.kind === "component") node.dirty = true;
+      if (node.element.data.kind === "component") node.component.dirty = true;
   }
 }

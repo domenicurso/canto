@@ -1,5 +1,6 @@
+import type { Rect } from "../layout/geometry";
 import type { Screen } from "../render/screen";
-import type { Mounted, Rect } from "./tree";
+import type { Mounted } from "./tree";
 
 import { contains, intersect } from "../layout/geometry";
 import { textOffset } from "../text/alignment";
@@ -17,17 +18,21 @@ export function visibleGlyphs(node: Mounted, screen: Screen): Glyph[] {
   if (!clip.width || !clip.height) return [];
   let offset = 0;
   const result: Glyph[] = [];
-  for (const [row, original] of node.lines.entries()) {
+  for (const [row, original] of node.layout.lines.entries()) {
     const line =
-      node.style.overflow === "ellipsis" && original.endsWith("…")
+      node.layout.style.overflow === "ellipsis" && original.endsWith("…")
         ? original.slice(0, -1)
         : original;
     const found = value.indexOf(line, offset);
     let start = found < 0 ? offset : found;
     let x =
-      node.inner.x +
-      textOffset(original, node.inner.width, node.style.textAlign);
-    const y = node.inner.y + row;
+      node.layout.inner.x +
+      textOffset(
+        original,
+        node.layout.inner.width,
+        node.layout.style.textAlign,
+      );
+    const y = node.layout.inner.y + row;
     if (y < clip.y || y >= clip.y + clip.height) {
       offset = start + line.length;
       continue;
@@ -45,7 +50,7 @@ export function visibleGlyphs(node: Mounted, screen: Screen): Glyph[] {
   return result;
 }
 function textClip(node: Mounted, screen: Screen): Rect {
-  let clip = intersect(node.inner, {
+  let clip = intersect(node.layout.inner, {
     x: 0,
     y: 0,
     width: screen.width,
@@ -53,9 +58,9 @@ function textClip(node: Mounted, screen: Screen): Rect {
   });
   for (let parent = node.parent; parent; parent = parent.parent)
     if (
-      parent.style.overflow !== "visible" ||
+      parent.layout.style.overflow !== "visible" ||
       parent.element.data.kind === "scroll"
     )
-      clip = intersect(clip, parent.inner);
+      clip = intersect(clip, parent.layout.inner);
   return clip;
 }

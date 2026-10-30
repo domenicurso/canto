@@ -1,4 +1,5 @@
-import type { Mounted, Rect } from "../runtime/tree";
+import type { Rect } from "../layout/geometry";
+import type { Mounted } from "../runtime/tree";
 import type { Style } from "../style/types";
 import type { Screen } from "./screen";
 
@@ -12,12 +13,12 @@ export function scrollbar(node: Mounted, screen: Screen, clip: Rect): void {
   const props = node.element.data.props.scroll;
   if (props?.scrollbar === "hidden") return;
   const stable = props?.gutter === "stable" || props?.scrollbar === "visible";
-  if (props?.axis !== "horizontal" && (node.maxOffset || stable))
+  if (props?.axis !== "horizontal" && (node.scrolling.maxOffset || stable))
     drawBar({ node, screen, clip, horizontal: false });
   if (
     props?.axis !== undefined &&
     props.axis !== "vertical" &&
-    (node.maxOffsetX || stable)
+    (node.scrolling.maxOffsetX || stable)
   )
     drawBar({ node, screen, clip, horizontal: true });
 }
@@ -45,14 +46,15 @@ function drawBar({
       from,
       to,
       horizontal,
-      style: node.style,
+      style: node.layout.style,
       thumb: thumbStyle,
       track: trackStyle,
     });
     screen.put(
       {
-        x: node.inner.x + (horizontal ? index : node.inner.width),
-        y: node.inner.y + (horizontal ? node.inner.height : index),
+        x: node.layout.inner.x + (horizontal ? index : node.layout.inner.width),
+        y:
+          node.layout.inner.y + (horizontal ? node.layout.inner.height : index),
         width: 1,
         height: 1,
       },

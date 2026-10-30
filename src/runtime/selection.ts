@@ -23,8 +23,14 @@ export class Selection {
     if (selected) return selected;
     if (!focused?.active || !focused.element.data.props.input) return "";
     return content(focused).slice(
-      Math.min(focused.cursor, focused.anchor ?? focused.cursor),
-      Math.max(focused.cursor, focused.anchor ?? focused.cursor),
+      Math.min(
+        focused.editor.cursor,
+        focused.editor.anchor ?? focused.editor.cursor,
+      ),
+      Math.max(
+        focused.editor.cursor,
+        focused.editor.anchor ?? focused.editor.cursor,
+      ),
     );
   }
   press(node: Mounted | undefined, event: PointerEvent): void {
@@ -35,10 +41,15 @@ export class Selection {
     this.dragging = true;
     if (node.element.data.props.input) {
       this.editor = node;
-      node.cursor = editorPosition(node, event);
-      this.origin = selectionRange(content(node), node.cursor, this.unit);
-      node.anchor = this.unit === "character" ? node.cursor : this.origin[0];
-      if (this.unit !== "character") node.cursor = this.origin[1];
+      node.editor.cursor = editorPosition(node, event);
+      this.origin = selectionRange(
+        content(node),
+        node.editor.cursor,
+        this.unit,
+      );
+      node.editor.anchor =
+        this.unit === "character" ? node.editor.cursor : this.origin[0];
+      if (this.unit !== "character") node.editor.cursor = this.origin[1];
     } else
       this.dragging = this.screen
         ? this.selectedText.press(node, event, this.screen, clicks)
@@ -55,13 +66,13 @@ export class Selection {
   private moveEditor(node: Mounted, event: PointerEvent): void {
     const position = editorPosition(node, event);
     if (this.unit === "character") {
-      node.cursor = position;
+      node.editor.cursor = position;
       return;
     }
     const range = selectionRange(content(node), position, this.unit);
     const reverse = position < this.origin[0];
-    node.anchor = reverse ? this.origin[1] : this.origin[0];
-    node.cursor = reverse ? range[0] : range[1];
+    node.editor.anchor = reverse ? this.origin[1] : this.origin[0];
+    node.editor.cursor = reverse ? range[0] : range[1];
   }
   clear(resetClicks = true): void {
     if (resetClicks) this.clicks.clear();
@@ -80,7 +91,7 @@ function editorPosition(node: Mounted, event: PointerEvent): number {
   if (view.placeholder) return 0;
   const row = Math.max(
     0,
-    Math.min(view.lines.length - 1, event.y - node.inner.y),
+    Math.min(view.lines.length - 1, event.y - node.layout.inner.y),
   );
   const line = view.lines[row];
   return line
@@ -90,8 +101,12 @@ function editorPosition(node: Mounted, event: PointerEvent): number {
           Math.max(
             0,
             event.x -
-              node.inner.x -
-              textOffset(line.text, node.inner.width, node.style.textAlign),
+              node.layout.inner.x -
+              textOffset(
+                line.text,
+                node.layout.inner.width,
+                node.layout.style.textAlign,
+              ),
           ),
         ).length
     : 0;

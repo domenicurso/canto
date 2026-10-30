@@ -1,5 +1,5 @@
-import type { Mounted, Rect } from "../runtime/tree";
-import type { Size } from "./geometry";
+import type { Mounted } from "../runtime/tree";
+import type { Rect, Size } from "./geometry";
 
 import { wrap } from "../text/wrap";
 import { flow } from "./flow";
@@ -40,28 +40,30 @@ export function positionOverlays(root: Mounted): void {
 function place(node: Mounted, allocation: Rect): void {
   const rect = {
     ...allocation,
-    x: allocation.x + (node.style.translateX ?? 0),
-    y: allocation.y + (node.style.translateY ?? 0),
+    x: allocation.x + (node.layout.style.translateX ?? 0),
+    y: allocation.y + (node.layout.style.translateY ?? 0),
   };
   const previous = placements.get(node);
   if (
     previous &&
-    node.rect.x === rect.x &&
-    node.rect.y === rect.y &&
-    node.rect.width === rect.width &&
-    node.rect.height === rect.height
+    node.layout.rect.x === rect.x &&
+    node.layout.rect.y === rect.y &&
+    node.layout.rect.width === rect.width &&
+    node.layout.rect.height === rect.height
   )
     return;
   placed++;
   placements.set(node, rect);
-  node.rect = rect;
-  node.inner = inset(rect, node.style);
+  node.layout.rect = rect;
+  node.layout.inner = inset(rect, node.layout.style);
   const kind = node.element.data.kind;
   if (kind === "text" || kind === "input" || kind === "textarea") {
-    node.lines = wrap(
+    node.layout.lines = wrap(
       content(node) || node.element.data.props.input?.placeholder || "",
-      node.inner.width,
-      kind === "input" ? { ...node.style, wrap: "none" } : node.style,
+      node.layout.inner.width,
+      kind === "input"
+        ? { ...node.layout.style, wrap: "none" }
+        : node.layout.style,
     );
     return;
   }
@@ -69,20 +71,20 @@ function place(node: Mounted, allocation: Rect): void {
   else if (kind === "overlay") arrangeOverlay(node);
   else flow(node, place);
   for (const child of node.children.filter(
-    (child) => child.style.position === "absolute",
+    (child) => child.layout.style.position === "absolute",
   ))
-    absolute(child, node.inner);
+    absolute(child, node.layout.inner);
 }
 function arrangeOverlay(node: Mounted): void {
   for (const child of node.children.filter(
-    (child) => child.style.position !== "absolute",
+    (child) => child.layout.style.position !== "absolute",
   )) {
-    const size = measure(child, node.inner);
-    place(child, { ...node.inner, ...size });
+    const size = measure(child, node.layout.inner);
+    place(child, { ...node.layout.inner, ...size });
   }
 }
 function absolute(node: Mounted, area: Rect): void {
-  const s = node.style;
+  const s = node.layout.style;
   const size = measure(node, area);
   const w =
     dimension(s.width, area.width) ??

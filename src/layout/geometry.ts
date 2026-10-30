@@ -1,8 +1,19 @@
-import type { Rect } from "../runtime/tree";
 import type { Dimension, Style } from "../style/types";
 
 import { padding } from "../style/types";
 
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+export interface LayoutState {
+  rect: Rect;
+  inner: Rect;
+  style: Style;
+  lines: string[];
+}
 export interface Size {
   width: number;
   height: number;

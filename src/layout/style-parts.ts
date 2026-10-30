@@ -6,9 +6,9 @@ import { resolveDefinition } from "../style/definitions";
 export function activeInteractions(node: Mounted): Interaction[] {
   const props = node.element.data.props;
   const result: Interaction[] = [];
-  if (node.hovered) result.push("hovered");
-  if (node.focused) result.push("focused");
-  if (node.pressed) result.push("pressed");
+  if (node.interaction.hovered) result.push("hovered");
+  if (node.interaction.focused) result.push("focused");
+  if (node.interaction.pressed) result.push("pressed");
   if (props.button?.disabled || props.input?.disabled) result.push("disabled");
   return result;
 }

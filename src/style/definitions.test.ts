@@ -11,17 +11,17 @@ test("nested interactions require every state and compose without mutating reusa
     text("x").use(combined).focused(style().color("blue")),
     null,
   );
-  node.focused = true;
+  node.interaction.focused = true;
   resolveStyles(node);
-  expect(node.style.foreground).toBe("blue");
-  node.hovered = true;
+  expect(node.layout.style.foreground).toBe("blue");
+  node.interaction.hovered = true;
   resolveStyles(node);
-  expect(node.style.foreground).toBe("red");
+  expect(node.layout.style.foreground).toBe("red");
   const extended = combined.hovered(style().focused(style().bold()));
   expect(combined.definition.compounds).toHaveLength(1);
   node.element = text("x").use(extended);
   resolveStyles(node);
-  expect(node.style).toMatchObject({ foreground: "red", bold: true });
+  expect(node.layout.style).toMatchObject({ foreground: "red", bold: true });
 });
 test("specificity precedes declaration order and repeated state nesting is idempotent", () => {
   const node = mounted(
@@ -31,12 +31,18 @@ test("specificity precedes declaration order and repeated state nesting is idemp
       .hovered(style().hovered(style().italic())),
     null,
   );
-  node.hovered = node.focused = node.pressed = true;
+  node.interaction.hovered =
+    node.interaction.focused =
+    node.interaction.pressed =
+      true;
   resolveStyles(node);
-  expect(node.style).toMatchObject({ foreground: "green", italic: true });
-  node.pressed = false;
+  expect(node.layout.style).toMatchObject({
+    foreground: "green",
+    italic: true,
+  });
+  node.interaction.pressed = false;
   resolveStyles(node);
-  expect(node.style.foreground).toBe("red");
+  expect(node.layout.style.foreground).toBe("red");
 });
 test("control parts merge and retain conditions from outer and inner interactions", () => {
   const node = mounted(
@@ -46,12 +52,12 @@ test("control parts merge and retain conditions from outer and inner interaction
       .focused(style().placeholder(style().hovered(style().color("cyan")))),
     null,
   );
-  node.focused = true;
+  node.interaction.focused = true;
   expect(partStyle(node, "placeholder")).toEqual({
     foreground: "gray",
     italic: true,
   });
-  node.hovered = true;
+  node.interaction.hovered = true;
   expect(partStyle(node, "placeholder")).toEqual({
     foreground: "cyan",
     italic: true,
@@ -66,7 +72,7 @@ test("selection combines with focus without replacing unrelated text attributes"
     null,
   );
   expect(selectionStyle(node)).toEqual({ background: "blue" });
-  node.focused = true;
+  node.interaction.focused = true;
   expect(selectionStyle(node)).toEqual({
     background: "blue",
     foreground: "yellow",

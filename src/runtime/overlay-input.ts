@@ -58,7 +58,7 @@ export class OverlayInput {
   mouse(event: PointerEvent): boolean {
     const top = this.layers.at(-1);
     const options = top?.element.data.props.overlay;
-    if (top && !contains(top.rect, event.x, event.y)) {
+    if (top && !contains(top.layout.rect, event.x, event.y)) {
       if (
         event.action === "press" &&
         options?.onDismiss &&

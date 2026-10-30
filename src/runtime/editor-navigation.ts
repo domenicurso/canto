@@ -1,33 +1,39 @@
 import type { KeyEvent } from "../element/events";
-import type { Mounted } from "./tree";
 
 import { boundary, vertical } from "../text/navigation";
 import { lineRange, paragraphBoundary, wordBoundary } from "../text/ranges";
 
+export interface EditorState {
+  value: string;
+  cursor: number;
+  anchor: number | null;
+  multiline: boolean;
+}
+
 export function navigateEditor(
-  node: Mounted,
+  editor: EditorState,
   value: string,
   event: KeyEvent,
 ): boolean {
   if (event.ctrl && event.key === "a") {
-    node.anchor = 0;
-    node.cursor = value.length;
+    editor.anchor = 0;
+    editor.cursor = value.length;
     return true;
   }
-  const next = destination(node, value, event);
+  const next = destination(editor, value, event);
   if (next === undefined) return false;
-  if (event.shift) node.anchor ??= node.cursor;
-  else node.anchor = null;
-  node.cursor = next;
+  if (event.shift) editor.anchor ??= editor.cursor;
+  else editor.anchor = null;
+  editor.cursor = next;
   return true;
 }
 function destination(
-  node: Mounted,
+  editor: EditorState,
   value: string,
   event: KeyEvent,
 ): number | undefined {
   const { key, ctrl, alt, meta } = event;
-  const cursor = node.cursor;
+  const cursor = editor.cursor;
   const [start, end] = lineRange(value, cursor);
   if (key === "home" || key === "end")
     return ctrl || meta
@@ -44,16 +50,13 @@ function destination(
   if (horizontal) {
     if (meta) return direction < 0 ? start : lineEnd(value, end);
     if (ctrl || alt) return wordBoundary(value, cursor, direction);
-    if (!event.shift && node.anchor !== null && node.anchor !== cursor)
+    if (!event.shift && editor.anchor !== null && editor.anchor !== cursor)
       return direction < 0
-        ? Math.min(node.anchor, cursor)
-        : Math.max(node.anchor, cursor);
+        ? Math.min(editor.anchor, cursor)
+        : Math.max(editor.anchor, cursor);
     return boundary(value, cursor, direction);
   }
-  if (
-    (key === "up" || key === "down") &&
-    node.element.data.kind === "textarea"
-  ) {
+  if ((key === "up" || key === "down") && editor.multiline) {
     if (meta) return direction < 0 ? 0 : value.length;
     return ctrl || alt
       ? paragraphBoundary(value, cursor, direction)

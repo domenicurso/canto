@@ -1,9 +1,9 @@
+import type { Rect } from "../layout/geometry";
 import type { Screen } from "../render/screen";
 import type { Style } from "../style/types";
 import type { Reading } from "./debug-readings";
 import type { DebugReadings } from "./debug-sampling";
 import type { DebugTooltip } from "./debug-tooltip";
-import type { Rect } from "./tree";
 
 import { border } from "../render/border";
 import { composite } from "../render/opacity";

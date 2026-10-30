@@ -5,7 +5,7 @@ import { edges } from "./geometry";
 
 /** Preserve content and box decoration before assigning flexible space. */
 export function minimum(node: Mounted, horizontal: boolean): number {
-  const style = node.style;
+  const style = node.layout.style;
   const explicit = horizontal ? style.minWidth : style.minHeight;
   if (explicit !== undefined) return explicit;
   const [top, right, bottom, left] = edges(style);
@@ -14,7 +14,7 @@ export function minimum(node: Mounted, horizontal: boolean): number {
   let content = ["text", "input", "textarea", "scroll"].includes(kind) ? 1 : 0;
   if (kind !== "scroll") {
     const children = node.children.filter(
-      (child) => child.style.position !== "absolute",
+      (child) => child.layout.style.position !== "absolute",
     );
     const sizes = children.map((child) => minimum(child, horizontal));
     const sequence =

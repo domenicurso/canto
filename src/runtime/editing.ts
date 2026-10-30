@@ -10,8 +10,8 @@ export function edit(node: Mounted, event: KeyEvent): boolean {
   const props = node.element.data.props.input;
   if (!props || props.disabled) return false;
   const value = content(node);
-  node.cursor = Math.min(node.cursor, value.length);
-  if (navigateEditor(node, value, event)) return true;
+  node.editor.cursor = Math.min(node.editor.cursor, value.length);
+  if (navigateEditor(node.editor, value, event)) return true;
   if (event.key === "enter" && node.element.data.kind === "input") {
     guard(node, () => props.onSubmit?.(value));
     return true;
@@ -20,8 +20,14 @@ export function edit(node: Mounted, event: KeyEvent): boolean {
   return change(node, value, event);
 }
 function change(node: Mounted, value: string, event: KeyEvent): boolean {
-  let start = Math.min(node.cursor, node.anchor ?? node.cursor);
-  let end = Math.max(node.cursor, node.anchor ?? node.cursor);
+  let start = Math.min(
+    node.editor.cursor,
+    node.editor.anchor ?? node.editor.cursor,
+  );
+  let end = Math.max(
+    node.editor.cursor,
+    node.editor.anchor ?? node.editor.cursor,
+  );
   let insert = "";
   if (event.key === "backspace") {
     if (start === end) start = boundary(value, start, -1);
@@ -36,10 +42,10 @@ function change(node: Mounted, value: string, event: KeyEvent): boolean {
     .replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "");
   if (node.element.data.kind === "input") insert = insert.replace(/\n/g, " ");
   const next = value.slice(0, start) + insert + value.slice(end);
-  node.cursor = start + insert.length;
-  node.anchor = null;
+  node.editor.cursor = start + insert.length;
+  node.editor.anchor = null;
   const props = node.element.data.props.input;
-  if (props?.value === undefined) node.value = next;
+  if (props?.value === undefined) node.editor.value = next;
   guard(node, () => props?.onChange?.(next));
   return true;
 }

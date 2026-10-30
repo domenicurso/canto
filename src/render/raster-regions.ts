@@ -1,4 +1,5 @@
-import type { Mounted, Rect } from "../runtime/tree";
+import type { Rect } from "../layout/geometry";
+import type { Mounted } from "../runtime/tree";
 import type { Screen } from "./screen";
 
 /** Sixel cannot sit behind text, so only its text-bearing cells use the cell renderer. */

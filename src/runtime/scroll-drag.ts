@@ -50,8 +50,8 @@ export class ScrollDrag {
       node,
       node.element.data.props.scroll?.axis === "both"
         ? {
-            x: horizontal ? offset : node.offsetX,
-            y: horizontal ? node.offset : offset,
+            x: horizontal ? offset : node.scrolling.offsetX,
+            y: horizontal ? node.scrolling.offset : offset,
           }
         : offset,
     );

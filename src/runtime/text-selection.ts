@@ -90,11 +90,16 @@ export class TextSelection {
     const nodes = walk(root)
       .filter(selectable)
       .filter((node) => visibleGlyphs(node, screen).length);
-    nodes.sort((a, b) => a.inner.y - b.inner.y || a.inner.x - b.inner.x);
+    nodes.sort(
+      (a, b) =>
+        a.layout.inner.y - b.layout.inner.y ||
+        a.layout.inner.x - b.layout.inner.x,
+    );
     for (const node of nodes) {
       const previous = this.sources.at(-1)?.node;
       if (previous)
-        this.value += previous.inner.y === node.inner.y ? " " : "\n";
+        this.value +=
+          previous.layout.inner.y === node.layout.inner.y ? " " : "\n";
       const value = sanitize(node.element.data.text ?? "");
       this.sources.push({ node, value, start: this.value.length });
       this.value += value;
@@ -162,7 +167,7 @@ function selectable(node: Mounted): boolean {
   for (let owner: Mounted | null = node; owner; owner = owner.parent) {
     if (owner.element.data.props.input || owner.element.data.props.button)
       return false;
-    enabled ??= owner.style.selectable;
+    enabled ??= owner.layout.style.selectable;
   }
   return enabled ?? false;
 }

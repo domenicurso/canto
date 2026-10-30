@@ -1,5 +1,6 @@
 import type { PixelBuffer } from "../element/pixels";
-import type { Mounted, Rect } from "../runtime/tree";
+import type { Rect } from "../layout/geometry";
+import type { Mounted } from "../runtime/tree";
 import type { RGB } from "../style/colors";
 import type { PixelImage, PixelSurface } from "./pixel-surface";
 import type { Screen } from "./screen";
@@ -48,7 +49,7 @@ export function drawPixels(
         { x, y, width: 1, height: 1 },
         encoded.text,
         {
-          ...node.style,
+          ...node.layout.style,
           foreground: encoded.foreground,
           background: encoded.background,
         },

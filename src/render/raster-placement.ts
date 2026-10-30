@@ -1,5 +1,6 @@
 import type { PixelBuffer } from "../element/pixels";
-import type { Mounted, Rect } from "../runtime/tree";
+import type { Rect } from "../layout/geometry";
+import type { Mounted } from "../runtime/tree";
 import type { GraphicsCapabilities } from "../terminal/graphics-capabilities";
 import type { PixelSurface } from "./pixel-surface";
 import type { Screen } from "./screen";

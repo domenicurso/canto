@@ -1,4 +1,4 @@
-import type { Rect } from "../runtime/tree";
+import type { Rect } from "../layout/geometry";
 import type { ColorTheme, RGB } from "../style/colors";
 import type { Style } from "../style/types";
 import type { PixelSurface } from "./pixel-surface";

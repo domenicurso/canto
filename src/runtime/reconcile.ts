@@ -63,14 +63,14 @@ function reconcileNode(
   const call = element.data.call;
   let descriptions: Element[];
   if (call) {
-    if (!node.dirty && previous === element) {
-      for (const child of node.descendantsDirty ? node.children : [])
+    if (!node.component.dirty && previous === element) {
+      for (const child of node.component.descendantsDirty ? node.children : [])
         reconcile(child, child.element, context);
-      node.descendantsDirty = false;
+      node.component.descendantsDirty = false;
       return;
     }
-    node.dirty = false;
-    const previousCount = node.hooks.length;
+    node.component.dirty = false;
+    const previousCount = node.component.hooks.length;
     descriptions = flatten([
       enter({ node, ...context }, () =>
         boundaryContent(node, call.render, {
@@ -82,14 +82,14 @@ function reconcileNode(
         }),
       ),
     ]);
-    if (node.rendered && node.hookIndex !== previousCount)
+    if (node.component.rendered && node.component.hookIndex !== previousCount)
       throw new Error("Hook count changed between renders.");
-    node.rendered = true;
+    node.component.rendered = true;
   } else {
     descriptions = flatten(element.data.children);
   }
   reconcileChildren(node, descriptions, context);
-  node.descendantsDirty = false;
+  node.component.descendantsDirty = false;
 }
 function reconcileChildren(
   parent: Mounted,

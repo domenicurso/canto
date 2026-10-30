@@ -1,4 +1,4 @@
-import type { Rect } from "../runtime/tree";
+import type { Rect } from "../layout/geometry";
 import type { Border, BorderGlyphs, Style } from "../style/types";
 import type { Screen } from "./screen";
 

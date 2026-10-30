@@ -1,5 +1,6 @@
+import type { Rect } from "../layout/geometry";
 import type { Screen } from "../render/screen";
-import type { Mounted, Rect } from "./tree";
+import type { Mounted } from "./tree";
 
 import { contains } from "../layout/geometry";
 import { editorView } from "./editor-view";
@@ -11,7 +12,10 @@ export function cursorOutput(
 ): string {
   if (!focused?.element.data.props.input) return "\x1b[?25l";
   const cursor = editorView(focused).cursor;
-  cursor.x = Math.min(focused.inner.x + focused.inner.width - 1, cursor.x);
+  cursor.x = Math.min(
+    focused.layout.inner.x + focused.layout.inner.width - 1,
+    cursor.x,
+  );
   if (occlusion && contains(occlusion, cursor.x, cursor.y)) return "\x1b[?25l";
   if (
     !contains(
@@ -24,8 +28,8 @@ export function cursorOutput(
   let parent = focused.parent;
   while (parent) {
     if (
-      parent.style.overflow !== "visible" &&
-      !contains(parent.inner, cursor.x, cursor.y)
+      parent.layout.style.overflow !== "visible" &&
+      !contains(parent.layout.inner, cursor.x, cursor.y)
     )
       return "\x1b[?25l";
     parent = parent.parent;

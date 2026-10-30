@@ -63,13 +63,15 @@ export class ScrollPhysics {
       motion.velocity = next.velocity;
       motion.time = now;
       if (
-        (node.offsetX <= 0 && next.velocity.x < 0) ||
-        (node.offsetX >= node.maxOffsetX && next.velocity.x > 0)
+        (node.scrolling.offsetX <= 0 && next.velocity.x < 0) ||
+        (node.scrolling.offsetX >= node.scrolling.maxOffsetX &&
+          next.velocity.x > 0)
       )
         motion.velocity.x = 0;
       if (
-        (node.offset <= 0 && next.velocity.y < 0) ||
-        (node.offset >= node.maxOffset && next.velocity.y > 0)
+        (node.scrolling.offset <= 0 && next.velocity.y < 0) ||
+        (node.scrolling.offset >= node.scrolling.maxOffset &&
+          next.velocity.y > 0)
       )
         motion.velocity.y = 0;
       if (Math.hypot(motion.velocity.x, motion.velocity.y) < 0.1)

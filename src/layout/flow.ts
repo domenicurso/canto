@@ -1,5 +1,6 @@
-import type { Mounted, Rect } from "../runtime/tree";
+import type { Mounted } from "../runtime/tree";
 import type { Allocation } from "./allocation";
+import type { Rect } from "./geometry";
 
 import { allocate } from "./allocation";
 import { axisGap, borderOverlap, flowGaps } from "./border-joining";
@@ -9,9 +10,9 @@ import { measure } from "./measure";
 export type Place = (node: Mounted, rect: Rect) => void;
 export function flow(node: Mounted, place: Place): void {
   const horizontal = node.element.data.kind === "row";
-  const area = node.inner;
+  const area = node.layout.inner;
   const children = node.children.filter(
-    (child) => child.style.position !== "absolute",
+    (child) => child.layout.style.position !== "absolute",
   );
   const items = allocate(children, area, horizontal);
   const used =
@@ -45,10 +46,12 @@ function crossPlacement(
   parent: Mounted,
   horizontal: boolean,
 ): { size: number; offset: number } {
-  const s = item.node.style;
-  const available = horizontal ? parent.inner.height : parent.inner.width;
+  const s = item.node.layout.style;
+  const available = horizontal
+    ? parent.layout.inner.height
+    : parent.layout.inner.width;
   const token = horizontal ? s.height : s.width;
-  const align = s.alignSelf ?? parent.style.align ?? "start";
+  const align = s.alignSelf ?? parent.layout.style.align ?? "start";
   const measured = horizontal
     ? measure(item.node, { width: item.flow, height: available }).height
     : item.size.width;
@@ -75,7 +78,7 @@ function distribution(
   free: number,
   count: number,
 ): { start: number; extra: number } {
-  switch (node.style.justify) {
+  switch (node.layout.style.justify) {
     case "center":
       return { start: Math.floor(free / 2), extra: 0 };
     case "end":

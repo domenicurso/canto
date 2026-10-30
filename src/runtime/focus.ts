@@ -1,4 +1,5 @@
-import type { Mounted, Rect } from "./tree";
+import type { Rect } from "../layout/geometry";
+import type { Mounted } from "./tree";
 
 import { contains, intersect } from "../layout/geometry";
 import { guard } from "./error-boundary";
@@ -29,11 +30,11 @@ export class Focus {
     const previous = this.current;
     this.current = node;
     if (previous) {
-      previous.focused = false;
+      previous.interaction.focused = false;
       guard(previous, () => previous.element.data.props.onBlur?.());
     }
     if (node) {
-      node.focused = true;
+      node.interaction.focused = true;
       guard(node, () => node.element.data.props.onFocus?.());
       this.reveal(node);
     }
@@ -77,16 +78,16 @@ export class Focus {
       if (ancestor.element.data.props.overlay) break;
       if (ancestor.element.data.kind === "scroll") {
         const delta =
-          node.rect.y < ancestor.inner.y
-            ? node.rect.y - ancestor.inner.y
+          node.layout.rect.y < ancestor.layout.inner.y
+            ? node.layout.rect.y - ancestor.layout.inner.y
             : Math.max(
                 0,
-                node.rect.y +
-                  node.rect.height -
-                  ancestor.inner.y -
-                  ancestor.inner.height,
+                node.layout.rect.y +
+                  node.layout.rect.height -
+                  ancestor.layout.inner.y -
+                  ancestor.layout.inner.height,
               );
-        if (delta) setScroll(ancestor, ancestor.offset + delta);
+        if (delta) setScroll(ancestor, ancestor.scrolling.offset + delta);
       }
       ancestor = ancestor.parent;
     }
@@ -101,24 +102,24 @@ export function setScroll(
   const next = Math.max(
     0,
     Math.min(
-      node.maxOffset,
+      node.scrolling.maxOffset,
       Math.floor(typeof offset === "number" ? offset : offset.y),
     ),
   );
   const x = Math.max(
     0,
     Math.min(
-      node.maxOffsetX,
+      node.scrolling.maxOffsetX,
       typeof offset === "number"
         ? props.axis === "horizontal"
           ? next
-          : node.offsetX
+          : node.scrolling.offsetX
         : Math.floor(offset.x),
     ),
   );
   if (props.offset === undefined) {
-    node.offset = next;
-    node.offsetX = x;
+    node.scrolling.offset = next;
+    node.scrolling.offsetX = x;
   }
   guard(node, () => {
     if (props.axis === "both") props.onScroll?.({ x, y: next });
@@ -137,13 +138,14 @@ export function hit(
       if (target) return target;
     }
   }
-  const own = intersect(clip, node.rect);
+  const own = intersect(clip, node.layout.rect);
   const childClip =
-    node.style.overflow === "visible" && node.element.data.kind !== "scroll"
+    node.layout.style.overflow === "visible" &&
+    node.element.data.kind !== "scroll"
       ? clip
-      : intersect(clip, node.inner);
+      : intersect(clip, node.layout.inner);
   const children = [...node.children]
-    .sort((a, b) => (a.style.zIndex ?? 0) - (b.style.zIndex ?? 0))
+    .sort((a, b) => (a.layout.style.zIndex ?? 0) - (b.layout.style.zIndex ?? 0))
     .reverse();
   for (const child of children) {
     if (child.element.data.props.overlay) continue;

@@ -40,7 +40,7 @@ let current: HookScope | undefined;
 export function enter<T>(scope: HookScope, render: () => T): T {
   const previous = current;
   current = scope;
-  scope.node.hookIndex = 0;
+  scope.node.component.hookIndex = 0;
   try {
     return render();
   } finally {
@@ -58,8 +58,8 @@ function next(kind: Hook["kind"]): {
   previous: Hook | undefined;
 } {
   const context = scope();
-  const index = context.node.hookIndex++;
-  const previous = context.node.hooks[index];
+  const index = context.node.component.hookIndex++;
+  const previous = context.node.component.hooks[index];
   if (previous && previous.kind !== kind)
     throw new Error("Hook order changed between renders.");
   return { context, index, previous };
@@ -76,7 +76,7 @@ export function useState<T>(
           value:
             typeof initial === "function" ? (initial as () => T)() : initial,
         };
-  context.node.hooks[index] = hook;
+  context.node.component.hooks[index] = hook;
   // Stable hook ordering guarantees this slot contains this call's T on subsequent renders.
   const read = (): T => hook.value as T;
   const set = (value: T | ((previous: T) => T)): void => {
@@ -116,7 +116,7 @@ export function useEffect(
   const { context, index, previous } = next("effect");
   if (previous?.kind === "effect" && equal(previous.dependencies, dependencies))
     return;
-  context.node.hooks[index] = {
+  context.node.component.hooks[index] = {
     kind: "effect",
     dependencies: dependencies?.slice(),
     cleanup: previous?.kind === "effect" ? previous.cleanup : undefined,
@@ -133,7 +133,7 @@ export function useMemo<T>(
     return previous.value as T;
   }
   const value = calculate();
-  context.node.hooks[index] = {
+  context.node.component.hooks[index] = {
     kind: "memo",
     value,
     dependencies: dependencies.slice(),
@@ -150,7 +150,7 @@ export function useApp(): AppControl {
   return scope().app;
 }
 export function commitEffects(node: Mounted): void {
-  for (const hook of node.hooks) {
+  for (const hook of node.component.hooks) {
     if (hook.kind !== "effect" || !hook.run) continue;
     if (
       !guard(node, () => {
@@ -169,7 +169,7 @@ export function commitEffects(node: Mounted): void {
 }
 export function cleanupHooks(node: Mounted): void {
   const errors: unknown[] = [];
-  for (const hook of node.hooks) {
+  for (const hook of node.component.hooks) {
     if (hook.kind !== "effect") continue;
     const cleanup = hook.cleanup;
     hook.cleanup = undefined;

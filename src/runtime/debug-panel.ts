@@ -1,7 +1,7 @@
 import type { KeyEvent, PointerEvent } from "../element/events";
+import type { Rect } from "../layout/geometry";
 import type { Screen } from "../render/screen";
 import type { ContentFrameStats, FrameStats } from "./frame-stats";
-import type { Rect } from "./tree";
 
 import { contains } from "../layout/geometry";
 import { paintDebugPanel } from "./debug-paint";

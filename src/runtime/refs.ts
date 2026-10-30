@@ -27,7 +27,7 @@ export class Refs {
       if (!callback || this.attached.has(node)) continue;
       const ref: ElementRef = {
         get rect() {
-          return { ...node.rect };
+          return { ...node.layout.rect };
         },
         focus: () => this.focus.set(node),
         scrollTo: (offset) => {

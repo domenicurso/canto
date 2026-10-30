@@ -9,7 +9,7 @@ import { bounded, dimension, edges } from "./geometry";
 
 export function content(node: Mounted): string {
   const props = node.element.data.props.input;
-  if (props) return props.value ?? node.value;
+  if (props) return props.value ?? node.editor.value;
   return node.element.data.text ?? "";
 }
 const measurements = new WeakMap<Mounted, Map<string, Size>>();
@@ -32,7 +32,7 @@ export function measure(node: Mounted, available: Size): Size {
   return size;
 }
 function measureSize(node: Mounted, available: Size): Size {
-  const s = node.style;
+  const s = node.layout.style;
   const [top, right, bottom, left] = edges(s);
   const targetWidth = Math.min(
     s.maxWidth ?? Infinity,
@@ -64,21 +64,8 @@ function measureSize(node: Mounted, available: Size): Size {
 }
 function intrinsic(node: Mounted, available: Size): Size {
   const kind = node.element.data.kind;
-  if (kind === "text" || kind === "input" || kind === "textarea") {
-    const value =
-      content(node) || node.element.data.props.input?.placeholder || "";
-    const lines = wrap(
-      value,
-      available.width,
-      kind === "input" ? { ...node.style, wrap: "none" } : node.style,
-    );
-    return {
-      width:
-        Math.max(kind === "text" ? 0 : 1, ...lines.map(width)) +
-        Number(kind === "input"),
-      height: Math.max(1, lines.length),
-    };
-  }
+  if (kind === "text" || kind === "input" || kind === "textarea")
+    return measureText(node, available);
   const scroll = node.element.data.props.scroll;
   const childAvailable = scroll
     ? {
@@ -90,7 +77,7 @@ function intrinsic(node: Mounted, available: Size): Size {
       }
     : available;
   const children = node.children.filter(
-    (child) => child.style.position !== "absolute",
+    (child) => child.layout.style.position !== "absolute",
   );
   const sizes = children.map((child) => measure(child, childAvailable));
   if (!sizes.length) return { width: 0, height: 0 };
@@ -113,9 +100,27 @@ function intrinsic(node: Mounted, available: Size): Size {
   return result;
 }
 
+function measureText(node: Mounted, available: Size): Size {
+  const { style } = node.layout;
+  const kind = node.element.data.kind;
+  const value =
+    content(node) || node.element.data.props.input?.placeholder || "";
+  const lines = wrap(
+    value,
+    available.width,
+    kind === "input" ? { ...style, wrap: "none" } : style,
+  );
+  return {
+    width:
+      Math.max(kind === "text" ? 0 : 1, ...lines.map(width)) +
+      Number(kind === "input"),
+    height: Math.max(1, lines.length),
+  };
+}
+
 function measureRow(node: Mounted, available: Size, gaps: number): Size {
   const items = allocate(
-    node.children.filter((child) => child.style.position !== "absolute"),
+    node.children.filter((child) => child.layout.style.position !== "absolute"),
     available,
     true,
   );

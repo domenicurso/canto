@@ -1,5 +1,5 @@
 import type { PixelBuffer } from "../element/pixels";
-import type { Rect } from "../runtime/tree";
+import type { Rect } from "../layout/geometry";
 import type { CellSize } from "../terminal/cell-size";
 import type { PixelImage, PixelSurface } from "./pixel-surface";
 

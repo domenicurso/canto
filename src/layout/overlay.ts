@@ -1,5 +1,6 @@
-import type { Mounted, Rect } from "../runtime/tree";
+import type { Mounted } from "../runtime/tree";
 import type { Place } from "./flow";
+import type { Rect } from "./geometry";
 
 import { overlays } from "../runtime/overlays";
 import { measure } from "./measure";
@@ -8,7 +9,7 @@ export function placeOverlays(root: Mounted, place: Place): void {
   for (const node of overlays(root)) {
     const options = node.element.data.props.overlay;
     if (!options) continue;
-    const viewport = root.rect;
+    const viewport = root.layout.rect;
     const natural = measure(node, viewport);
     const width = Math.min(viewport.width, natural.width);
     const height = Math.min(viewport.height, natural.height);

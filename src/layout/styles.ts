@@ -44,6 +44,6 @@ export function resolveStyles(node: Mounted, inherited: Style = {}): void {
     const value = style[name];
     if (value !== undefined) style[name] = Math.floor(value);
   }
-  node.style = style;
+  node.layout.style = style;
   for (const child of node.children) resolveStyles(child, style);
 }

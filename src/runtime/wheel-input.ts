@@ -22,7 +22,7 @@ export class WheelInput {
     this.timer = undefined;
     const targets = new Map<Mounted, PointerEvent>();
     for (const event of this.pending.values()) {
-      let node = hit(root, event, root.rect);
+      let node = hit(root, event, root.layout.rect);
       while (node) {
         const owner = node;
         if (!guard(owner, () => owner.element.data.props.onMouse?.(event)))

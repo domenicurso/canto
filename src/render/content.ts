@@ -1,4 +1,5 @@
-import type { Mounted, Rect } from "../runtime/tree";
+import type { Rect } from "../layout/geometry";
+import type { Mounted } from "../runtime/tree";
 import type { Screen } from "./screen";
 
 import { validatePixels } from "../element/pixels";
@@ -11,7 +12,7 @@ export function drawContent(node: Mounted, screen: Screen, clip: Rect): void {
   screen.pixelSources.delete(node);
   drawPixels(node, screen, clip);
   const draw = node.element.data.draw;
-  const area = node.inner;
+  const area = node.layout.inner;
   if (draw)
     draw({
       pixelWidth: Math.round(area.width * screen.cellSize.width),
@@ -26,7 +27,7 @@ export function drawContent(node: Mounted, screen: Screen, clip: Rect): void {
         screen.put(
           { x: area.x + x, y: area.y + y, width: area.width, height: 1 },
           sanitize(text),
-          { ...node.style, ...style },
+          { ...node.layout.style, ...style },
           clip,
         );
       },
@@ -40,13 +41,14 @@ export function drawContent(node: Mounted, screen: Screen, clip: Rect): void {
           screen.put(
             { ...bounds, y },
             " ".repeat(bounds.width),
-            { ...node.style, ...style },
+            { ...node.layout.style, ...style },
             clip,
           );
       },
     });
 }
 export function drawText(node: Mounted, screen: Screen, clip: Rect): void {
+  const { inner, style, lines } = node.layout;
   const runs = node.element.data.runs;
   if (!runs || runs.length < 2) {
     drawPlainText(node, screen, clip);
@@ -55,14 +57,13 @@ export function drawText(node: Mounted, screen: Screen, clip: Rect): void {
   const spans = runs.map((run) => ({ ...run, text: sanitize(run.text) }));
   const original = spans.map((run) => run.text).join("");
   let offset = 0;
-  for (const [row, line] of node.lines.entries()) {
-    const truncated = line.endsWith("…") && node.style.overflow === "ellipsis";
+  for (const [row, line] of lines.entries()) {
+    const truncated = line.endsWith("…") && style.overflow === "ellipsis";
     const source = truncated ? line.slice(0, -1) : line;
     const found = original.indexOf(source, offset);
     const start = found < 0 ? offset : found;
     let position = 0;
-    let x =
-      node.inner.x + textOffset(line, node.inner.width, node.style.textAlign);
+    let x = inner.x + textOffset(line, inner.width, style.textAlign);
     for (const run of spans) {
       const end = position + run.text.length;
       const part = run.text.slice(
@@ -71,9 +72,14 @@ export function drawText(node: Mounted, screen: Screen, clip: Rect): void {
       );
       if (part) {
         screen.put(
-          { x, y: node.inner.y + row, width: node.inner.width, height: 1 },
+          {
+            x,
+            y: inner.y + row,
+            width: inner.width,
+            height: 1,
+          },
           part,
-          { ...node.style, ...run.style },
+          { ...style, ...run.style },
           clip,
         );
         x += displayWidth(part);
@@ -82,9 +88,9 @@ export function drawText(node: Mounted, screen: Screen, clip: Rect): void {
     }
     if (truncated)
       screen.put(
-        { x, y: node.inner.y + row, width: 1, height: 1 },
+        { x, y: inner.y + row, width: 1, height: 1 },
         "…",
-        node.style,
+        style,
         clip,
       );
     offset = start + source.length;
@@ -92,15 +98,19 @@ export function drawText(node: Mounted, screen: Screen, clip: Rect): void {
 }
 
 function drawPlainText(node: Mounted, screen: Screen, clip: Rect): void {
-  const style = { ...node.style, ...node.element.data.runs?.[0]?.style };
-  node.lines.forEach((line, index) =>
+  const style = { ...node.layout.style, ...node.element.data.runs?.[0]?.style };
+  node.layout.lines.forEach((line, index) =>
     screen.put(
       {
-        ...node.inner,
+        ...node.layout.inner,
         x:
-          node.inner.x +
-          textOffset(line, node.inner.width, node.style.textAlign),
-        y: node.inner.y + index,
+          node.layout.inner.x +
+          textOffset(
+            line,
+            node.layout.inner.width,
+            node.layout.style.textAlign,
+          ),
+        y: node.layout.inner.y + index,
       },
       line,
       style,

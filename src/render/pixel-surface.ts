@@ -1,5 +1,6 @@
 import type { CanvasOptions, PixelBuffer } from "../element/pixels";
-import type { Mounted, Rect } from "../runtime/tree";
+import type { Rect } from "../layout/geometry";
+import type { Mounted } from "../runtime/tree";
 import type { RGB } from "../style/colors";
 import type { Cell } from "./screen";
 
@@ -68,7 +69,7 @@ export function imageSurface(
   const key = previous?.pixels?.surface ?? String(background);
   const surface = surfaces.get(key) ?? {
     source,
-    area: { ...node.inner },
+    area: { ...node.layout.inner },
     fit: node.element.data.props.canvas?.fit,
     background: previous?.pixels?.surface ?? background,
   };

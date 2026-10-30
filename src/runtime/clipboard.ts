@@ -36,7 +36,11 @@ export class ClipboardInput {
       return false;
     if (paste && !clipboard.readText) return false;
     const snapshot = node
-      ? { value: content(node), cursor: node.cursor, anchor: node.anchor }
+      ? {
+          value: content(node),
+          cursor: node.editor.cursor,
+          anchor: node.editor.anchor,
+        }
       : undefined;
     this.pending = this.pending
       .then(async () => {
@@ -46,8 +50,8 @@ export class ClipboardInput {
         if (!this.active || !node?.active || !snapshot) return;
         if (
           content(node) !== snapshot.value ||
-          node.cursor !== snapshot.cursor ||
-          node.anchor !== snapshot.anchor
+          node.editor.cursor !== snapshot.cursor ||
+          node.editor.anchor !== snapshot.anchor
         )
           return;
         if (cut || paste) {

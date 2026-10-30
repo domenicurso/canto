@@ -57,7 +57,7 @@ export class LayoutInvalidation {
     const previous = this.previous.get(node);
     let changed =
       !previous ||
-      geometry.some((key) => node.style[key] !== previous.style[key]) ||
+      geometry.some((key) => node.layout.style[key] !== previous.style[key]) ||
       props.input?.placeholder !== previous.props.input?.placeholder ||
       props.scroll?.axis !== previous.props.scroll?.axis ||
       props.scroll?.scrollbar !== previous.props.scroll?.scrollbar ||
@@ -75,7 +75,7 @@ export class LayoutInvalidation {
       changed ||= before !== after;
     }
     this.previous.set(node, {
-      style: node.style,
+      style: node.layout.style,
       props,
       children: node.children.slice(),
       content: value,
@@ -89,13 +89,14 @@ export class LayoutInvalidation {
 function textGeometry(value: string, node: Mounted): string {
   const style =
     node.element.data.kind === "input"
-      ? { ...node.style, wrap: "none" as const }
-      : node.style;
-  const lines = wrap(value, node.inner.width, style);
+      ? { ...node.layout.style, wrap: "none" as const }
+      : node.layout.style;
+  const lines = wrap(value, node.layout.inner.width, style);
   // Equal-sized replacements can repaint without moving any siblings.
-  node.lines = lines;
+  node.layout.lines = lines;
   const natural =
-    node.style.width === undefined || node.style.width === "content"
+    node.layout.style.width === undefined ||
+    node.layout.style.width === "content"
       ? Math.max(0, ...value.split("\n").map(width))
       : 0;
   return `${natural}:${Number(Boolean(value))}:${lines.length}:${Math.max(0, ...lines.map(width))}`;

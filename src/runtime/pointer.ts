@@ -12,11 +12,11 @@ export class PointerState {
   private pressed: Mounted | undefined;
   constructor(private readonly focus: Focus) {}
   clear(): void {
-    if (this.pressed) this.pressed.pressed = false;
+    if (this.pressed) this.pressed.interaction.pressed = false;
     this.pressed = undefined;
     this.hover(undefined);
     this.selection.clear();
-    if (this.focus.current) this.focus.current.anchor = null;
+    if (this.focus.current) this.focus.current.editor.anchor = null;
   }
   select(target: Mounted | undefined, event: PointerEvent): void {
     if (event.action === "press" && event.button === 0) {
@@ -39,13 +39,13 @@ export class PointerState {
   press(node: Mounted, event: PointerEvent): void {
     if (disabled(node) || event.button !== 0) return;
     this.focus.set(node);
-    node.pressed = true;
+    node.interaction.pressed = true;
     this.pressed = node;
   }
   release(target: Mounted | undefined): void {
     const pressed = this.pressed;
     if (!pressed) return;
-    pressed.pressed = false;
+    pressed.interaction.pressed = false;
     this.pressed = undefined;
     let node = target;
     while (node && node !== pressed) node = node.parent ?? undefined;
@@ -54,10 +54,10 @@ export class PointerState {
   }
   hover(target: Mounted | undefined): boolean {
     if (this.hovered[0] === target) return false;
-    for (const node of this.hovered) node.hovered = false;
+    for (const node of this.hovered) node.interaction.hovered = false;
     this.hovered = [];
     for (let node = target; node; node = node.parent ?? undefined) {
-      node.hovered = true;
+      node.interaction.hovered = true;
       this.hovered.push(node);
     }
     return true;
