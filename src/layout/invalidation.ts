@@ -1,3 +1,4 @@
+import type { ElementProps } from "../element/props";
 import type { Mounted } from "../runtime/tree";
 import type { Style } from "../style/types";
 
@@ -44,7 +45,8 @@ const geometry: readonly (keyof Style)[] = [
   "overflow",
 ];
 interface Snapshot {
-  signature: string;
+  style: Style;
+  props: ElementProps;
   children: readonly Mounted[];
   content: string;
 }
@@ -52,14 +54,14 @@ export class LayoutInvalidation {
   private readonly previous = new WeakMap<Mounted, Snapshot>();
   changed(node: Mounted): boolean {
     const props = node.element.data.props;
-    const signature = JSON.stringify([
-      geometry.map((key) => node.style[key]),
-      props.input?.placeholder,
-      [props.scroll?.axis, props.scroll?.scrollbar, props.scroll?.gutter],
-    ]);
     const previous = this.previous.get(node);
     let changed =
-      previous?.signature !== signature ||
+      !previous ||
+      geometry.some((key) => node.style[key] !== previous.style[key]) ||
+      props.input?.placeholder !== previous.props.input?.placeholder ||
+      props.scroll?.axis !== previous.props.scroll?.axis ||
+      props.scroll?.scrollbar !== previous.props.scroll?.scrollbar ||
+      props.scroll?.gutter !== previous.props.scroll?.gutter ||
       previous.children.length !== node.children.length;
     if (!changed && previous)
       changed = node.children.some(
@@ -73,7 +75,8 @@ export class LayoutInvalidation {
       changed ||= before !== after;
     }
     this.previous.set(node, {
-      signature,
+      style: node.style,
+      props,
       children: node.children.slice(),
       content: value,
     });

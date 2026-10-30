@@ -89,6 +89,8 @@ export function useState<T>(
     if (Object.is(updated, hook.value)) return;
     hook.value = updated;
     context.node.dirty = true;
+    for (let parent = context.node.parent; parent; parent = parent.parent)
+      parent.descendantsDirty = true;
     context.schedule();
   };
   hook.setter ??= set;

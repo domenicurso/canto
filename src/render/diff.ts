@@ -18,6 +18,7 @@ export function diff(previous: Screen | undefined, next: Screen): FrameOutput {
   let output = "";
   let cellsWritten = 0;
   for (let y = 0; y < next.height; y++) {
+    if (previous && next.sharesRow(previous, y)) continue;
     let end = -1;
     let style = "";
     for (let x = 0; x < next.width; x++) {

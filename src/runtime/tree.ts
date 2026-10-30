@@ -15,6 +15,7 @@ export interface Mounted {
   hooks: Hook[];
   hookIndex: number;
   dirty: boolean;
+  descendantsDirty: boolean;
   active: boolean;
   rect: Rect;
   inner: Rect;
@@ -41,6 +42,7 @@ export function mounted(element: Element, parent: Mounted | null): Mounted {
     hooks: [],
     hookIndex: 0,
     dirty: true,
+    descendantsDirty: true,
     active: true,
     rect: { x: 0, y: 0, width: 0, height: 0 },
     inner: { x: 0, y: 0, width: 0, height: 0 },

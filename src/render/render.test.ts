@@ -25,3 +25,17 @@ test("partially clipped wide characters never spill outside their clip", () => {
   a.put(clip, "🙂", {}, { ...clip, width: 1 });
   expect(a.toString().trim()).toBe("");
 });
+
+test("sparse writes and clears survive cloned and branched screens", () => {
+  const first = new Screen(10, 2);
+  first.put(clip, "first", {}, clip);
+  const second = first.clone();
+  const third = first.clone();
+  second.put({ ...clip, y: 1 }, "🙂", {}, clip);
+  third.clear({ ...clip, height: 1 });
+  first.put(clip, "later", {}, clip);
+  expect(diff(first, second).output).toContain("first");
+  expect(diff(first, second).output).toContain("🙂");
+  expect(diff(second, third).output).toContain("     ");
+  expect(diff(second, second.clone()).cellsWritten).toBe(0);
+});

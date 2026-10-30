@@ -85,6 +85,7 @@ export function maskRasterCells(screen: Screen): void {
 }
 function maskRegion(screen: Screen, rect: Rect): void {
   for (let y = rect.y; y < rect.y + rect.height; y++) {
+    screen.touchRow(y);
     for (let x = rect.x; x < rect.x + rect.width; x++) {
       const index = y * screen.width + x;
       const cell = screen.cells[index];

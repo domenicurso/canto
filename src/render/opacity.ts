@@ -50,6 +50,7 @@ export function composite(
       const top = layer.cells[index],
         bottom = screen.cells[index];
       if (!top || !bottom || top === bottom) continue;
+      screen.touchRow(y);
       const a = colors(top.style, screen.theme),
         b = colors(bottom.style, screen.theme);
       screen.cells[index] = {

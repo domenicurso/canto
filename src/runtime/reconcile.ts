@@ -51,8 +51,9 @@ export function reconcile(
   let descriptions: Element[];
   if (call) {
     if (!node.dirty && previous === element) {
-      for (const child of node.children)
+      for (const child of node.descendantsDirty ? node.children : [])
         reconcile(child, child.element, context);
+      node.descendantsDirty = false;
       return;
     }
     node.dirty = false;
@@ -65,6 +66,7 @@ export function reconcile(
     descriptions = flatten(element.data.children);
   }
   reconcileChildren(node, descriptions, context);
+  node.descendantsDirty = false;
 }
 function reconcileChildren(
   parent: Mounted,

@@ -72,6 +72,7 @@ export class TextSelection {
       )
         continue;
       const selected = selectionStyle(glyph.node);
+      screen.touchRow(glyph.y);
       for (let x = glyph.x; x < glyph.x + glyph.width; x++) {
         const index = glyph.y * screen.width + x;
         const cell = screen.cells[index];

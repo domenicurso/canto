@@ -10,6 +10,8 @@ import type { RasterPlacement } from "./raster-placement";
 import { contains } from "../layout/geometry";
 import { columns, graphemes } from "../text/columns";
 
+let rowVersion = 0;
+
 export interface Cell {
   text: string;
   style: Style;
@@ -20,6 +22,7 @@ export class Screen {
   theme?: ColorTheme;
   graphics?: GraphicsCapabilities;
   readonly cells: Cell[];
+  private readonly rowVersions: number[];
   readonly pixelSources: WeakMap<object, PixelBuffer>;
   rasters: RasterPlacement[] = [];
   readonly pixelBackgrounds: WeakMap<object, ReadonlyMap<number, RGB>>;
@@ -43,19 +46,33 @@ export class Screen {
           style: {},
           continuation: false,
         }));
+    this.rowVersions = previous
+      ? previous.rowVersions.slice()
+      : Array.from({ length: height }, () => ++rowVersion);
   }
   clone(): Screen {
     const copy = new Screen(this.width, this.height, this);
     return copy;
   }
   clear(rect: Rect): void {
-    for (let y = rect.y; y < rect.y + rect.height; y++)
+    for (let y = rect.y; y < rect.y + rect.height; y++) {
+      this.touchRow(y);
       for (let x = rect.x; x < rect.x + rect.width; x++)
         this.cells[y * this.width + x] = {
           text: " ",
           style: {},
           continuation: false,
         };
+    }
+  }
+  touchRow(y: number): void {
+    this.rowVersions[y] = ++rowVersion;
+  }
+  sharesRow(previous: Screen, y: number): boolean {
+    return (
+      this.width === previous.width &&
+      this.rowVersions[y] === previous.rowVersions[y]
+    );
   }
   get(x: number, y: number): Cell | undefined {
     return this.cells[y * this.width + x];
@@ -87,6 +104,7 @@ export class Screen {
           : style.background,
     };
     if (x < 0 || y < 0 || x + size > this.width || y >= this.height) return;
+    this.touchRow(y);
     this.eraseWide(x, y);
     if (size === 2) this.eraseWide(x + 1, y);
     this.cells[y * this.width + x] = {
