@@ -13,6 +13,9 @@ import { themeResponse } from "./theme";
 
 export class Decoder {
   private buffer = "";
+  private discardingPaste = false;
+  // Bound an abandoned or oversized paste without interpreting its tail as shortcuts.
+  private readonly pasteLimit = 1024 * 1024;
   private readonly utf8 = new StringDecoder("utf8");
   constructor(
     private readonly emit: (event: TerminalEvent) => void,
@@ -30,21 +33,24 @@ export class Decoder {
     this.parse();
   }
   flushEscape(): void {
+    if (this.pendingPaste) return;
     if (this.buffer === "\x1b") {
       this.buffer = "";
       this.emit({ type: "key", event: keyEvent("escape") });
     }
+    this.buffer = "";
+  }
+  get pendingPaste(): boolean {
+    return this.discardingPaste || this.buffer.startsWith("\x1b[200~");
+  }
+  discardPending(): void {
+    this.buffer = "";
+    this.discardingPaste = false;
   }
   private parse(): void {
     while (this.buffer) {
-      if (this.buffer.startsWith("\x1b[200~")) {
-        const end = this.buffer.indexOf("\x1b[201~");
-        if (end < 0) return;
-        this.emit({
-          type: "key",
-          event: keyEvent("paste", { text: this.buffer.slice(6, end) }),
-        });
-        this.buffer = this.buffer.slice(end + 6);
+      if (this.pendingPaste) {
+        if (!this.paste()) return;
         continue;
       }
       const length = this.buffer.startsWith("\x1b")
@@ -53,6 +59,24 @@ export class Decoder {
       if (!length) return;
       this.buffer = this.buffer.slice(length);
     }
+  }
+  private paste(): boolean {
+    const end = this.buffer.indexOf("\x1b[201~");
+    if (end < 0) {
+      if (this.discardingPaste || this.buffer.length > this.pasteLimit + 6) {
+        this.discardingPaste = true;
+        this.buffer = this.buffer.slice(-5);
+      }
+      return false;
+    }
+    if (!this.discardingPaste && end - 6 <= this.pasteLimit)
+      this.emit({
+        type: "key",
+        event: keyEvent("paste", { text: this.buffer.slice(6, end) }),
+      });
+    this.buffer = this.buffer.slice(end + 6);
+    this.discardingPaste = false;
+    return true;
   }
   private escape(): number {
     const theme = themeResponse(this.buffer);

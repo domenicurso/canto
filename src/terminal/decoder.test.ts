@@ -29,6 +29,35 @@ test("lone escape is resolved separately from incomplete CSI input", () => {
   expect(events[0]?.type === "key" && events[0].event.key).toBe("escape");
 });
 
+test("expired partial control sequences do not consume subsequent typing", () => {
+  for (const prefix of ["\x1b[", "\x1b[1;", "\x1b[<0;", "\x1bO"]) {
+    const events: TerminalEvent[] = [];
+    const decoder = new Decoder((event) => events.push(event));
+    decoder.push(Buffer.from(prefix));
+    decoder.flushEscape();
+    decoder.push(Buffer.from("hello"));
+    expect(
+      events.map((event) => event.type === "key" && event.event.key),
+    ).toEqual(["h", "e", "l", "l", "o"]);
+  }
+});
+
+test("abandoned and oversized pastes recover without leaking paste shortcuts", () => {
+  const events: TerminalEvent[] = [];
+  const decoder = new Decoder((event) => events.push(event));
+  decoder.push(Buffer.from("\x1b[200~unfinished"));
+  decoder.flushEscape();
+  expect(events).toHaveLength(0);
+  decoder.discardPending();
+  decoder.push(Buffer.from("a"));
+  decoder.push(Buffer.from("\x1b[200~" + "x".repeat(1024 * 1024 + 1)));
+  decoder.push(Buffer.from("\x03discarded\x1b[20"));
+  decoder.push(Buffer.from("1~b"));
+  expect(
+    events.map((event) => event.type === "key" && event.event.key),
+  ).toEqual(["a", "b"]);
+});
+
 test("wheel reports preserve both axes and Shift+wheel selects horizontal movement", () => {
   const events: TerminalEvent[] = [];
   const decoder = new Decoder((event) => events.push(event));

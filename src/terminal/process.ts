@@ -7,6 +7,7 @@ import { CellMetrics } from "./cell-size";
 import { clipboardOutput } from "./clipboard";
 import { Decoder } from "./decoder";
 import { graphicsQuery } from "./graphics-capabilities";
+import { InputTimeout } from "./input-timeout";
 import { Presentation } from "./presentation";
 import { TerminalColors, themeQuery } from "./theme";
 
@@ -32,8 +33,7 @@ export class ProcessTerminal implements Terminal {
   private raw = false;
   private paused = true;
   private started = false;
-  private decoder: Decoder | undefined;
-  private escapeTimer: ReturnType<typeof setTimeout> | undefined;
+  private input: InputTimeout | undefined;
   private emit: ((event: TerminalEvent) => void) | undefined;
   private origin: number | undefined;
   private readonly metrics = new CellMetrics();
@@ -49,9 +49,7 @@ export class ProcessTerminal implements Terminal {
     return this.metrics.size(this.width, this.height);
   }
   private data = (bytes: Buffer): void => {
-    this.decoder?.push(bytes);
-    clearTimeout(this.escapeTimer);
-    this.escapeTimer = setTimeout(() => this.decoder?.flushEscape(), 30);
+    this.input?.push(bytes);
   };
   private resize = (): void => {
     this.output.inline.invalidate();
@@ -68,7 +66,7 @@ export class ProcessTerminal implements Terminal {
     this.started = true;
     this.mode = mode;
     this.emit = emit;
-    this.decoder = this.createDecoder(emit);
+    this.input = new InputTimeout(this.createDecoder(emit));
     this.raw = process.stdin.isRaw ?? false;
     this.paused = process.stdin.readableFlowing !== true;
     if (process.stdin.isTTY) {
@@ -145,7 +143,7 @@ export class ProcessTerminal implements Terminal {
   async stop(): Promise<void> {
     if (!this.started) return;
     this.started = false;
-    clearTimeout(this.escapeTimer);
+    this.input?.dispose();
     process.stdin.off("data", this.data);
     process.stdout.off("resize", this.resize);
     if (process.stdin.isTTY) process.stdin.setRawMode(this.raw);

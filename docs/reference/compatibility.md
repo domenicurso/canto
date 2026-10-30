@@ -19,6 +19,8 @@ Canto targets Bun terminal sessions. Automated tests cover decoding, emulator ou
 
 Opacity blends reported terminal colors, so desktop transparency or wallpaper isn't part of the composition. Native image throughput depends on the terminal, image size, and update rate; a replacement buffer can require another upload.
 
+Incomplete escape sequences expire after 30 ms without input; only a lone Escape becomes a key event. Bracketed pastes allow a 5-second idle gap and at most 1,048,576 UTF-16 code units. An abandoned or oversized paste is discarded, so its contents cannot become application shortcuts; an oversized paste drains through its closing delimiter or idle timeout.
+
 ## Common symptoms
 
 | Symptom                         | Check and remedy                                                                                                                                                    |
