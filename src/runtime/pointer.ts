@@ -1,6 +1,7 @@
 import type { PointerEvent } from "../element/events";
 import type { Mounted } from "./tree";
 
+import { guard } from "./error-boundary";
 import { disabled, Focus } from "./focus";
 import { Selection } from "./selection";
 
@@ -49,7 +50,7 @@ export class PointerState {
     let node = target;
     while (node && node !== pressed) node = node.parent ?? undefined;
     if (node === pressed && !disabled(pressed))
-      pressed.element.data.props.button?.onPress();
+      guard(pressed, () => pressed.element.data.props.button?.onPress());
   }
   hover(target: Mounted | undefined): boolean {
     if (this.hovered[0] === target) return false;

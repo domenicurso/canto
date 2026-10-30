@@ -10,7 +10,7 @@ Import public values and types from `"canto"`; repository examples use the local
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | [Application](app.md)                 | `createApp`, `App`, `AppOptions`, `AppStatus`, `SelectionMode`, `SelectionControl`                                                                     |
 | [Hooks](hooks.md)                     | `useState`, `useEffect`, `useMemo`, `useRef`, `useApp`, `useViewport`                                                                                  |
-| [Elements](elements.md)               | `component`, `Element`, `Child`, `Component`, `text`, `row`, `column`, `box`                                                                           |
+| [Elements](elements.md)               | `component`, `errorBoundary`, `ErrorBoundaryProps`, `Element`, `Child`, `Component`, `text`, `row`, `column`, `box`                                    |
 | [Controls](controls.md)               | `button`, `input`, `textarea`, `ButtonProps`, `InputProps`                                                                                             |
 | [Collections](collections.md)         | `scroll`, `list`, `ScrollProps`, `ScrollPosition`, `ListOptions`                                                                                       |
 | [Overlays](overlays.md)               | `overlay`, `OverlayProps`                                                                                                                              |

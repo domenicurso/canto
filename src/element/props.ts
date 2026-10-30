@@ -1,3 +1,4 @@
+import type { ErrorBoundaryProps } from "./error-boundary";
 import type { ElementEvents } from "./events";
 import type { OverlayProps } from "./overlay";
 import type { CanvasOptions } from "./pixels";
@@ -37,6 +38,7 @@ export type ScrollProps = ScrollAppearance &
     | ({ axis: "both" } & ScrollControl<ScrollPosition>)
   );
 export interface ElementProps extends ElementEvents {
+  errorBoundary?: ErrorBoundaryProps;
   canvas?: CanvasOptions;
   overlay?: OverlayProps;
   input?: InputProps;

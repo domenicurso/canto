@@ -4,6 +4,7 @@ import type { Mounted } from "./tree";
 import { content } from "../layout/measure";
 import { boundary } from "../text/navigation";
 import { navigateEditor } from "./editor-navigation";
+import { guard } from "./error-boundary";
 
 export function edit(node: Mounted, event: KeyEvent): boolean {
   const props = node.element.data.props.input;
@@ -12,7 +13,7 @@ export function edit(node: Mounted, event: KeyEvent): boolean {
   node.cursor = Math.min(node.cursor, value.length);
   if (navigateEditor(node, value, event)) return true;
   if (event.key === "enter" && node.element.data.kind === "input") {
-    props.onSubmit?.(value);
+    guard(node, () => props.onSubmit?.(value));
     return true;
   }
   if (props.readOnly) return false;
@@ -39,6 +40,6 @@ function change(node: Mounted, value: string, event: KeyEvent): boolean {
   node.anchor = null;
   const props = node.element.data.props.input;
   if (props?.value === undefined) node.value = next;
-  props?.onChange?.(next);
+  guard(node, () => props?.onChange?.(next));
   return true;
 }

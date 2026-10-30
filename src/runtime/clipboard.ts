@@ -6,6 +6,7 @@ import type { Mounted } from "./tree";
 import { content } from "../layout/measure";
 import { keyEvent } from "../terminal/events";
 import { edit } from "./editing";
+import { captureBoundary } from "./error-boundary";
 
 export class ClipboardInput {
   private active = true;
@@ -55,7 +56,10 @@ export class ClipboardInput {
           this.access.schedule();
         }
       })
-      .catch(this.access.fail);
+      .catch((error: unknown) => {
+        if (!this.active) return;
+        if (!node || !captureBoundary(node, error)) this.access.fail(error);
+      });
     return true;
   }
   dispose(): void {

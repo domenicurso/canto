@@ -33,6 +33,37 @@ export const Counter = component(({ name }: { name: string }) => {
 
 Call `Counter({ name: "Builds" }).key("builds")` in a view. Type and sibling key preserve state through reordering; removal unmounts it. Styles apply to the component's wrapper, which has the normal box model. Plain composition helpers don't create a state boundary.
 
+## errorBoundary and ErrorBoundaryProps
+
+```ts
+errorBoundary(
+  render: () => Child,
+  fallback: (error: unknown, reset: () => void) => Child,
+): Element
+interface ErrorBoundaryProps {
+  fallback: (error: unknown, reset: () => void) => Child;
+}
+```
+
+A boundary catches descendant component rendering, synchronous input callbacks, effect setup/replacement, ref attachment, and clipboard-operation failures. It unmounts the failed content and renders `fallback` with the original thrown value. Other panes stay mounted. Both callbacks own separate component state and can use hooks. Calling `reset()` unmounts the fallback and remounts content with fresh hooks; callbacks from an older recovery or an unmounted boundary do nothing.
+
+A failing fallback propagates to the next healthy outer boundary. Unhandled errors still reject `run()` after terminal cleanup. Unmount cleanup, layout, canvas painting, terminal I/O, and arbitrary asynchronous callbacks remain session failures or the application's responsibility; a boundary cannot repair those resources. Handle asynchronous work inside the effect or callback that owns it and publish errors through state.
+
+```ts
+import { button, errorBoundary, text } from "canto";
+
+export function RecoverablePane() {
+  return errorBoundary(
+    () => text("Pane content"),
+    (error, reset) =>
+      button(
+        error instanceof Error ? `Retry: ${error.message}` : "Retry pane",
+        reset,
+      ),
+  );
+}
+```
+
 ## Factories
 
 | Factory  | Parameters             | Returns   | Notes           |

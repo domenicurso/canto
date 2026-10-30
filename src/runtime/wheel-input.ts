@@ -1,6 +1,7 @@
 import type { PointerEvent } from "../element/events";
 import type { Mounted } from "./tree";
 
+import { guard } from "./error-boundary";
 import { hit } from "./focus";
 
 /** Coalesce trackpad reports before hit testing and applying a frame's two-axis displacement. */
@@ -23,7 +24,9 @@ export class WheelInput {
     for (const event of this.pending.values()) {
       let node = hit(root, event, root.rect);
       while (node) {
-        node.element.data.props.onMouse?.(event);
+        const owner = node;
+        if (!guard(owner, () => owner.element.data.props.onMouse?.(event)))
+          break;
         if (node.element.data.kind === "scroll") {
           targets.set(node, combine(targets.get(node), event));
           break;

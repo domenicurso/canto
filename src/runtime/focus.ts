@@ -1,6 +1,7 @@
 import type { Mounted, Rect } from "./tree";
 
 import { contains, intersect } from "../layout/geometry";
+import { guard } from "./error-boundary";
 import { overlays, inside } from "./overlays";
 import { walk } from "./tree";
 
@@ -29,11 +30,11 @@ export class Focus {
     this.current = node;
     if (previous) {
       previous.focused = false;
-      previous.element.data.props.onBlur?.();
+      guard(previous, () => previous.element.data.props.onBlur?.());
     }
     if (node) {
       node.focused = true;
-      node.element.data.props.onFocus?.();
+      guard(node, () => node.element.data.props.onFocus?.());
       this.reveal(node);
     }
     this.schedule();
@@ -119,8 +120,10 @@ export function setScroll(
     node.offset = next;
     node.offsetX = x;
   }
-  if (props.axis === "both") props.onScroll?.({ x, y: next });
-  else props.onScroll?.(props.axis === "horizontal" ? x : next);
+  guard(node, () => {
+    if (props.axis === "both") props.onScroll?.({ x, y: next });
+    else props.onScroll?.(props.axis === "horizontal" ? x : next);
+  });
 }
 export function hit(
   node: Mounted,

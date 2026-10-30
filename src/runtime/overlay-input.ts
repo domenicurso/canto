@@ -3,6 +3,7 @@ import type { Focus } from "./focus";
 import type { Mounted } from "./tree";
 
 import { contains } from "../layout/geometry";
+import { guard } from "./error-boundary";
 import { focusable } from "./focus";
 import { inside, overlays } from "./overlays";
 import { walk } from "./tree";
@@ -41,15 +42,17 @@ export class OverlayInput {
     }
   }
   key(event: KeyEvent): boolean {
-    const top = this.layers.at(-1)?.element.data.props.overlay;
+    const owner = this.layers.at(-1);
+    const top = owner?.element.data.props.overlay;
     if (
+      !owner ||
       event.key !== "escape" ||
       !top?.onDismiss ||
       top.dismissOnEscape === false
     )
       return false;
     event.preventDefault();
-    top.onDismiss();
+    guard(owner, () => top.onDismiss?.());
     return true;
   }
   mouse(event: PointerEvent): boolean {
@@ -61,7 +64,7 @@ export class OverlayInput {
         options?.onDismiss &&
         options.dismissOnOutside !== false
       ) {
-        options.onDismiss();
+        guard(top, () => options.onDismiss?.());
         return true;
       }
       return Boolean(this.focus.scope);

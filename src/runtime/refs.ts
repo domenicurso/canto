@@ -2,6 +2,7 @@ import type { ElementRef } from "../element/events";
 import type { Focus } from "./focus";
 import type { Mounted } from "./tree";
 
+import { guard } from "./error-boundary";
 import { setScroll } from "./focus";
 import { walk } from "./tree";
 
@@ -35,7 +36,7 @@ export class Refs {
         },
       };
       this.attached.set(node, callback);
-      callback(ref);
+      guard(node, () => callback(ref));
     }
   }
 }

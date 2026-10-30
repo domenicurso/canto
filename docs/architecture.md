@@ -25,7 +25,7 @@ Descriptions depend on style and element contracts. Runtime orchestrates layout,
 3. Style resolution determines geometry invalidation. Layout reuses matching constraints; offset-only scrolling repositions measured content.
 4. Retained paint recomposes damaged rows through clipping and stacking, then prepares rasters and diffs cells. The inspector composites above content.
 5. The adapter presents with backpressure. Refs attach and effects commit after successful output; an effect can schedule another frame.
-6. Shutdown waits for output, disposes input ownership, clears focus, unmounts effects and refs, and stops the terminal. Render, event, effect, or write failures reject `run()` after cleanup; the first recorded failure is retained.
+6. Shutdown waits for output, disposes input ownership, clears focus, unmounts effects and refs, and stops the terminal. Healthy component error boundaries replace failed descendant renders, callbacks, and effects with a fallback and release their content before retry. Unhandled errors, unmount cleanup, layout, paint, or write failures reject `run()` after cleanup; the first recorded session failure is retained.
 
 ## Extension points
 

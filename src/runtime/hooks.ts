@@ -3,6 +3,9 @@ import type { DebugControl } from "./debug-panel";
 import type { SelectionControl } from "./selection-mode";
 import type { Mounted } from "./tree";
 
+import { guard } from "./error-boundary";
+import { markDirty } from "./tree";
+
 export type DependencyList = readonly unknown[];
 export type Hook = StateHook | EffectHook | MemoHook;
 interface StateHook {
@@ -88,9 +91,7 @@ export function useState<T>(
         : value;
     if (Object.is(updated, hook.value)) return;
     hook.value = updated;
-    context.node.dirty = true;
-    for (let parent = context.node.parent; parent; parent = parent.parent)
-      parent.descendantsDirty = true;
+    markDirty(context.node);
     context.schedule();
   };
   hook.setter ??= set;
@@ -151,13 +152,18 @@ export function useApp(): AppControl {
 export function commitEffects(node: Mounted): void {
   for (const hook of node.hooks) {
     if (hook.kind !== "effect" || !hook.run) continue;
-    const run = hook.run;
-    hook.run = undefined;
-    const cleanup = hook.cleanup;
-    hook.cleanup = undefined;
-    cleanup?.();
-    const result = run();
-    if (typeof result === "function") hook.cleanup = result;
+    if (
+      !guard(node, () => {
+        const run = hook.run;
+        hook.run = undefined;
+        const cleanup = hook.cleanup;
+        hook.cleanup = undefined;
+        cleanup?.();
+        const result = run?.();
+        if (typeof result === "function") hook.cleanup = result;
+      })
+    )
+      return;
   }
   for (const child of node.children) commitEffects(child);
 }

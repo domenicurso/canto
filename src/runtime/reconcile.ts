@@ -3,6 +3,7 @@ import type { AppControl } from "./hooks";
 import type { Mounted } from "./tree";
 
 import { flatten } from "../element/node";
+import { boundaryContent, captureOwnBoundary } from "./error-boundary";
 import { cleanupHooks, enter } from "./hooks";
 import { mounted } from "./tree";
 
@@ -45,6 +46,18 @@ export function reconcile(
   element: Element,
   context: ReconcileContext,
 ): void {
+  try {
+    reconcileNode(node, element, context);
+  } catch (error) {
+    if (!captureOwnBoundary(node, error)) throw error;
+    reconcileNode(node, element, context);
+  }
+}
+function reconcileNode(
+  node: Mounted,
+  element: Element,
+  context: ReconcileContext,
+): void {
   const previous = node.element;
   node.element = element;
   const call = element.data.call;
@@ -58,7 +71,17 @@ export function reconcile(
     }
     node.dirty = false;
     const previousCount = node.hooks.length;
-    descriptions = flatten([enter({ node, ...context }, call.render)]);
+    descriptions = flatten([
+      enter({ node, ...context }, () =>
+        boundaryContent(node, call.render, {
+          schedule: context.schedule,
+          release: () => {
+            for (const child of node.children) unmount(child);
+            node.children = [];
+          },
+        }),
+      ),
+    ]);
     if (node.rendered && node.hookIndex !== previousCount)
       throw new Error("Hook count changed between renders.");
     node.rendered = true;

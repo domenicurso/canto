@@ -21,4 +21,6 @@ column(
 
 `useState` supports direct values, lazy initialization, and functional updates. Writes coalesce into scheduled frames. Updates to a child component do not execute its unchanged ancestors. `useMemo`, `useRef`, and `useEffect` provide memoization, stable references, and external resource ownership. Effects run after output commits and clean up before replacement or unmount; dependency arrays use `Object.is` comparisons.
 
+Wrap an independent pane with `errorBoundary(() => Pane(), (error, reset) => Retry({ error, reset }))` to recover from its component, callback, or effect failure. The fallback replaces only that pane; `reset()` remounts it with fresh state. `Pane` and `Retry` in this fragment are application components. See [boundary contracts](../api/elements.md#errorboundary-and-errorboundaryprops) for the failure types that remain session-wide.
+
 See [hook signatures](../api/hooks.md), [element identity](../api/elements.md), and the [effect-driven log viewer](../../examples/logs.ts).

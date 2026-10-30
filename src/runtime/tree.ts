@@ -68,3 +68,9 @@ export function mounted(element: Element, parent: Mounted | null): Mounted {
 export function walk(root: Mounted): Mounted[] {
   return [root, ...root.children.flatMap(walk)];
 }
+
+export function markDirty(node: Mounted): void {
+  node.dirty = true;
+  for (let parent = node.parent; parent; parent = parent.parent)
+    parent.descendantsDirty = true;
+}

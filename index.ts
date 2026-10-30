@@ -10,6 +10,8 @@ export {
 } from "./src/runtime/hooks";
 export { component, Element } from "./src/element/node";
 export type { Child, Component } from "./src/element/node";
+export { errorBoundary } from "./src/element/error-boundary";
+export type { ErrorBoundaryProps } from "./src/element/error-boundary";
 export {
   canvas,
   text,

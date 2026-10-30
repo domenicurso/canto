@@ -6,6 +6,7 @@ import type { SelectionMode } from "./selection-mode";
 import type { Mounted } from "./tree";
 
 import { ClipboardInput } from "./clipboard";
+import { guard } from "./error-boundary";
 import { Focus, hit, keyboardRoot } from "./focus";
 import { defaultKey } from "./keyboard-defaults";
 import { OverlayInput } from "./overlay-input";
@@ -69,16 +70,25 @@ export class InputRouter {
     let clipboardHandled = false;
     let node = this.focus.current ?? keyboardRoot(root);
     while (node) {
-      node.element.data.props.onKey?.(event);
+      const owner = node;
       if (
-        !event.defaultPrevented &&
-        this.clipboard.key(this.focus.current, event)
-      ) {
-        clipboardHandled = true;
-        event.preventDefault();
-      }
-      if (!event.defaultPrevented && defaultKey(node, event, this.scrolling))
-        event.preventDefault();
+        !guard(owner, () => {
+          owner.element.data.props.onKey?.(event);
+          if (
+            !event.defaultPrevented &&
+            this.clipboard.key(this.focus.current, event)
+          ) {
+            clipboardHandled = true;
+            event.preventDefault();
+          }
+          if (
+            !event.defaultPrevented &&
+            defaultKey(owner, event, this.scrolling)
+          )
+            event.preventDefault();
+        })
+      )
+        break;
       if (event.propagationStopped) break;
       if (!node.parent || node === this.focus.scope) break;
       node = node.parent;
@@ -153,7 +163,7 @@ export class InputRouter {
     for (let node = target; node; node = node.parent ?? undefined) {
       const handler = node.element.data.props.onMouse;
       if (handler) {
-        handler(event);
+        if (!guard(node, () => handler(event))) return;
       }
       if (
         event.action === "press" &&
