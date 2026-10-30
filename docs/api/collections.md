@@ -44,15 +44,21 @@ Vertical scrolling measures unbounded height; horizontal scrolling unbounded wid
 ```ts
 list<T>(items: readonly T[], options: ListOptions<T>): Element
 interface ListOptions<T> {
-  height: number;
-  itemHeight: number;
+  height: number | "fill";
+  itemHeight: number | ((item: T, index: number) => number);
   key: (item: T) => string | number;
   render: (item: T, index: number) => Child;
+  activeIndex?: number;
+  onActiveChange?: (index: number) => void;
 }
 ```
 
-`height` is viewport height and `itemHeight` is fixed row height in cells. Both must be positive integers or construction throws. `key` supplies stable sibling identity and `render` describes a mounted row. Width fills available space. The list owns vertical scrolling and mounts visible rows plus one overscan row on each side.
+`height` is the viewport height in cells, or `"fill"` to measure the bounded parent allocation after layout and resize. Numeric heights and every `itemHeight` result must be positive safe integers. A numeric `itemHeight` gives uniform rows; a callback supplies each row's height without mounting it. Return enough cells for the row's wrapped content, using the available content width when calculating wrapping. The list does not infer heights from rendered content.
 
-Off-screen rows unmount their hooks and effects. Keep durable item state in a parent or dataset so scrolling doesn't reset it. Variable-height rows aren't supported. Use `.map()` for small collections or when all rows must remain mounted.
+`key` supplies stable sibling identity and `render` describes a mounted row. Width fills available space. The list owns vertical scrolling and mounts visible rows plus one overscan row on each side. Variable row positions are indexed when the items array or height callback changes; replace arrays rather than mutating them. Keep height callbacks stable when their inputs haven't changed. Fixed row lookup needs no per-item index.
+
+Supply `onActiveChange` to enable row navigation with Up/Down, Home/End, and Page Up/Down. Selection can reach unmounted rows and reveals the selected row. `activeIndex` makes selection controlled; otherwise it starts unset and the list owns it. Use the callback and row index to style selection or update a detail pane. Child editors retain their normal editing shortcuts. Without selection options, keys keep ordinary cell scrolling. Reordering items requires the application to update a controlled index if selection should follow an item key.
+
+Off-screen rows unmount their hooks and effects. Keep durable item state in a parent or dataset so scrolling doesn't reset it. Use `.map()` for small collections or when all rows must remain mounted.
 
 See [the scrolling guide](../guides/scrolling.md), [large-list example](../../examples/virtual-list.ts), and [scrollbar styles](styles.md).

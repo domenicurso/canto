@@ -21,7 +21,7 @@ Native wheel reports move in terminal-provided cell units; terminals that normal
 
 Physics defaults to `"instant"`, so Canto adds no motion after input stops. An object enables inertia: `friction` is the positive exponential decay rate per second (default 8), and `momentum` scales the added travel (default 2; zero disables it). Existing trackpad momentum can combine with this effect, so leave physics off when the terminal already supplies the desired motion. The scrollbars demo toggles inertia with I and bars with B.
 
-`list()` mounts visible rows plus one row of overscan on each side. Row heights must be fixed, positive integers. Off-screen rows unmount; keep persistent item state in the dataset or a parent component. Ordinary `.map()` intentionally evaluates every item and is appropriate for small collections.
+`list()` mounts visible rows plus one row of overscan on each side. Row heights can be a positive integer or an `itemHeight(item, index)` callback. Use `height: "fill"` inside a bounded parent to follow its allocation. Supply `onActiveChange` and optionally a controlled `activeIndex` for keyboard selection across the full dataset, including unmounted rows. Off-screen rows unmount; keep persistent item state in the dataset or a parent component. Ordinary `.map()` intentionally evaluates every item and is appropriate for small collections.
 
 `useViewport()` returns `{ width, height }` in cells and rerenders its component on resize. Use it to stack panes or reduce padding under tight constraints; `examples/layout.ts` demonstrates both. Inline output is clipped to the available terminal height and repainted when the viewport changes.
 
