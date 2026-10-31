@@ -66,7 +66,7 @@ export function GenerateText({
     onKey,
     animated,
   );
-  return row(text("❯ ").color("magenta"), content)
+  return row(text("$ ").faint(), content)
     .height(1)
     .width("fill")
     .overflow("clip")
