@@ -1,8 +1,11 @@
 import { expect, test } from "bun:test";
 
+import type { ColorTheme } from "../index";
+import type { Screen } from "../src/render/screen";
 import type { Generation } from "./ai-line";
 
 import { createApp, keyEvent, MemoryTerminal } from "../index";
+import { rgb } from "../src/style/colors";
 import { GenerateText } from "./ai";
 import { generationLine, revealAt } from "./ai-line";
 
@@ -19,8 +22,14 @@ test("responses wait for a new shimmer, including readiness during a pass", () =
   expect(revealAt(ready(2400))).toBe(3950);
 });
 
-async function frame(generation: Generation, time: number, width = 60) {
+async function frame(
+  generation: Generation,
+  time: number,
+  width = 60,
+  theme?: ColorTheme,
+): Promise<Screen | undefined> {
   const terminal = new MemoryTerminal(width, 2);
+  terminal.theme = theme;
   const app = createApp(() => generationLine(generation, time, width), {
     terminal,
     mode: "inline",
@@ -70,6 +79,25 @@ test("the magenta shimmer repeats and reveals only on the next pass", async () =
   expect(middle?.toString()).toContain("echo");
   expect(middle?.toString()).toContain("command...");
   expect((await frame(generation, 3100))?.toString()).toContain("echo ready");
+});
+
+test("the shimmer blends the terminal's white over its magenta palette color", async () => {
+  const theme: ColorTheme = {
+    foreground: [200, 180, 160],
+    background: [10, 20, 30],
+    palette: { 5: [120, 40, 160], 7: [240, 220, 200] },
+  };
+  const generation = { prompt: "request", startedAt: 0 };
+  const screen = await frame(generation, 650 + (10 / 29) * 850, 60, theme);
+  expect(rgb(screen?.get(6, 0)?.style.foreground, theme)).toEqual([
+    240, 220, 200,
+  ]);
+  expect(rgb(screen?.get(4, 0)?.style.foreground, theme)).toEqual([
+    180, 130, 180,
+  ]);
+  expect(screen?.get(15, 0)?.style.foreground).toBe("magenta");
+  const initial = await frame(generation, 0, 60, theme);
+  expect(initial?.get(0, 0)?.style.foreground).toBeUndefined();
 });
 
 test("the animation clips wide graphemes to one terminal line", async () => {

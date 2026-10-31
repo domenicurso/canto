@@ -47,7 +47,7 @@ export function generationLine(
   if (now >= reveal) return wipe(message, output, progress, true);
   return glyphs(message, (x) => {
     const glow = highlight(x, progress, size);
-    return { opacity: 0.7 + glow * 0.3, glow };
+    return { opacity: 1, glow };
   });
 }
 
@@ -89,21 +89,22 @@ function glyphs(
   return overlay(
     graphemes(value).map((glyph) => {
       const { opacity, glow } = appearance(x);
-      const color =
+      const content =
         glow === undefined
-          ? undefined
-          : ([
-              210 + Math.round(45 * glow),
-              75 + Math.round(155 * glow),
-              235 + Math.round(20 * glow),
-            ] as const);
-      const cell = text(glyph)
+          ? text(glyph)
+          : overlay(
+              text(glyph).color("magenta"),
+              text(glyph).color("white").opacity(glow),
+            );
+      const cell = content
         .position("absolute")
         .left(x)
         .top(0)
+        .width(columns(glyph))
+        .height(1)
         .opacity(opacity);
       x += columns(glyph);
-      return color ? cell.color(color) : cell;
+      return cell;
     }),
   )
     .height(1)
