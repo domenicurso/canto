@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, spyOn, test } from "bun:test";
 
 import type { ColorTheme } from "../index";
 import type { Screen } from "../src/render/screen";
@@ -7,10 +7,33 @@ import type { Generation } from "./ai-line";
 import { createApp, keyEvent, MemoryTerminal } from "../index";
 import { rgb } from "../src/style/colors";
 import { GenerateText } from "./ai";
-import { generationLine, revealAt } from "./ai-line";
+import { generationLine, revealAt, startGeneration } from "./ai-line";
+
+test("each generation randomly picks its message once", () => {
+  const random = spyOn(Math, "random");
+  try {
+    random
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(0.5)
+      .mockReturnValueOnce(1 - Number.EPSILON);
+    const first = startGeneration("request", 0);
+    const second = startGeneration("request", 100);
+    const third = startGeneration("request", 200);
+    expect(first.message).toBe("Working on it…");
+    expect(second.message).toBe("Working out the details…");
+    expect(third.message).toBe("Almost have it…");
+    expect(random).toHaveBeenCalledTimes(3);
+  } finally {
+    random.mockRestore();
+  }
+});
 
 test("responses wait for a new shimmer, including readiness during a pass", () => {
-  const generation = { prompt: "request", startedAt: 100 };
+  const generation = {
+    message: "Generating command...",
+    prompt: "request",
+    startedAt: 100,
+  };
   expect(revealAt(generation)).toBe(Infinity);
   const ready = (readyAt: number): Generation => ({
     ...generation,
@@ -45,7 +68,11 @@ async function frame(
 }
 
 test("the wipe moves left to right and fades characters using opacity", async () => {
-  const generation = { prompt: "xxxxxxxxxxxxxxxxxxxx", startedAt: 0 };
+  const generation = {
+    message: "Generating command...",
+    prompt: "xxxxxxxxxxxxxxxxxxxx",
+    startedAt: 0,
+  };
   expect((await frame(generation, 0))?.toString()).toContain(generation.prompt);
   const middle = await frame(generation, 325);
   expect(middle?.toString()).toContain("Generat");
@@ -60,6 +87,7 @@ test("the wipe moves left to right and fades characters using opacity", async ()
 
 test("the magenta shimmer repeats and reveals only on the next pass", async () => {
   const generation: Generation = {
+    message: "Generating command...",
     prompt: "request",
     startedAt: 0,
     response: { text: "echo ready", readyAt: 1200 },
@@ -87,7 +115,11 @@ test("the shimmer blends white over the terminal's magenta palette color", async
     background: [10, 20, 30],
     palette: { 5: [120, 40, 160], 7: [240, 220, 200] },
   };
-  const generation = { prompt: "request", startedAt: 0 };
+  const generation = {
+    message: "Generating command...",
+    prompt: "request",
+    startedAt: 0,
+  };
   const screen = await frame(generation, 650 + (10 / 29) * 850, 60, theme);
   expect(rgb(screen?.get(6, 0)?.style.foreground, theme)).toEqual([
     255, 255, 255,
@@ -101,7 +133,11 @@ test("the shimmer blends white over the terminal's magenta palette color", async
 });
 
 test("the animation clips wide graphemes to one terminal line", async () => {
-  const generation = { prompt: "界👩‍💻é hello", startedAt: 0 };
+  const generation = {
+    message: "Generating command...",
+    prompt: "界👩‍💻é hello",
+    startedAt: 0,
+  };
   const screen = await frame(generation, 0, 5);
   expect(screen?.toString().split("\n")[0]).toBe("界👩‍💻é");
   expect(screen?.toString().split("\n")[1]?.trim() ?? "").toBe("");

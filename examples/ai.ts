@@ -10,7 +10,12 @@ import {
   useState,
   useViewport,
 } from "../index";
-import { generationLine, revealAt, shimmerDuration } from "./ai-line";
+import {
+  generationLine,
+  revealAt,
+  shimmerDuration,
+  startGeneration,
+} from "./ai-line";
 
 interface AIProps {
   generate?: (prompt: string) => Promise<string>;
@@ -49,9 +54,9 @@ export function GenerateText({
       return;
     event.preventDefault();
     event.stopPropagation();
-    const startedAt = performance.now();
-    setNow(startedAt);
-    setState({ phase: "generating", generation: { prompt: draft, startedAt } });
+    const generation = startGeneration(draft, performance.now());
+    setNow(generation.startedAt);
+    setState({ phase: "generating", generation });
   };
   const animated =
     state.phase === "generating"

@@ -6,7 +6,23 @@ import { columns, graphemes, take, width } from "../src/text/columns";
 export const inputWipe = 650;
 export const shimmerDuration = 850;
 const shimmerPeriod = 1600;
-const label = "Generating command...";
+const messages = [
+  "Working on it…",
+  "Putting it together…",
+  "Finding the right words…",
+  "Thinking in shell…",
+  "Sorting out the flags…",
+  "Connecting the dots…",
+  "Checking the syntax…",
+  "Working out the details…",
+  "Taking a closer look…",
+  "Getting there…",
+  "A little more thought…",
+  "Finding a way…",
+  "Making it fit…",
+  "Lining things up…",
+  "Almost have it…",
+] as const;
 
 export interface Response {
   text: string;
@@ -15,8 +31,15 @@ export interface Response {
 
 export interface Generation {
   prompt: string;
+  message: string;
   startedAt: number;
   response?: Response;
+}
+
+export function startGeneration(prompt: string, startedAt: number): Generation {
+  // Math.random() is in [0, 1), so this index always belongs to the nonempty list.
+  const message = messages[Math.floor(Math.random() * messages.length)]!;
+  return { prompt, message, startedAt };
 }
 
 export function revealAt(generation: Generation): number {
@@ -35,7 +58,7 @@ export function generationLine(
 ): Element {
   const prompt = take(generation.prompt, available);
   const output = take(generation.response?.text ?? "", available);
-  const message = take(label, available);
+  const message = take(generation.message, available);
   const elapsed = now - generation.startedAt;
   const reveal = revealAt(generation);
   const size = Math.max(width(message), width(output));
