@@ -82,7 +82,7 @@ test.each(["\x1b[1;3C\x1b[1;4C", "\x1b[1;5C\x1b[1;6C", "\x1bf\x1bF"])(
     const decoder = new Decoder((event) => terminal.dispatch(event));
     try {
       await Bun.sleep(0);
-      for (const byte of Buffer.from(movement + "!"))
+      for (const byte of Buffer.from("\x1b[1~" + movement + "!"))
         decoder.push(new Uint8Array([byte]));
       await app.flush();
       expect(result).toBe("one! 界 two");

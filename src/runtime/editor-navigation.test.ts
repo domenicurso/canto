@@ -30,6 +30,7 @@ async function edited(
   const running = app.run();
   try {
     await Bun.sleep(0);
+    terminal.dispatch({ type: "key", event: keyEvent("home", { ctrl: true }) });
     for (const event of actions) terminal.dispatch({ type: "key", event });
     await app.flush();
     return result;

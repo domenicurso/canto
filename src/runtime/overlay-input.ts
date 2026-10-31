@@ -28,7 +28,7 @@ export class OverlayInput {
       if (this.opened.has(node)) continue;
       this.opened.set(node, this.focus.current);
       if (node.element.data.props.overlay?.focus === "first")
-        this.focus.set(walk(node).find(focusable));
+        this.focus.set(walk(node).find(focusable), "automatic");
     }
     if (modal && !inside(this.focus.current, modal)) {
       const controls = walk(modal).filter(focusable);
@@ -38,6 +38,7 @@ export class OverlayInput {
           : (controls.find((node) => node.element.data.props.autoFocus) ??
               controls.find((node) => node !== modal) ??
               modal),
+        "automatic",
       );
     }
   }

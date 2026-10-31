@@ -4,7 +4,7 @@
 
 ```ts
 input({ value: query, onChange: setQuery, placeholder: "Search…" }).autoFocus();
-input({ defaultValue: "untitled", onSubmit: save });
+input({ defaultValue: "untitled", onSubmit: save }).autoFocus({ select: true });
 textarea({ value: notes, onChange: setNotes }).width("fill").height(8);
 ```
 
@@ -12,7 +12,7 @@ Controlled values require `onChange`; uncontrolled values accept `defaultValue`.
 
 Process terminals enable enhanced keyboard disambiguation when supported. Ghostty on macOS commonly reports Alt+Left/Right as Alt+B/F through its default bindings; these have the same word-navigation behavior. The terminal and OS must forward a chord for Canto to receive it. See [keyboard compatibility](../reference/compatibility.md#keyboard-protocols-and-terminal-shortcuts) when a modifier is missing or a key produces no event.
 
-Buttons, editors, and scrolling regions participate in Tab navigation. `.focusable()`, `.tabIndex()`, `.autoFocus()`, `.onFocus()`, and `.onBlur()` customize it. Negative tab indexes permit programmatic focus while excluding Tab traversal. `.ref()` receives a mounted handle with `focus()`, `scrollTo()`, and a live `rect`; it receives `null` when detached.
+Buttons, editors, and scrolling regions participate in Tab navigation. `.focusable()`, `.tabIndex()`, `.autoFocus()`, `.onFocus()`, and `.onBlur()` customize it. Autofocused inputs and textareas place the cursor at the end; `.autoFocus({ select: true })` also selects the entire value so typing replaces it. `.autoFocus(false)` disables automatic focus. These options apply when focus is assigned automatically, so later Tab or programmatic focus preserves the editor position. Negative tab indexes permit programmatic focus while excluding Tab traversal. `.ref()` receives a mounted handle with `focus()`, `scrollTo()`, and a live `rect`; it receives `null` when detached.
 
 `.onKey()` bubbles structured events through ancestors. `preventDefault()` suppresses default editing or activation; `stopPropagation()` stops bubbling. Buttons activate on Enter, Space, or pointer release inside the pressed button. `.onMouse()` exposes pointer events, and `.hovered()` styles their ancestors. Inline mouse coordinates require a terminal cursor-position reply; keyboard operation remains available if the terminal does not reply.
 

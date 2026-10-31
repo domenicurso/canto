@@ -81,16 +81,16 @@ export function RecoverablePane() {
 
 `Element` extends `StyleBuilder`. Fluent methods return new descriptions; calling `.width(20)` without using its return value doesn't mutate the element.
 
-| Method                    | Argument type                           | Notes                        |
-| ------------------------- | --------------------------------------- | ---------------------------- |
-| `key`                     | `string \| number`                      | Sibling identity             |
-| `onKey`                   | `(event: KeyEvent) => void`             | Bubbles                      |
-| `onMouse`                 | `(event: PointerEvent) => void`         |                              |
-| `onFocus`, `onBlur`       | `() => void`                            |                              |
-| `ref`                     | `(element: ElementRef \| null) => void` | After commit; null on detach |
-| `focusable(value = true)` | `boolean`                               |                              |
-| `tabIndex`                | `number`                                | Negative: programmatic only  |
-| `autoFocus(value = true)` | `boolean`                               |                              |
+| Method                    | Argument type                           | Notes                                                    |
+| ------------------------- | --------------------------------------- | -------------------------------------------------------- |
+| `key`                     | `string \| number`                      | Sibling identity                                         |
+| `onKey`                   | `(event: KeyEvent) => void`             | Bubbles                                                  |
+| `onMouse`                 | `(event: PointerEvent) => void`         |                                                          |
+| `onFocus`, `onBlur`       | `() => void`                            |                                                          |
+| `ref`                     | `(element: ElementRef \| null) => void` | After commit; null on detach                             |
+| `focusable(value = true)` | `boolean`                               |                                                          |
+| `tabIndex`                | `number`                                | Negative: programmatic only                              |
+| `autoFocus(value = true)` | `boolean \| AutoFocusOptions`           | Editors start at the end; `{ select: true }` selects all |
 
 Buttons, editors, and scroll regions have built-in focus eligibility. See [events and refs](events.md) and [style methods](styles.md).
 

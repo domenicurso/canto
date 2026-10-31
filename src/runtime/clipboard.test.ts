@@ -60,7 +60,7 @@ test("delayed paste does not overwrite newer edits or write to an unmounted edit
     finish?.("stale");
     await Bun.sleep(0);
     await app.flush();
-    expect(terminal.screen?.toString()).toContain("!hello world");
+    expect(terminal.screen?.toString()).toContain("hello world!");
     key(terminal, "v");
     await Bun.sleep(0);
     app.stop();

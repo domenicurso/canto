@@ -96,7 +96,7 @@ test("the inspector hides an occluded editor caret and restores focus and editin
     expect(terminal.output.at(-1)).toEndWith("\x1b[?25h");
     terminal.dispatch({ type: "key", event: keyEvent("X", { text: "X" }) });
     await app.flush();
-    expect(terminal.screen?.toString()).toContain("Xedit");
+    expect(terminal.screen?.toString()).toContain("editX");
   } finally {
     app.stop();
     await running;

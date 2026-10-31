@@ -2,6 +2,7 @@ import type { Rect } from "../layout/geometry";
 import type { Mounted } from "./tree";
 
 import { contains, intersect } from "../layout/geometry";
+import { content } from "../layout/measure";
 import { guard } from "./error-boundary";
 import { overlays, inside } from "./overlays";
 import { walk } from "./tree";
@@ -24,7 +25,10 @@ export class Focus {
   current: Mounted | undefined;
   scope: Mounted | undefined;
   constructor(private readonly schedule: () => void) {}
-  set(node: Mounted | undefined): void {
+  set(
+    node: Mounted | undefined,
+    origin: "automatic" | "explicit" = "explicit",
+  ): void {
     if (node && this.scope && !inside(node, this.scope)) return;
     if (node === this.current || (node && !focusable(node))) return;
     const previous = this.current;
@@ -34,6 +38,12 @@ export class Focus {
       guard(previous, () => previous.element.data.props.onBlur?.());
     }
     if (node) {
+      const { autoFocus, input } = node.element.data.props;
+      if (origin === "automatic" && autoFocus && input) {
+        node.editor.cursor = content(node).length;
+        node.editor.anchor =
+          typeof autoFocus === "object" && autoFocus.select ? 0 : null;
+      }
       node.interaction.focused = true;
       guard(node, () => node.element.data.props.onFocus?.());
       this.reveal(node);
@@ -49,6 +59,7 @@ export class Focus {
         nodes.find(
           (node) => node.element.data.props.autoFocus && focusable(node),
         ),
+        "automatic",
       );
   }
   next(root: Mounted, reverse: boolean): void {

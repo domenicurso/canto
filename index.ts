@@ -30,7 +30,12 @@ export type {
   ScrollProps,
   ScrollPosition,
 } from "./src/element/props";
-export type { KeyEvent, PointerEvent, ElementRef } from "./src/element/events";
+export type {
+  AutoFocusOptions,
+  KeyEvent,
+  PointerEvent,
+  ElementRef,
+} from "./src/element/events";
 export { style, StyleBuilder } from "./src/style/builder";
 export type {
   Style,

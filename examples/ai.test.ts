@@ -134,7 +134,6 @@ test("Alt+Enter holds the response and returns to editing for another generation
     await Bun.sleep(1600);
     await app.flush();
     expect(terminal.screen?.toString()).toContain("echo ready");
-    terminal.dispatch({ type: "key", event: keyEvent("end") });
     terminal.dispatch({
       type: "key",
       event: keyEvent("paste", { text: " --help" }),

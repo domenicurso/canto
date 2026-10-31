@@ -28,6 +28,9 @@ export interface ElementRef {
   scrollTo(offset: number | { x: number; y: number }): void;
   readonly rect: { x: number; y: number; width: number; height: number };
 }
+export interface AutoFocusOptions {
+  select?: boolean;
+}
 export interface ElementEvents {
   onKey?: (event: KeyEvent) => void;
   onFocus?: () => void;
@@ -36,5 +39,5 @@ export interface ElementEvents {
   ref?: (element: ElementRef | null) => void;
   focusable?: boolean;
   tabIndex?: number;
-  autoFocus?: boolean;
+  autoFocus?: boolean | AutoFocusOptions;
 }

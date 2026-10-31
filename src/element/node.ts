@@ -1,6 +1,7 @@
 import type { Style, StyleDefinition } from "../style/types";
 import type { DrawingContext } from "./drawing";
 import type {
+  AutoFocusOptions,
   ElementEvents,
   ElementRef,
   KeyEvent,
@@ -88,7 +89,7 @@ export class Element extends StyleBuilder {
   tabIndex(tabIndex: number): this {
     return this.event({ tabIndex });
   }
-  autoFocus(autoFocus = true): this {
+  autoFocus(autoFocus: boolean | AutoFocusOptions = true): this {
     return this.event({ autoFocus });
   }
 }
