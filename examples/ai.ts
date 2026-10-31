@@ -17,9 +17,8 @@ interface AIProps {
 }
 
 type PromptState =
-  | { phase: "editing" }
-  | { phase: "generating"; generation: Generation }
-  | { phase: "output"; value: string };
+  | { phase: "editing"; value: string }
+  | { phase: "generating"; generation: Generation };
 
 // This example simulates an AI response; it never executes the command.
 async function demoCommand(): Promise<string> {
@@ -30,17 +29,17 @@ async function demoCommand(): Promise<string> {
 export function GenerateText({
   generate = demoCommand,
 }: AIProps = {}): Element {
-  const [draft, setDraft] = useState(
-    "Find files modified in the last 24 hours",
-  );
-  const [state, setState] = useState<PromptState>({ phase: "editing" });
+  const [state, setState] = useState<PromptState>({
+    phase: "editing",
+    value: "Find files modified in the last 24 hours",
+  });
+  const draft =
+    state.phase === "editing" ? state.value : state.generation.prompt;
   const [now, setNow] = useState(0);
   const viewport = useViewport();
   useGeneration(state, setState, generate);
   useAnimation(state, setState, setNow);
   const onKey = (event: KeyEvent): void => {
-    if (event.key === "escape" && state.phase === "output")
-      setState({ phase: "editing" });
     if (
       event.key !== "enter" ||
       !event.alt ||
@@ -60,7 +59,10 @@ export function GenerateText({
       : text("");
   const content = promptContent(
     state,
-    { value: draft, onChange: setDraft },
+    {
+      value: draft,
+      onChange: (value) => setState({ phase: "editing", value }),
+    },
     onKey,
     animated,
   );
@@ -125,9 +127,7 @@ function promptContent(
         .autoFocus()
         .width("fill")
         .onKey(onKey)
-    : state.phase === "output"
-      ? text(state.value).wrap("none").overflow("clip").width("fill")
-      : animated;
+    : animated;
 }
 
 function useAnimation(
@@ -146,7 +146,7 @@ function useAnimation(
         const { generation } = previous;
         return generation.response &&
           now >= revealAt(generation) + shimmerDuration
-          ? { phase: "output", value: generation.response.text }
+          ? { phase: "editing", value: generation.response.text }
           : previous;
       });
     }, 16);

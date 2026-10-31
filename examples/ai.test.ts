@@ -81,7 +81,7 @@ test("the magenta shimmer repeats and reveals only on the next pass", async () =
   expect((await frame(generation, 3100))?.toString()).toContain("echo ready");
 });
 
-test("the shimmer blends the terminal's white over its magenta palette color", async () => {
+test("the shimmer blends white over the terminal's magenta palette color", async () => {
   const theme: ColorTheme = {
     foreground: [200, 180, 160],
     background: [10, 20, 30],
@@ -90,10 +90,10 @@ test("the shimmer blends the terminal's white over its magenta palette color", a
   const generation = { prompt: "request", startedAt: 0 };
   const screen = await frame(generation, 650 + (10 / 29) * 850, 60, theme);
   expect(rgb(screen?.get(6, 0)?.style.foreground, theme)).toEqual([
-    240, 220, 200,
+    255, 255, 255,
   ]);
   expect(rgb(screen?.get(4, 0)?.style.foreground, theme)).toEqual([
-    180, 130, 180,
+    188, 148, 208,
   ]);
   expect(screen?.get(15, 0)?.style.foreground).toBe("magenta");
   const initial = await frame(generation, 0, 60, theme);
@@ -107,12 +107,12 @@ test("the animation clips wide graphemes to one terminal line", async () => {
   expect(screen?.toString().split("\n")[1]?.trim() ?? "").toBe("");
 });
 
-test("Alt+Enter generates once, holds the response, and Escape restores editing", async () => {
+test("Alt+Enter holds the response and returns to editing for another generation", async () => {
   const terminal = new MemoryTerminal(80, 3);
   const requests: string[] = [];
   const generate = async (prompt: string): Promise<string> => {
     requests.push(prompt);
-    return "echo ready";
+    return `echo ready ${requests.length}`;
   };
   const app = createApp(() => GenerateText({ generate }), {
     terminal,
@@ -134,12 +134,22 @@ test("Alt+Enter generates once, holds the response, and Escape restores editing"
     await Bun.sleep(1600);
     await app.flush();
     expect(terminal.screen?.toString()).toContain("echo ready");
-    terminal.dispatch({ type: "key", event: keyEvent("escape") });
+    terminal.dispatch({ type: "key", event: keyEvent("end") });
+    terminal.dispatch({
+      type: "key",
+      event: keyEvent("paste", { text: " --help" }),
+    });
     await app.flush();
-    expect(terminal.screen?.toString()).toContain(requests[0] ?? "");
-    terminal.dispatch({ type: "key", event: keyEvent("x", { text: "x" }) });
+    expect(terminal.screen?.toString()).toContain("echo ready 1 --help");
+    terminal.dispatch({ type: "key", event: keyEvent("enter", { alt: true }) });
     await app.flush();
-    expect(terminal.screen?.toString()).toContain("x");
+    await Bun.sleep(1600);
+    await app.flush();
+    expect(requests).toEqual([
+      "Find files modified in the last 24 hours",
+      "echo ready 1 --help",
+    ]);
+    expect(terminal.screen?.toString()).toContain("echo ready 2");
   } finally {
     app.stop();
     await running;
