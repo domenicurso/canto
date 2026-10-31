@@ -23,7 +23,7 @@ type PromptState =
 
 // This example simulates an AI response; it never executes the command.
 async function demoCommand(): Promise<string> {
-  await Bun.sleep(2200);
+  await Bun.sleep(4000);
   return "find . -type f -mtime -1";
 }
 

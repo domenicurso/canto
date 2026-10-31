@@ -94,7 +94,7 @@ function glyphs(
           ? text(glyph)
           : overlay(
               text(glyph).color("magenta"),
-              text(glyph).color("white").opacity(glow),
+              text(glyph).color("#fff").opacity(glow),
             );
       const cell = content
         .position("absolute")
