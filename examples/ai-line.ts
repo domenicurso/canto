@@ -51,6 +51,18 @@ export function revealAt(generation: Generation): number {
   );
 }
 
+export function revealDuration(
+  generation: Generation,
+  available: number,
+): number {
+  const messageWidth = width(take(generation.message, available));
+  const outputWidth = width(take(generation.response?.text ?? "", available));
+  return (
+    (shimmerDuration * (Math.max(messageWidth, outputWidth) + 8)) /
+    (messageWidth + 8)
+  );
+}
+
 export function generationLine(
   generation: Generation,
   now: number,
@@ -61,11 +73,11 @@ export function generationLine(
   const message = take(generation.message, available);
   const elapsed = now - generation.startedAt;
   const reveal = revealAt(generation);
-  const size = Math.max(width(message), width(output));
+  const size = width(message);
   if (elapsed < inputWipe) return wipe(prompt, message, elapsed / inputWipe);
   const progress =
     now >= reveal
-      ? (now - reveal) / shimmerDuration
+      ? (now - reveal) / revealDuration(generation, available)
       : ((elapsed - inputWipe) % shimmerPeriod) / shimmerDuration;
   if (now >= reveal) return wipe(message, output, progress, true);
   return glyphs(message, (x) => {

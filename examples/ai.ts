@@ -13,7 +13,7 @@ import {
 import {
   generationLine,
   revealAt,
-  shimmerDuration,
+  revealDuration,
   startGeneration,
 } from "./ai-line";
 
@@ -141,6 +141,7 @@ function useAnimation(
   setNow: (value: number) => void,
 ): void {
   const running = state.phase === "generating";
+  const available = Math.max(0, useViewport().width - 2);
   useEffect(() => {
     if (!running) return;
     const timer = setInterval(() => {
@@ -150,13 +151,13 @@ function useAnimation(
         if (previous.phase !== "generating") return previous;
         const { generation } = previous;
         return generation.response &&
-          now >= revealAt(generation) + shimmerDuration
+          now >= revealAt(generation) + revealDuration(generation, available)
           ? { phase: "editing", value: generation.response.text }
           : previous;
       });
     }, 16);
     return () => clearInterval(timer);
-  }, [running]);
+  }, [running, available]);
 }
 
 if (import.meta.main) {
