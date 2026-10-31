@@ -22,6 +22,8 @@ keyEvent(key: string, options?: Partial<
 >): KeyEvent
 ```
 
+Process terminals decode legacy keys, modified arrows, CSI-u, and xterm modifyOtherKeys. Enhanced repeat reports act like presses; release reports are ignored. `meta` represents Super/Command or the protocol Meta bit. Pure text reports without a physical key use `key: "text"` and carry their text in `text`.
+
 The helper creates mutable prevention state behind read-only getters. Modifiers default to false. Use it in tests instead of fabricating methods and state fields manually.
 
 ## PointerEvent

@@ -1,4 +1,4 @@
-import type { Element, Mode } from "../index";
+import type { Element, KeyEvent, Mode } from "../index";
 
 import {
   button,
@@ -24,6 +24,10 @@ const prompts = {
 type Check = keyof typeof prompts;
 type Verdict = "unverified" | "pass" | "fail";
 export type TerminalChecks = Readonly<Record<Check, Verdict>>;
+interface KeyboardEvidence {
+  rawInput: string[];
+  events: Array<Pick<KeyEvent, "key" | "ctrl" | "alt" | "shift" | "meta">>;
+}
 
 const initial: TerminalChecks = {
   unicode: "unverified",
@@ -36,6 +40,7 @@ const initial: TerminalChecks = {
 
 export function TerminalCheck(options: {
   onChange: (checks: TerminalChecks) => void;
+  onKey?: (event: KeyEvent) => void;
 }): Element {
   const app = useApp();
   const [checks, setChecks] = useState(initial);
@@ -71,7 +76,11 @@ export function TerminalCheck(options: {
       },
     }).width(35),
     ...verdictButtons(checks, verdict),
+    text(
+      "Alt+B/F can mean word movement. OS/terminal shortcuts may consume arrows.",
+    ),
   ).onKey((event) => {
+    options.onKey?.(event);
     if (event.key !== "tab")
       setKey(
         `${event.ctrl ? "Ctrl+" : ""}${event.alt ? "Alt+" : ""}${event.shift ? "Shift+" : ""}${event.meta ? "Meta+" : ""}${event.key}`,
@@ -107,15 +116,40 @@ async function main(): Promise<void> {
   const mode: Mode = argument ?? "fullscreen";
   const terminal = new ProcessTerminal();
   let checks = initial;
-  await createApp(
-    () =>
-      TerminalCheck({
-        onChange: (value) => {
-          checks = value;
-        },
-      }),
-    { terminal, mode, debug: false },
-  ).run();
+  const keyboard: KeyboardEvidence = { rawInput: [], events: [] };
+  const capture = (bytes: Buffer): void => {
+    keyboard.rawInput.push(bytes.subarray(0, 64).toString("hex"));
+    keyboard.rawInput.splice(0, Math.max(0, keyboard.rawInput.length - 16));
+  };
+  const paused = process.stdin.readableFlowing !== true;
+  process.stdin.on("data", capture);
+  try {
+    await createApp(
+      () =>
+        TerminalCheck({
+          onChange: (value) => {
+            checks = value;
+          },
+          onKey: ({ key, ctrl, alt, shift, meta }) => {
+            keyboard.events.push({ key, ctrl, alt, shift, meta });
+            keyboard.events.splice(0, Math.max(0, keyboard.events.length - 16));
+          },
+        }),
+      { terminal, mode, debug: false },
+    ).run();
+  } finally {
+    process.stdin.off("data", capture);
+    if (paused) process.stdin.pause();
+  }
+  printReport(terminal, mode, checks, keyboard);
+}
+
+function printReport(
+  terminal: ProcessTerminal,
+  mode: Mode,
+  checks: TerminalChecks,
+  keyboard: KeyboardEvidence,
+): void {
   console.log(
     JSON.stringify(
       {
@@ -130,6 +164,7 @@ async function main(): Promise<void> {
         cellSize: terminal.cellSize,
         graphics: terminal.graphics,
         checks,
+        keyboard,
       },
       null,
       2,

@@ -8,6 +8,7 @@ import { clipboardOutput } from "./clipboard";
 import { Decoder } from "./decoder";
 import { graphicsQuery } from "./graphics-capabilities";
 import { InputTimeout } from "./input-timeout";
+import { keyboardStart, keyboardStop } from "./keys";
 import { Presentation } from "./presentation";
 import { TerminalColors, themeQuery } from "./theme";
 
@@ -33,6 +34,7 @@ export class ProcessTerminal implements Terminal {
   private raw = false;
   private paused = true;
   private started = false;
+  private keyboardOwned = false;
   private input: InputTimeout | undefined;
   private emit: ((event: TerminalEvent) => void) | undefined;
   private origin: number | undefined;
@@ -76,13 +78,16 @@ export class ProcessTerminal implements Terminal {
     process.stdin.on("data", this.data);
     process.stdout.on("resize", this.resize);
     if (process.stdout.isTTY && mode === "inline") await this.locate();
-    if (process.stdout.isTTY)
+    if (process.stdout.isTTY) {
+      this.keyboardOwned = true;
       await this.write(
         (mode === "fullscreen" ? "\x1b[?1049h\x1b[2J\x1b[H" : "\r\x1b7") +
           "\x1b[?25l\x1b[?2004h\x1b[?1003h\x1b[?1006h" +
+          keyboardStart +
           graphicsQuery +
           themeQuery,
       );
+    }
   }
   private createDecoder(emit: (event: TerminalEvent) => void): Decoder {
     return new Decoder(
@@ -149,9 +154,12 @@ export class ProcessTerminal implements Terminal {
     if (process.stdin.isTTY) process.stdin.setRawMode(this.raw);
     if (this.paused) process.stdin.pause();
     if (owner === this) owner = undefined;
+    const keyboard = this.keyboardOwned ? keyboardStop : "";
+    this.keyboardOwned = false;
     if (process.stdout.isTTY)
       await this.write(
         this.output.stop() +
+          keyboard +
           "\x1b[?2026l\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1006l\x1b[?25h" +
           (this.mode === "fullscreen"
             ? "\x1b[?1049l"

@@ -40,11 +40,19 @@ function verifyTheme(emulator: Emulator, bytes: string): void {
   expect(bytes).toContain("\x1b]10;?\x1b\\");
   expect(bytes).toContain("\x1b]11;?\x1b\\");
   expect(bytes).toContain("\x1b]4;15;?\x1b\\");
+  expect(bytes).toContain("\x1b[>1u");
   const cell = emulator.buffer.active
     .getLine(emulator.buffer.active.baseY + 9)
     ?.getCell(0);
   expect(cell?.getFgColor()).toBe(0x828282);
   expect(cell?.getBgColor()).toBe(0x14283c);
+}
+function verifyStop(mode: "inline" | "fullscreen", bytes: string): void {
+  expect(bytes).toContain("\x1b[?25h");
+  expect(bytes).toContain("\x1b[?2004l");
+  expect(bytes).toContain("\x1b[<u");
+  if (mode === "fullscreen")
+    expect(bytes.indexOf("\x1b[<u")).toBeLessThan(bytes.indexOf("\x1b[?1049l"));
 }
 test.skipIf(!available).each([
   ["fullscreen", 8, 16],
@@ -92,10 +100,7 @@ test.skipIf(!available).each([
         if (index === 5) expect(visible(emulator)).toContain("offset=3,35");
         if (index === 6) expect(bytes).toContain("\x1b[?1003l");
         if (index === 7) expect(bytes).toContain("\x1b[?1003h");
-        if (index === 8) {
-          expect(bytes).toContain("\x1b[?25h");
-          expect(bytes).toContain("\x1b[?2004l");
-        }
+        if (index === 8) verifyStop(mode, bytes);
       }
     } finally {
       emulator.dispose();

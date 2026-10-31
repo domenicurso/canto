@@ -8,7 +8,7 @@ import type { ThemeReport } from "./theme";
 import { parsePixelReport } from "./cell-size";
 import { keyEvent } from "./events";
 import { graphicsResponse } from "./graphics-capabilities";
-import { decodeKeySequence } from "./keys";
+import { decodeKeySequence, legacyKey } from "./keys";
 import { themeResponse } from "./theme";
 
 export class Decoder {
@@ -105,7 +105,7 @@ export class Decoder {
       this.mouse(mouse);
       return mouse[0].length;
     }
-    const sequence = /^\x1b(?:\[|O)([\d;]*[A-Za-z~])/.exec(this.buffer);
+    const sequence = /^\x1b(?:\[|O)([\d;:]*[A-Za-z~])/.exec(this.buffer);
     if (sequence) {
       const token = sequence[1] ?? "";
       const pixelReport = parsePixelReport(token);
@@ -122,37 +122,16 @@ export class Decoder {
       if (event) this.emit({ type: "key", event });
       return sequence[0].length;
     }
-    if (this.buffer.length === 1 || /^\x1b(?:\[[<\d;]*|O)$/.test(this.buffer))
+    if (this.buffer.length === 1 || /^\x1b(?:\[[<\d;:]*|O)$/.test(this.buffer))
       return 0;
     if (this.buffer[1] === "[") return 2;
     const char = String.fromCodePoint(this.buffer.codePointAt(1) ?? 0);
-    this.emit({
-      type: "key",
-      event: keyEvent(char.toLowerCase(), { alt: true, text: char }),
-    });
+    this.emit({ type: "key", event: legacyKey(char, true) });
     return 1 + char.length;
   }
   private character(): number {
     const char = String.fromCodePoint(this.buffer.codePointAt(0) ?? 0);
-    const code = char.codePointAt(0) ?? 0;
-    const key =
-      char === "\r" || char === "\n"
-        ? "enter"
-        : char === "\t"
-          ? "tab"
-          : char === "\x7f" || char === "\b"
-            ? "backspace"
-            : code < 32
-              ? String.fromCharCode(code + 96)
-              : char;
-    this.emit({
-      type: "key",
-      event: keyEvent(key, {
-        ctrl:
-          code > 0 && code < 27 && !["enter", "tab", "backspace"].includes(key),
-        text: code >= 32 && code !== 127 ? char : undefined,
-      }),
-    });
+    this.emit({ type: "key", event: legacyKey(char) });
     return char.length;
   }
   private mouse(match: RegExpExecArray): void {
