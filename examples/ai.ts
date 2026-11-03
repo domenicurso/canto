@@ -72,7 +72,8 @@ export function GenerateText({
     animated,
   );
   return row(text("$ ").faint(), content)
-    .height(1)
+    .padding(1)
+    .height(3)
     .width("fill")
     .overflow("clip")
     .focusable(state.phase !== "editing")
@@ -161,5 +162,7 @@ function useAnimation(
 }
 
 if (import.meta.main) {
+  process.stdout.write("\x1B[2J\x1B[0;0H");
+  
   await createApp(GenerateText, { mode: "inline" }).run();
 }
