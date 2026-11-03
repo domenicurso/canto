@@ -74,7 +74,10 @@ export type { GraphicsCapabilities } from "./src/terminal/capabilities/graphics"
 
 export type { ColorTheme } from "./src/style/colors";
 
-export type { DebugControl } from "./src/runtime/inspector/panel";
+export type {
+  DebugControl,
+  DebugPlacement,
+} from "./src/runtime/inspector/chrome";
 export type { FrameStats, ContentFrameStats } from "./src/runtime/frame-stats";
 
 export type { PresentationStats } from "./src/terminal/output/presentation";

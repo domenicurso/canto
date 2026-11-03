@@ -2,6 +2,7 @@ import type { Clipboard } from "../terminal/clipboard";
 import type { Mode, Terminal } from "../terminal/transport";
 import type { Mounted } from "./components/tree";
 import type { InputRouter } from "./input/router";
+import type { DebugPanel } from "./inspector/panel";
 import type { SelectionMode } from "./selection/selection-mode";
 
 import { unmount } from "./components/reconcile";
@@ -30,6 +31,7 @@ export class SessionSignals {
 
 export async function releaseSession({
   root,
+  debug,
   router,
   terminal,
   signals,
@@ -37,6 +39,7 @@ export async function releaseSession({
   failure,
 }: {
   root: Mounted;
+  debug: DebugPanel;
   router: InputRouter;
   terminal: Terminal;
   signals: SessionSignals;
@@ -57,6 +60,11 @@ export async function releaseSession({
   }
   try {
     unmount(root);
+  } catch (error) {
+    failure(error);
+  }
+  try {
+    debug.dispose();
   } catch (error) {
     failure(error);
   }

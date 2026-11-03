@@ -12,10 +12,21 @@ interface AppEvents {
   exitOnCtrlC: boolean;
   stop(): void;
   schedule(): void;
+  fail(error: unknown): void;
 }
 export function dispatchInput(event: TerminalEvent, app: AppEvents): void {
+  try {
+    routeInput(event, app);
+  } catch (error) {
+    app.fail(error);
+  }
+}
+function routeInput(event: TerminalEvent, app: AppEvents): void {
   if (event.type === "key") {
-    if (app.debug.key(event.event)) return;
+    if (app.debug.key(event.event)) {
+      if (app.debug.picking) app.router.resetPointer();
+      return;
+    }
     if (
       app.exitOnCtrlC &&
       event.event.ctrl &&
@@ -25,8 +36,10 @@ export function dispatchInput(event: TerminalEvent, app: AppEvents): void {
       app.stop();
     else app.router.key(app.root, event.event);
   } else if (event.type === "mouse") {
-    if (app.debug.mouse(event.event)) app.router.outside(event.event);
-    else app.router.mouse(app.root, event.event);
+    if (app.debug.mouse(event.event)) {
+      if (app.debug.picking) app.router.resetPointer();
+      else app.router.outside(event.event);
+    } else app.router.mouse(app.root, event.event);
   } else {
     app.router.resize(app.root);
     app.frames.invalidate();

@@ -43,10 +43,10 @@ test("isolated hover and press immediately report all 36 changed button cells in
       const shown = terminal.screen?.toString();
       expect(shown).toContain(`Content #${app.stats.frame}`);
       expect(shown).toContain(`Output #${app.stats.frame - 1}`);
-      expect(shown).toMatch(/Changed\s+36\s*│/);
+      expect(shown).toMatch(/Changed\s+36\s*/);
     }
-    expect(terminal.screen?.get(79, 23)?.text).toBe("╯");
-    expect(terminal.screen?.get(20, 10)?.text).toBe("╭");
+    expect(terminal.screen?.get(79, 23)?.style.background).toBe("#1c1c1c");
+    expect(terminal.screen?.get(20, 10)?.style.background).toBe("#1c1c1c");
   } finally {
     app.stop();
     await running;

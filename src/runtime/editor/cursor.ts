@@ -7,7 +7,7 @@ import { editorView } from "./view";
 
 export function cursorOutput(
   focused: Mounted | undefined,
-  screen: Screen,
+  screen: Pick<Screen, "width" | "height">,
   occlusion?: Readonly<Rect>,
 ): string {
   if (!focused?.element.data.props.input) return "\x1b[?25l";

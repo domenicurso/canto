@@ -58,9 +58,9 @@ test("clicking the inspector does not activate or dismiss app overlays, and the 
     expect(dismissals).toBe(0);
     expect(releases).toBe(0);
     pointer(terminal, "press", 77, 10);
-    await app.flush();
-    expect(app.debug.visible).toBe(false);
+    expect(app.debug.visible).toBe(true);
     pointer(terminal, "release", 77, 10);
+    expect(app.debug.visible).toBe(false);
     await app.flush();
     expect(presses).toBe(0);
     expect(dismissals).toBe(0);
@@ -102,7 +102,7 @@ test("the inspector hides an occluded editor caret and restores focus and editin
     await running;
   }
 });
-test("native images retain pixel detail beneath the translucent inspector without changing layout", async () => {
+test("opaque inspector crops native images and restores them without changing layout", async () => {
   const terminal = new MemoryTerminal(80, 24);
   terminal.graphics.kitty = true;
   const app = createApp(
@@ -120,16 +120,14 @@ test("native images retain pixel detail beneath the translucent inspector withou
     app.debug.toggle();
     await app.flush();
     expect(terminal.screen?.rasters.length).toBeGreaterThan(0);
-    const tinted = terminal.screen?.rasters.find(
+    const occluded = terminal.screen?.rasters.find(
       (image) =>
         image.rect.x <= 34 &&
         image.rect.x + image.rect.width > 34 &&
         image.rect.y <= 12 &&
         image.rect.y + image.rect.height > 12,
     );
-    expect(Array.from(tinted?.buffer.data.slice(0, 4) ?? [])).toEqual([
-      44, 20, 37, 255,
-    ]);
+    expect(occluded).toBeUndefined();
     app.debug.toggle();
     await app.flush();
     expect(terminal.screen?.rasters).toHaveLength(1);
@@ -166,7 +164,9 @@ test("the floating inspector remains clipped through tiny viewports and can be c
       expect(terminal.screen?.cells).toHaveLength(width * height);
       expect(terminal.screen?.width).toBe(width);
       if (width > 1 && height > 1)
-        expect(terminal.screen?.get(width - 1, height - 1)?.text).toBe("╯");
+        expect(
+          terminal.screen?.get(width - 1, height - 1)?.style.background,
+        ).toBe("#1c1c1c");
     }
     expect(terminal.screen?.toString()).toContain(" Debug ");
   } finally {

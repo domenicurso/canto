@@ -2,7 +2,11 @@
 
 [Documentation](../README.md)
 
-Every app includes a compact translucent inspector, hidden initially. F3 toggles it; Escape or its close control hides it. Use `app.debug.toggle()`, `app.debug.setVisible(true)`, or `useApp().debug` for custom controls. `{ debug: false }` releases F3 to the app while retaining programmatic access. The inspector sits flush with the bottom-right viewport edges without changing application layout, focus, or modal state. Hover a metric label for a brief, borderless tooltip with one cell of horizontal padding.
+Every app includes an inspector, hidden initially. F3 toggles it; Escape cancels picking or closes it. Its gray, borderless UI is built from Canto components in a separate mounted tree, so its controls and scrolling use the same runtime as your application without appearing in the inspected tree. `{ debug: false }` releases F3 and Ctrl+Shift+I while retaining programmatic access through `app.debug` and `useApp().debug`.
+
+Choose Elements to browse the mounted tree, or Pick to hover application content and click a node. Ctrl+Shift+I also toggles picking. Colored regions distinguish content, padding, borders, and space between flow children. The tooltip reports actual cell geometry; Canto has no margin property. Scroll or drag the tree's scrollbar, navigate with arrows and Home/End or Page Up/Down, and collapse or expand with Left/Right. Layout, Styles, Props, and State expose the selected node's geometry, resolved appearance, declared styles and variants, props, callbacks, hooks, and interaction state. Property values wrap within their own scroll region. Tab moves between inspector scroll regions; clicking application content returns keyboard navigation to the application.
+
+The header keeps Stats and Elements on the left and Pick, placement, and Close on the right. Sidebar reserves real layout space and makes `useViewport()` report the remaining columns; Overlay leaves the viewport unchanged. Sidebar falls back to an overlay below 50 terminal columns and returns when space is available. Closing restores the application's width and preserves its state and focus. Use `app.debug.setPlacement("sidebar")` or `setPicking(true)` to control these modes from application code.
 
 FPS and viewport size sit above two columns: content preparation and painting on the left, completed frame and terminal costs on the right. Below 8 FPS, each new content frame publishes immediately, including isolated hover, press, and release updates. Faster streams refresh at most four times per second, retaining the actual content frame with the most changed cells (breaking ties by CPU time) and the actual completed frame with the highest total latency. No values are averaged: `Content #N` identifies the frame for CPU and exact work counts, while `Output #M` identifies the completed frame for total, inspector, encoding, write, interval, and byte measurements. Output completion cannot be known while painting the current panel, so its frame ID is separate. FPS counts completed adapter presentations in the last second. The inspector redraws only with app frames, so idle apps do not gain a diagnostic animation loop.
 
@@ -11,6 +15,12 @@ FPS and viewport size sit above two columns: content preparation and painting on
 Content cell changes exclude the inspector, while `cellsWritten` includes its actual terminal cell updates. Native uploads are measured separately in output bytes. Layout nodes and painted cells describe work performed, so cached layout can report zero nodes even with a full-screen canvas animation. Pointer motion within an unchanged target does not schedule a frame; hover transitions, dragging, and reactive mouse handlers still update normally.
 
 See [stats field definitions](../api/diagnostics.md), [terminal limitations](../reference/compatibility.md), and [testing](testing.md).
+
+## Editing elements
+
+The Elements tree highlights names, strings, numbers, and literals. Click a breadcrumb to select an ancestor. The Layout tab includes a visual border, padding, and content diagram in terminal cells; the gray sidebar itself stays borderless. Scrollbar tracks blend into the panel, and thumbs appear while hovering their scroll region.
+
+Click a supported scalar style value in Styles or text in Props to edit its JSON representation. Enter applies the value; Escape cancels. Invalid input stays in the editor with an error. Changes are temporary overrides on the mounted node and survive application renders; Reset removes all overrides for that node. Removing the node discards them. Callback props, objects, and hook state remain read-only; edits never write source files.
 
 ## Hot reload
 

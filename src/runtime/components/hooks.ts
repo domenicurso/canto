@@ -1,5 +1,5 @@
 import type { Clipboard } from "../../terminal/clipboard";
-import type { DebugControl } from "../inspector/panel";
+import type { DebugControl } from "../inspector/chrome";
 import type { SelectionControl } from "../selection/selection-mode";
 import type { Mounted } from "./tree";
 

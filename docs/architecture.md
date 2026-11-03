@@ -18,6 +18,10 @@ Runtime coordinates immutable element descriptions, mounted component state, cel
 
 Descriptions depend on style and element contracts. Runtime orchestrates layout, rendering, and terminal I/O over the mounted tree. The mounted tree contains separate component, layout, editor, scrolling, and interaction records. Reconciliation and hooks own component lifecycle; layout owns geometry and scroll bounds; editing and selection own editor positions; focus and pointer routing own interaction flags. Editor navigation consumes only editor state, and scroll-offset resolution consumes only scroll state and props. Rectangle and layout-state contracts live in layout. Several subsystems still consume mounted-tree contracts for traversal; these are internal shared data contracts, not a second public API. Terminal transport consumes rendered screens but doesn't mount components or invoke hooks. The public boundary is `index.ts`; source-module exports aren't automatically package exports.
 
+Within runtime, `components` owns reconciliation and hooks, `input` owns routing and focus, `editor` owns editing, `scroll` owns gestures, `selection` owns ranges and mouse ownership, and `reload` owns development session identities. `inspector` mounts its own Canto tree against the same terminal without acquiring a second session or traversing its own controls. Sidebar placement reduces the application layout viewport; the overlay leaves it unchanged. Inspector refs and effects commit after output, and its failures follow ordinary session cleanup. Temporary inspector overrides belong to mounted nodes and apply before style resolution.
+
+Other subsystems follow their own boundaries: element `collections` and `graphics`; layout `measurement`, `flow`, `scrolling`, and `styling`; render `painting` and `graphics`; terminal `input`, `output`, `capabilities`, and `graphics`; style `builders`; and text `editing`. Dependencies flow through existing subsystem contracts, with `index.ts` retaining the public API.
+
 ## Frame and failure lifecycle
 
 1. A state setter marks its component dirty and queues a microtask; multiple updates can share a frame.

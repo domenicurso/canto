@@ -17,6 +17,7 @@ import {
 import { RetainedPaint } from "../render/retained";
 import { cursorOutput } from "./editor/cursor";
 import { FrameRate } from "./frame-rate";
+import { applyInspectorEdits } from "./inspector/edits";
 
 interface FrameInput {
   root: Mounted;
@@ -56,9 +57,15 @@ export class Frames {
     private readonly terminal: Terminal,
     private readonly mode: Mode,
     private readonly debug: DebugPanel,
-  ) {}
+  ) {
+    this.debug.attach(terminal);
+  }
   get viewport(): { width: number; height: number } {
-    return { width: this.terminal.width, height: this.terminal.height };
+    return {
+      width:
+        this.terminal.width - this.debug.reservedWidth(this.terminal.width),
+      height: this.terminal.height,
+    };
   }
   invalidate(): void {
     this.previous = this.content = undefined;
@@ -66,7 +73,7 @@ export class Frames {
   async commit(input: FrameInput): Promise<void> {
     const { screen, stats, changes } = this.measureContent(input);
     const debugStart = performance.now();
-    const shown = this.debug.compose(screen, stats, this.stats);
+    const shown = this.debug.compose(screen, stats, this.stats, input.root);
     if (shown !== screen) {
       shown.rasters = this.shownRasters.prepare(
         input.root,
@@ -83,9 +90,12 @@ export class Frames {
     const presentStart = performance.now();
     await this.terminal.present(
       shown,
-      result.output + cursorOutput(input.focused, screen, this.debug.rect),
+      result.output +
+        (this.debug.cursor ??
+          cursorOutput(input.focused, screen, this.debug.rect)),
     );
     const completedAt = performance.now();
+    this.debug.commit();
     const presentation = this.terminal.presentation;
     this.rate.record(completedAt);
     this.previous = shown;
@@ -142,6 +152,7 @@ export class Frames {
   }
   private prepare(root: Mounted) {
     const start = performance.now();
+    applyInspectorEdits(root);
     resolveStyles(root);
     const viewport = this.viewport;
     const size = `${viewport.width}:${viewport.height}`;
@@ -156,10 +167,19 @@ export class Frames {
     this.size = size;
     return {
       size: {
-        width: viewport.width,
+        width: this.terminal.width,
         height:
           this.mode === "inline"
-            ? Math.min(viewport.height, Math.max(1, root.layout.rect.height))
+            ? Math.min(
+                viewport.height,
+                Math.max(
+                  1,
+                  root.layout.rect.height,
+                  this.debug.reservedWidth(this.terminal.width)
+                    ? viewport.height
+                    : 0,
+                ),
+              )
             : viewport.height,
       },
       stats: {

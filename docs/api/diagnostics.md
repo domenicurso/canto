@@ -1,18 +1,26 @@
 # Diagnostics and frame statistics
 
-[API index](README.md) · [Controls](../../src/runtime/inspector/panel.ts) · [Frame fields](../../src/runtime/frame-stats.ts) · [Presentation fields](../../src/terminal/output/presentation.ts)
+[API index](README.md) · [Controls](../../src/runtime/inspector/chrome.ts) · [Frame fields](../../src/runtime/frame-stats.ts) · [Presentation fields](../../src/terminal/output/presentation.ts)
 
 ## DebugControl
 
 ```ts
 interface DebugControl {
   readonly visible: boolean;
+  readonly picking: boolean;
+  readonly placement: "overlay" | "sidebar";
   setVisible(visible: boolean): void;
+  setPicking(picking: boolean): void;
+  setPlacement(placement: "overlay" | "sidebar"): void;
   toggle(): void;
 }
 ```
 
-Available as `app.debug` and `useApp().debug`. The inspector starts hidden, toggles with F3, and closes with Escape or its close control. `{ debug: false }` releases F3 while keeping programmatic control. It composites after application content without changing layout or focus, and captures pointer input within its bounds.
+Available as `app.debug` and `useApp().debug`. F3 toggles the inspector; Ctrl+Shift+I toggles element picking. Escape cancels picking first, then closes the panel. `{ debug: false }` releases both shortcuts while retaining programmatic control. The Stats and Elements tabs, tree, property tabs, buttons, scrollbars, and tooltips are Canto components in a separate mounted tree with independent focus and input routing.
+
+Overlay placement keeps the application viewport unchanged. Sidebar placement reserves terminal columns and updates `useViewport()` so the application reflows; closing restores its width. Below 50 columns, sidebar placement temporarily falls back to an overlay. Inline sidebar sessions use the available terminal height while visible. Pick and placement controls sit at the right of the header beside Close.
+
+Picking highlights content in blue, padding in green, borders in yellow, and spacing between flow children in orange. Hover shows box dimensions and insets; click pins the node. The tree supports wheel scrolling, scrollbar dragging, arrows, Home/End, Page Up/Down, and expanding or collapsing branches with Left/Right. Tab switches between its scroll regions. Layout, Styles, Props, and State show geometry, resolved and declared styles, variants, handlers, hooks, and interaction/editor/scroll state. Values wrap and scroll independently; inspecting state does not execute accessors. Selection and inspector navigation don't change application focus or activate its controls.
 
 ## ContentFrameStats
 

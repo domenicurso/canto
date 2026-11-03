@@ -52,7 +52,7 @@ test("backpressure keeps current work and completed output correctly attributed 
     await Bun.sleep(0);
     expect(terminal.pending[0]?.screen.toString()).toContain("Content #3");
     expect(terminal.pending[0]?.screen.toString()).toContain("Output #2");
-    expect(terminal.pending[0]?.screen.toString()).toMatch(/Changed\s+1\s*│/);
+    expect(terminal.pending[0]?.screen.toString()).toMatch(/Changed\s+1\s*/);
     expect(terminal.pending[0]?.screen.toString()).toContain("Count: 3");
     expect(app.stats.presentTime).toBeGreaterThanOrEqual(10);
     expect(app.stats.renderTime).toBeGreaterThan(app.stats.contentTime);

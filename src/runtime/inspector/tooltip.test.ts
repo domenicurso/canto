@@ -53,11 +53,11 @@ test("every metric label shows its brief help in one borderless row with horizon
         await app.flush();
         const cells =
           terminal.screen?.cells.filter(
-            (cell) => cell.style.background === "#334155",
+            (cell) => cell.style.background === "#343434",
           ) ?? [];
         expect(cells.map((cell) => cell.text).join("")).toBe(` ${help} `);
         const rows = terminal.screen?.cells.flatMap((cell, i) =>
-          cell.style.background === "#334155"
+          cell.style.background === "#343434"
             ? [Math.floor(i / terminal.width)]
             : [],
         );
@@ -92,7 +92,7 @@ test("only labels trigger help and pointer motion within one label does not sche
         await app.flush();
         expect(
           terminal.screen?.cells.some(
-            (cell) => cell.style.background === "#334155",
+            (cell) => cell.style.background === "#343434",
           ),
         ).toBe(false);
       }
@@ -104,7 +104,7 @@ test("only labels trigger help and pointer motion within one label does not sche
       await app.flush();
       expect(
         terminal.screen?.cells.some(
-          (cell) => cell.style.background === "#334155",
+          (cell) => cell.style.background === "#343434",
         ),
       ).toBe(false);
     },
@@ -123,7 +123,7 @@ test("tooltips stay clipped on narrow viewports and native images remain sharp a
       const screen = terminal.screen;
       expect(screen?.rasters.length).toBeGreaterThan(0);
       screen?.cells.forEach((cell, i) => {
-        if (cell.style.background !== "#334155") return;
+        if (cell.style.background !== "#343434") return;
         const x = i % terminal.width,
           y = Math.floor(i / terminal.width);
         expect(
@@ -142,7 +142,7 @@ test("tooltips stay clipped on narrow viewports and native images remain sharp a
       await app.flush();
       const cells =
         terminal.screen?.cells.filter(
-          (cell) => cell.style.background === "#334155",
+          (cell) => cell.style.background === "#343434",
         ) ?? [];
       expect(cells).toHaveLength(30);
       expect(cells[0]?.text).toBe(" ");

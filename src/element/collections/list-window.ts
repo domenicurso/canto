@@ -1,3 +1,4 @@
+import type { StyleBuilder } from "../../style/builders/builder";
 import type { ElementRef, KeyEvent } from "../events";
 import type { Child } from "../node";
 
@@ -7,6 +8,7 @@ import {
   useRef,
   useState,
 } from "../../runtime/components/hooks";
+import { style } from "../../style/builders/builder";
 import { box, column, scroll } from "../factories";
 import { component } from "../node";
 import { ListGeometry } from "./list-geometry";
@@ -21,6 +23,7 @@ export interface WindowOptions {
   key: (index: number) => string | number;
   activeIndex?: number;
   onActiveChange?: (index: number) => void;
+  scrollStyle?: StyleBuilder;
 }
 
 export const Window = component((options: WindowOptions) => {
@@ -51,6 +54,7 @@ export const Window = component((options: WindowOptions) => {
     offset: top,
     onScroll: setOffset,
   })
+    .use(options.scrollStyle ?? style())
     .height(options.height)
     .width("fill")
     .ref((value) => {

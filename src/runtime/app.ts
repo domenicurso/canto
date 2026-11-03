@@ -1,6 +1,6 @@
 import type { TerminalEvent } from "../terminal/input/events";
 import type { Terminal } from "../terminal/transport";
-import type { DebugControl } from "./inspector/panel";
+import type { DebugControl } from "./inspector/chrome";
 import type { AppOptions, AppStatus } from "./session";
 
 import { component, type Child } from "../element/node";
@@ -61,8 +61,12 @@ export class App {
       () => this.stop(),
       this.terminal instanceof ProcessTerminal,
     );
-    this.inspector = new DebugPanel(options.debug !== false, () =>
-      this.schedule(),
+    this.inspector = new DebugPanel(
+      options.debug !== false,
+      (layoutChanged) => {
+        if (layoutChanged) this.router.resize(this.root);
+        this.schedule();
+      },
     );
     this.frames = new Frames(
       this.terminal,
@@ -124,6 +128,7 @@ export class App {
     }
     await releaseSession({
       root: this.root,
+      debug: this.inspector,
       router: this.router,
       terminal: this.terminal,
       signals: this.signals,
@@ -176,19 +181,16 @@ export class App {
   }
   private dispatch(event: TerminalEvent): void {
     if (this.state !== "running") return;
-    try {
-      dispatchInput(event, {
-        root: this.root,
-        router: this.router,
-        frames: this.frames,
-        debug: this.inspector,
-        exitOnCtrlC: this.options.exitOnCtrlC !== false,
-        stop: () => this.stop(),
-        schedule: () => this.schedule(),
-      });
-    } catch (error) {
-      this.fail(error);
-    }
+    dispatchInput(event, {
+      root: this.root,
+      router: this.router,
+      frames: this.frames,
+      debug: this.inspector,
+      exitOnCtrlC: this.options.exitOnCtrlC !== false,
+      stop: () => this.stop(),
+      schedule: () => this.schedule(),
+      fail: (error) => this.fail(error),
+    });
   }
 }
 export function createApp(render: () => Child, options?: AppOptions): App {
