@@ -38,8 +38,13 @@ test("box rings align every side, dimensions sit below them and numeric cells op
     expect(rows[2]?.trim()).toBe(
       "1  2                      24 x 4                      2  1",
     );
-    expect(rows[5]?.trim()).toBe("width 30   height 10");
-    expect(rows[6]?.trim()).toBe("row gap 0   column gap 0");
+    expect(rows[5]?.trim()).toBe("30 x 10");
+    expect(rows[2]?.indexOf(" x ")).toBe(rows[5]?.indexOf(" x "));
+    expect(rows[6]?.trim()).toMatch(/^column +0$/);
+    expect(rows[7]?.trim()).toMatch(/^row +0$/);
+    expect(
+      terminal.screen?.get(rows[6]?.lastIndexOf("0") ?? 0, 6)?.style.background,
+    ).toBe("#503f32");
     click(terminal, rows[1]?.indexOf("2") ?? 0, 1);
     await app.flush();
     expect(terminal.screen?.toString()).toContain("paddingTop");
@@ -56,6 +61,49 @@ test("box rings align every side, dimensions sit below them and numeric cells op
     click(terminal, screen[y]?.indexOf("Reset property") ?? 0, y);
     await app.flush();
     expect(node.element.definition.base.paddingTop).toBeUndefined();
+  } finally {
+    app.stop();
+    await running;
+  }
+});
+
+test("gap gutters edit their own axis and dimension separators stay aligned after resizing", async () => {
+  const node = mounted(column().gap(2), null);
+  node.layout.style = { gap: 2 };
+  node.layout.rect = { x: 0, y: 0, width: 100, height: 12 };
+  node.layout.inner = { x: 0, y: 0, width: 9, height: 2 };
+  const terminal = new MemoryTerminal(61, 20);
+  const app = createApp(
+    () => BoxModel({ node, width: terminal.width, changed: () => {} }),
+    { terminal },
+  );
+  const running = app.run();
+  try {
+    await Bun.sleep(0);
+    await app.flush();
+    for (const width of [61, 60]) {
+      terminal.resize(width, 20);
+      await app.flush();
+      const rows = terminal.screen?.toString().split("\n") ?? [];
+      expect(rows[2]?.indexOf(" x ")).toBe(rows[5]?.indexOf(" x "));
+    }
+    for (const [y, value] of [
+      [6, "4"],
+      [7, "5"],
+    ] as const) {
+      const line = terminal.screen?.toString().split("\n")[y] ?? "";
+      click(terminal, line.lastIndexOf("2"), y);
+      await app.flush();
+      expect(terminal.screen?.toString()).toContain(
+        y === 6 ? "Column gap" : "Row gap",
+      );
+      key(terminal, value);
+      key(terminal, "enter");
+      await app.flush();
+    }
+    expect(node.element.definition.base.columnGap).toBe(4);
+    expect(node.element.definition.base.rowGap).toBe(5);
+    expect(node.element.definition.base.gap).toBe(2);
   } finally {
     app.stop();
     await running;

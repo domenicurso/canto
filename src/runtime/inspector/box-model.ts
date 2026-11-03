@@ -7,6 +7,7 @@ import { component } from "../../element/node";
 import { padding } from "../../style/types";
 import { useState } from "../components/hooks";
 import { BoxEditor } from "./box-editor";
+import { dimensions, gapDiagram } from "./box-metrics";
 import { debugColors } from "./controls";
 import { hasEdits } from "./edits";
 
@@ -22,7 +23,7 @@ export const BoxModel = component(function BoxModel({
 }: BoxProps) {
   const [target, setTarget] = useState<BoxTarget | undefined>(undefined);
   const { pads, borders, content, value } = boxValues(node, setTarget);
-  const { rect, style } = node.layout;
+  const { rect } = node.layout;
   return column(
     ring({
       label: "border",
@@ -39,24 +40,11 @@ export const BoxModel = component(function BoxModel({
     })
       .background("#484233")
       .color("#d8cdb1"),
-    row(
-      text("width "),
+    dimensions(
       value("layout.width", "Width", rect.width),
-      text("   height "),
       value("layout.height", "Height", rect.height),
-    )
-      .justify("center")
-      .width("fill")
-      .color(debugColors.muted),
-    row(
-      text("row gap "),
-      value("rowGap", "Row gap", style.rowGap ?? style.gap ?? 0),
-      text("   column gap "),
-      value("columnGap", "Column gap", style.columnGap ?? style.gap ?? 0),
-    )
-      .justify("center")
-      .width("fill")
-      .color(debugColors.muted),
+    ).color(debugColors.muted),
+    gapDiagram(node, value),
     target &&
       boxDialog({ node, width, changed }, target, () => setTarget(undefined)),
   ).width("fill");
@@ -103,13 +91,10 @@ function boxValues(node: Mounted, setTarget: (target: BoxTarget) => void) {
         : 0,
     ),
   );
-  const content = row(
+  const content = dimensions(
     value("content.width", "Content width", inner.width),
-    text(" x "),
     value("content.height", "Content height", inner.height),
   )
-    .justify("center")
-    .width("fill")
     .background("#34434c")
     .color("#c2d5df");
   return { pads, borders, content, value };
