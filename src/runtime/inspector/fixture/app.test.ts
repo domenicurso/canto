@@ -125,3 +125,33 @@ test("preview picking captures sample controls and survives resizing and app rer
   }
   expect(terminal.stopped).toBe(true);
 });
+
+test("preview picking paints the actual colored box overlay and restores the sample after closing", async () => {
+  const terminal = new MemoryTerminal(120, 40);
+  const app = createApp(InspectorFixture, { terminal });
+  const running = app.run();
+  try {
+    await settle(app);
+    click(terminal, " Pick ");
+    await settle(app);
+    mouse(terminal, { x: 1, y: 10 }, "move");
+    await settle(app);
+    expect(terminal.screen?.toString()).toContain("Box 34×11 at 1,2");
+    expect(terminal.screen?.get(1, 2)?.style.background).toEqual([112, 95, 31]);
+    expect(terminal.screen?.get(2, 3)?.style.background).toEqual([50, 102, 69]);
+    expect(terminal.screen?.get(4, 4)?.style.background).toEqual([44, 90, 111]);
+    expect(terminal.screen?.get(4, 5)?.style.background).toEqual([112, 75, 45]);
+    expect(terminal.screen?.get(4, 4)?.text).toBe("I");
+    mouse(terminal, { x: 1, y: 10 }, "press");
+    mouse(terminal, { x: 1, y: 10 }, "release");
+    await settle(app);
+    expect(terminal.screen?.toString()).toContain("Geometry");
+    click(terminal, " x");
+    await settle(app);
+    expect(terminal.screen?.get(1, 2)?.style.background).toBe("#252525");
+    expect(terminal.screen?.get(4, 4)?.style.background).toBe("#252525");
+  } finally {
+    app.stop();
+    await running;
+  }
+});
