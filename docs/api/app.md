@@ -9,30 +9,32 @@ createApp(render: () => Child, options?: AppOptions): App
 new App(render: () => Child, options?: AppOptions)
 ```
 
-Creation is inert: it doesn't acquire the terminal, render components, or run effects. Use one instance per session; `run()` rejects if called again. The root is a mounted component and may use hooks.
+Creation is inert: it doesn't acquire the terminal, render components, or run effects. Use one instance per session; `run()` rejects if called again unless the session has a `hot` identity. The root is a mounted component and may use hooks.
 
 ## AppOptions
 
-| Property      | Type            | Default              | Notes                   |
-| ------------- | --------------- | -------------------- | ----------------------- |
-| `mode`        | `Mode`          | `"fullscreen"`       |                         |
-| `terminal`    | `Terminal`      | Process adapter      |                         |
-| `signal`      | `AbortSignal`   | —                    | Abort requests shutdown |
-| `exitOnCtrlC` | `boolean`       | `true`               | Keyboard shortcut only  |
-| `clipboard`   | `Clipboard`     | `terminal.clipboard` | Override                |
-| `selection`   | `SelectionMode` | `"text"`             |                         |
-| `debug`       | `boolean`       | `true`               | F3 shortcut             |
+| Property      | Type            | Default              | Notes                               |
+| ------------- | --------------- | -------------------- | ----------------------------------- |
+| `mode`        | `Mode`          | `"fullscreen"`       |                                     |
+| `terminal`    | `Terminal`      | Process adapter      |                                     |
+| `signal`      | `AbortSignal`   | —                    | Abort requests shutdown             |
+| `exitOnCtrlC` | `boolean`       | `true`               | Keyboard shortcut only              |
+| `clipboard`   | `Clipboard`     | `terminal.clipboard` | Override                            |
+| `selection`   | `SelectionMode` | `"text"`             |                                     |
+| `hot`         | `string`        | —                    | Stable development session identity |
+| `debug`       | `boolean`       | `true`               | F3 shortcut                         |
 
 Disabling `exitOnCtrlC` releases the keyboard shortcut; process signals still request shutdown. `debug: false` releases F3 while retaining programmatic inspector access. Without a clipboard adapter, writes reject. An already-aborted signal prevents mounting.
 
 ## Methods
 
-| Method       | Returns         | Notes                |
-| ------------ | --------------- | -------------------- |
-| `run()`      | `Promise<void>` | Single-use session   |
-| `stop()`     | `void`          | Requests shutdown    |
-| `schedule()` | `void`          | Queues a frame       |
-| `flush()`    | `Promise<void>` | Awaits current frame |
+| Method           | Returns         | Notes                             |
+| ---------------- | --------------- | --------------------------------- |
+| `run()`          | `Promise<void>` | Single-use session                |
+| `update(render)` | `void`          | Replaces the root render function |
+| `stop()`         | `void`          | Requests shutdown                 |
+| `schedule()`     | `void`          | Queues a frame                    |
+| `flush()`        | `Promise<void>` | Awaits current frame              |
 
 `run()` resolves after cleanup and rejects on failure; Canto never calls `process.exit()`. `stop()` is idempotent while stopping or stopped. `schedule()` coalesces requests while running; state setters call it automatically. `flush()` doesn't start the app or await future effect-driven frames.
 
@@ -84,3 +86,7 @@ try {
 ```
 
 See [testing](../guides/testing.md) for synthetic input and [diagnostics](diagnostics.md) for statistics definitions.
+
+## Development reloads
+
+`createApp(render, { hot: import.meta.url })` reuses a live session with that identity when modules reload. Repeated `run()` calls share its lifetime promise. `update(render)` preserves compatible hooks, refreshes memo closures, and cleans up and reruns effects. Changed hook kinds or counts remount the affected component. Nested components need an explicit stable identity through `component(render, { hot: "unique-name" })` to preserve their state across module reevaluation. Restart for incompatible state value changes or changed session options. See [the development workflow](../guides/debugging.md).

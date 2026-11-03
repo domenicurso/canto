@@ -1,5 +1,5 @@
 export { createApp, App } from "./src/runtime/app";
-export type { AppOptions, AppStatus } from "./src/runtime/app";
+export type { AppOptions, AppStatus } from "./src/runtime/session";
 export {
   useState,
   useEffect,

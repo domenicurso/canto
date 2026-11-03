@@ -11,3 +11,17 @@ FPS and viewport size sit above two columns: content preparation and painting on
 Content cell changes exclude the inspector, while `cellsWritten` includes its actual terminal cell updates. Native uploads are measured separately in output bytes. Layout nodes and painted cells describe work performed, so cached layout can report zero nodes even with a full-screen canvas animation. Pointer motion within an unchanged target does not schedule a frame; hover transitions, dragging, and reactive mouse handlers still update normally.
 
 See [stats field definitions](../api/diagnostics.md), [terminal limitations](../reference/compatibility.md), and [testing](testing.md).
+
+## Hot reload
+
+Run `bun run dev` for Studio or `bun run dev:inline` for the counter. For your own entry point, give the application a stable identity and let the module finish evaluating so Bun can begin watching:
+
+```ts
+const app = createApp(Main, { hot: import.meta.url });
+void app.run().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+```
+
+Start it with `bun --hot --no-clear-screen entry.ts`. Canto keeps one terminal session and replaces the root render function, retaining compatible root hooks. Mark nested components with unique `component(render, { hot: "component-name" })` identities to retain their hooks too. Effects clean up and rerun, memo closures refresh, and incompatible hook layouts remount. State type changes and session option changes require a restart. Other development watchers can call `app.update(render)`; Canto's current runtime still requires Bun.

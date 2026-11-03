@@ -107,4 +107,12 @@ export function Studio(): Element {
     .color(colors.ink)
     .onKey(shortcuts.onKey);
 }
-if (import.meta.main) await createApp(Studio).run();
+if (import.meta.main) {
+  // Let entry-point evaluation finish so Bun can watch while the session runs.
+  void createApp(Studio, { hot: import.meta.url })
+    .run()
+    .catch((error: unknown) => {
+      console.error(error);
+      process.exitCode = 1;
+    });
+}

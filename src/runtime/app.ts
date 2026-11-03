@@ -1,7 +1,6 @@
-import type { Clipboard } from "../terminal/clipboard";
 import type { TerminalEvent } from "../terminal/input/events";
 import type { Terminal } from "../terminal/transport";
-import type { SelectionControl } from "./selection/selection-mode";
+import type { DebugControl } from "./inspector/panel";
 import type { AppOptions, AppStatus } from "./session";
 
 import { component, type Child } from "../element/node";
@@ -13,11 +12,12 @@ import { reconcile } from "./components/reconcile";
 import { Refs } from "./components/refs";
 import { mounted } from "./components/tree";
 import { Frames } from "./frame";
+import { FrameScheduler } from "./frame-scheduler";
 import { InputRouter } from "./input/router";
-import { DebugPanel, type DebugControl } from "./inspector/panel";
+import { DebugPanel } from "./inspector/panel";
+import { hotApp, replaceRoot, releaseHotApp } from "./reload/apps";
 import { SessionSignals, releaseSession } from "./session";
 
-export type { AppOptions, AppStatus } from "./session";
 export class App {
   private state: AppStatus = "created";
   private readonly terminal: Terminal;
@@ -36,10 +36,14 @@ export class App {
     },
   );
   private readonly refs = new Refs(this.router.focus, () => this.schedule());
-  private pending = false;
-  private preparing = false;
-  private queued = false;
-  private rendering: Promise<void> | undefined;
+  private readonly scheduler = new FrameScheduler({
+    active: () => this.state === "running",
+    prepare: () => this.router.flushScroll(this.root),
+    render: () => this.render(),
+    fail: (error) => this.fail(error),
+  });
+  private running?: Promise<void>;
+  private replacement?: () => Child;
   private failure: unknown;
   private failed = false;
   private finish: (() => void) | undefined;
@@ -68,10 +72,10 @@ export class App {
     this.debug = this.inspector;
     this.root = mounted(component(render)(), null);
   }
-  get selection(): SelectionControl {
+  get selection() {
     return this.router.selectionModes.control;
   }
-  get clipboard(): Clipboard {
+  get clipboard() {
     return (
       this.options.clipboard ?? this.terminal.clipboard ?? unavailableClipboard
     );
@@ -85,9 +89,20 @@ export class App {
   get stats(): Readonly<Frames["stats"]> {
     return this.frames.stats;
   }
-  async run(): Promise<void> {
+  run(): Promise<void> {
+    if (this.running && this.options.hot !== undefined) return this.running;
     if (this.state !== "created")
-      throw new Error("An app can only run once; create another to restart.");
+      return Promise.reject(new Error("An app can only run once."));
+    this.running = this.start();
+    return this.running;
+  }
+  update(render: () => Child): void {
+    if (this.state === "stopped" || this.state === "stopping")
+      throw new Error("Cannot update a stopped app.");
+    this.replacement = render;
+    this.schedule();
+  }
+  private async start(): Promise<void> {
     this.state = "starting";
     try {
       this.signals.start();
@@ -112,10 +127,11 @@ export class App {
       router: this.router,
       terminal: this.terminal,
       signals: this.signals,
-      rendering: this.rendering,
+      rendering: this.scheduler.rendering,
       failure: (error) => this.fail(error),
     });
     this.state = "stopped";
+    releaseHotApp(this.options.hot, this);
     if (this.failed) throw this.failure;
   }
   stop(): void {
@@ -131,38 +147,18 @@ export class App {
     this.stop();
   }
   schedule(): void {
-    if (this.state !== "running" || this.preparing) return;
-    this.pending = true;
-    if (this.queued || this.rendering) return;
-    this.queued = true;
-    queueMicrotask(() => {
-      this.queued = false;
-      void this.flush().catch((error) => this.fail(error));
-    });
+    this.scheduler.schedule();
   }
-  async flush(): Promise<void> {
-    if (this.rendering) {
-      await this.rendering;
-      return;
-    }
-    if (this.state !== "running") return;
-    this.preparing = true;
-    try {
-      this.router.flushScroll(this.root);
-    } finally {
-      this.preparing = false;
-    }
-    this.pending = false;
-    this.rendering = this.render();
-    try {
-      await this.rendering;
-    } finally {
-      this.rendering = undefined;
-      if (this.pending) this.schedule();
-    }
+  flush(): Promise<void> {
+    return this.scheduler.flush();
   }
   private async render(): Promise<void> {
     const startedAt = performance.now();
+    if (this.replacement) {
+      replaceRoot(this.root, this.replacement);
+      this.replacement = undefined;
+      this.frames.invalidate();
+    }
     reconcile(this.root, this.root.element, {
       app: this,
       schedule: () => this.schedule(),
@@ -196,5 +192,7 @@ export class App {
   }
 }
 export function createApp(render: () => Child, options?: AppOptions): App {
+  if (options?.hot !== undefined)
+    return hotApp(options.hot, render, () => new App(render, options));
   return new App(render, options);
 }

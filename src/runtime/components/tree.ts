@@ -15,6 +15,7 @@ export interface Mounted {
     dirty: boolean;
     descendantsDirty: boolean;
     rendered: boolean;
+    refreshing: boolean;
   };
   readonly layout: LayoutState;
   readonly editor: EditorState;
@@ -37,6 +38,7 @@ export function mounted(element: Element, parent: Mounted | null): Mounted {
       dirty: true,
       descendantsDirty: true,
       rendered: false,
+      refreshing: false,
     },
     layout: {
       rect: { x: 0, y: 0, width: 0, height: 0 },

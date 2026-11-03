@@ -77,6 +77,7 @@ export type AppStatus =
 export interface AppOptions {
   mode?: Mode;
   debug?: boolean;
+  hot?: string;
   terminal?: Terminal;
   signal?: AbortSignal;
   exitOnCtrlC?: boolean;

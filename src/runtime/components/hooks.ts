@@ -4,6 +4,7 @@ import type { SelectionControl } from "../selection/selection-mode";
 import type { Mounted } from "./tree";
 
 import { guard } from "./error-boundary";
+import { hookRuntime } from "./hook-scope";
 import { markDirty } from "./tree";
 
 export type DependencyList = readonly unknown[];
@@ -36,21 +37,20 @@ export interface HookScope {
   schedule(): void;
   app: AppControl;
 }
-let current: HookScope | undefined;
 export function enter<T>(scope: HookScope, render: () => T): T {
-  const previous = current;
-  current = scope;
+  const previous = hookRuntime.current;
+  hookRuntime.current = scope;
   scope.node.component.hookIndex = 0;
   try {
     return render();
   } finally {
-    current = previous;
+    hookRuntime.current = previous;
   }
 }
 function scope(): HookScope {
-  if (!current)
+  if (!hookRuntime.current)
     throw new Error("Hooks must be called inside a mounted component.");
-  return current;
+  return hookRuntime.current;
 }
 function next(kind: Hook["kind"]): {
   context: HookScope;
@@ -61,7 +61,9 @@ function next(kind: Hook["kind"]): {
   const index = context.node.component.hookIndex++;
   const previous = context.node.component.hooks[index];
   if (previous && previous.kind !== kind)
-    throw new Error("Hook order changed between renders.");
+    throw context.node.component.refreshing
+      ? hookRuntime.mismatch
+      : new Error("Hook order changed between renders.");
   return { context, index, previous };
 }
 export function useState<T>(
@@ -80,8 +82,9 @@ export function useState<T>(
   // Stable hook ordering guarantees this slot contains this call's T on subsequent renders.
   const read = (): T => hook.value as T;
   const set = (value: T | ((previous: T) => T)): void => {
-    if (!context.node.active) return;
-    if (current)
+    if (!context.node.active || context.node.component.hooks[index] !== hook)
+      return;
+    if (hookRuntime.current)
       throw new Error(
         "State cannot be updated during rendering. Update it in an event or effect.",
       );
@@ -114,7 +117,11 @@ export function useEffect(
   dependencies?: DependencyList,
 ): void {
   const { context, index, previous } = next("effect");
-  if (previous?.kind === "effect" && equal(previous.dependencies, dependencies))
+  if (
+    !context.node.component.refreshing &&
+    previous?.kind === "effect" &&
+    equal(previous.dependencies, dependencies)
+  )
     return;
   context.node.component.hooks[index] = {
     kind: "effect",
@@ -128,7 +135,11 @@ export function useMemo<T>(
   dependencies: DependencyList,
 ): T {
   const { context, index, previous } = next("memo");
-  if (previous?.kind === "memo" && equal(previous.dependencies, dependencies)) {
+  if (
+    !context.node.component.refreshing &&
+    previous?.kind === "memo" &&
+    equal(previous.dependencies, dependencies)
+  ) {
     // Hook ordering preserves the value type associated with this memo slot.
     return previous.value as T;
   }

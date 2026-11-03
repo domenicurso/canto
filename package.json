@@ -28,6 +28,8 @@
     "lint:structure": "eslint index.ts src examples",
     "demo:interactions": "bun examples/interactions.ts",
     "demo:studio": "bun examples/studio/app.ts",
+    "dev": "bun --hot --no-clear-screen examples/studio/app.ts",
+    "dev:inline": "bun --hot --no-clear-screen examples/counter.ts",
     "demo:pixels": "bun examples/pixels.ts",
     "demo:overlays": "bun examples/overlays.ts"
   },
