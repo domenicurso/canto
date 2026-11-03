@@ -7,7 +7,7 @@ import { component } from "../../element/node";
 import { padding } from "../../style/types";
 import { useState } from "../components/hooks";
 import { BoxEditor } from "./box-editor";
-import { dimensions, gapDiagram } from "./box-metrics";
+import { dimensions, gapControls } from "./box-metrics";
 import { debugColors } from "./controls";
 import { hasEdits } from "./edits";
 
@@ -44,7 +44,7 @@ export const BoxModel = component(function BoxModel({
       value("layout.width", "Width", rect.width),
       value("layout.height", "Height", rect.height),
     ).color(debugColors.muted),
-    gapDiagram(node, value),
+    gapControls(node, value),
     target &&
       boxDialog({ node, width, changed }, target, () => setTarget(undefined)),
   ).width("fill");

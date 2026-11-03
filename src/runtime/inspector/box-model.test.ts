@@ -40,11 +40,8 @@ test("box rings align every side, dimensions sit below them and numeric cells op
     );
     expect(rows[5]?.trim()).toBe("30 x 10");
     expect(rows[2]?.indexOf(" x ")).toBe(rows[5]?.indexOf(" x "));
-    expect(rows[6]?.trim()).toMatch(/^column +0$/);
-    expect(rows[7]?.trim()).toMatch(/^row +0$/);
-    expect(
-      terminal.screen?.get(rows[6]?.lastIndexOf("0") ?? 0, 6)?.style.background,
-    ).toBe("#503f32");
+    expect(rows[6]?.trim()).toBe("gap  = row 0  || column 0");
+    expect(rows[7]?.trim()).toBe("");
     click(terminal, rows[1]?.indexOf("2") ?? 0, 1);
     await app.flush();
     expect(terminal.screen?.toString()).toContain("paddingTop");
@@ -67,7 +64,7 @@ test("box rings align every side, dimensions sit below them and numeric cells op
   }
 });
 
-test("gap gutters edit their own axis and dimension separators stay aligned after resizing", async () => {
+test("compact gap controls edit their own axis and dimension separators stay aligned after resizing", async () => {
   const node = mounted(column().gap(2), null);
   node.layout.style = { gap: 2 };
   node.layout.rect = { x: 0, y: 0, width: 100, height: 12 };
@@ -87,15 +84,15 @@ test("gap gutters edit their own axis and dimension separators stay aligned afte
       const rows = terminal.screen?.toString().split("\n") ?? [];
       expect(rows[2]?.indexOf(" x ")).toBe(rows[5]?.indexOf(" x "));
     }
-    for (const [y, value] of [
-      [6, "4"],
-      [7, "5"],
+    for (const [axis, value] of [
+      ["column", "4"],
+      ["row", "5"],
     ] as const) {
-      const line = terminal.screen?.toString().split("\n")[y] ?? "";
-      click(terminal, line.lastIndexOf("2"), y);
+      const line = terminal.screen?.toString().split("\n")[6] ?? "";
+      click(terminal, line.indexOf(axis) + axis.length + 1, 6);
       await app.flush();
       expect(terminal.screen?.toString()).toContain(
-        y === 6 ? "Column gap" : "Row gap",
+        axis === "column" ? "Column gap" : "Row gap",
       );
       key(terminal, value);
       key(terminal, "enter");
