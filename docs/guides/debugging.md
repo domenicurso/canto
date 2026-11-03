@@ -35,3 +35,9 @@ void app.run().catch((error) => {
 ```
 
 Start it with `bun --hot --no-clear-screen entry.ts`. Canto keeps one terminal session and replaces the root render function, retaining compatible root hooks. Mark nested components with unique `component(render, { hot: "component-name" })` identities to retain their hooks too. Effects clean up and rerun, memo closures refresh, and incompatible hook layouts remount. State type changes and session option changes require a restart. Other development watchers can call `app.update(render)`; Canto's current runtime still requires Bun.
+
+## Developing the inspector
+
+Run `bun run dev:inspector` to open the internal [inspector fixture](../../src/runtime/inspector/fixture/app.ts) with hot reload. It mounts the production `InspectorView` as application content, so F3 opens an independent inspector that can pick the fixture's actual buttons, tree rows, property editors, and layout. Close the outer inspector with F3 to return to the preview.
+
+The top row switches between Sample, Long tree, Values, and Empty cases. Use the preview's own tabs, Pick, and Sidebar/Overlay controls to exercise its states; Reset clears temporary edits and restores the initial selection, and Open restores a closed preview. Resize the terminal or dock the outer inspector to check narrow layouts. Stats uses fixed readings so its labels stay stable while designing. Sample descriptions live in [sample.ts](../../src/runtime/inspector/fixture/sample.ts); appearance changes belong in the production inspector components alongside the fixture directory. This entry point is internal and adds no package exports.

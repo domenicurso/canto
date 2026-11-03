@@ -31,7 +31,8 @@
     "dev": "bun --hot --no-clear-screen examples/studio/app.ts",
     "dev:inline": "bun --hot --no-clear-screen examples/counter.ts",
     "demo:pixels": "bun examples/pixels.ts",
-    "demo:overlays": "bun examples/overlays.ts"
+    "demo:overlays": "bun examples/overlays.ts",
+    "dev:inspector": "bun --hot --no-clear-screen src/runtime/inspector/fixture/app.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
