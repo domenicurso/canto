@@ -12,8 +12,6 @@ import type { ElementProps } from "./props";
 
 import { StyleBuilder } from "../style/builders/builder";
 
-const elementBrand = Symbol.for("canto.element.v2");
-
 export type Kind =
   | "text"
   | "row"
@@ -37,7 +35,7 @@ export type Child =
 export type Component<P> = (props: P) => Child;
 export interface ComponentCall {
   render: () => Child;
-  identity: object | string;
+  identity: object;
   name?: string;
 }
 export interface ElementData {
@@ -52,16 +50,6 @@ export interface ElementData {
   call?: ComponentCall;
 }
 export class Element extends StyleBuilder {
-  private readonly [elementBrand] = true;
-  static override [Symbol.hasInstance](value: unknown): boolean {
-    // Elements created after a soft reload must remain recognizable by the retained runtime.
-    return (
-      value !== null &&
-      typeof value === "object" &&
-      elementBrand in value &&
-      value[elementBrand] === true
-    );
-  }
   constructor(
     readonly data: ElementData,
     definition?: StyleDefinition,
@@ -108,7 +96,6 @@ export class Element extends StyleBuilder {
 }
 export function component<P = void>(
   render: Component<P>,
-  options?: { hot: string },
 ): (...args: P extends void ? [props?: P] : [props: P]) => Element {
   return (...args) =>
     new Element({
@@ -116,7 +103,7 @@ export function component<P = void>(
       children: [],
       props: {},
       call: {
-        identity: options?.hot ?? render,
+        identity: render,
         name: render.name,
         // An omitted argument is permitted only for a component whose props are void.
         render: () => render(args[0] as P),

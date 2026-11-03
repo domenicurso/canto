@@ -15,7 +15,6 @@ import { Frames } from "./frame";
 import { FrameScheduler } from "./frame-scheduler";
 import { InputRouter } from "./input/router";
 import { DebugPanel } from "./inspector/panel";
-import { hotApp, replaceRoot, releaseHotApp } from "./reload/apps";
 import { SessionSignals, releaseSession } from "./session";
 
 export class App {
@@ -42,8 +41,6 @@ export class App {
     render: () => this.render(),
     fail: (error) => this.fail(error),
   });
-  private running?: Promise<void>;
-  private replacement?: () => Child;
   private failure: unknown;
   private failed = false;
   private finish: (() => void) | undefined;
@@ -94,17 +91,9 @@ export class App {
     return this.frames.stats;
   }
   run(): Promise<void> {
-    if (this.running && this.options.hot !== undefined) return this.running;
     if (this.state !== "created")
       return Promise.reject(new Error("An app can only run once."));
-    this.running = this.start();
-    return this.running;
-  }
-  update(render: () => Child): void {
-    if (this.state === "stopped" || this.state === "stopping")
-      throw new Error("Cannot update a stopped app.");
-    this.replacement = render;
-    this.schedule();
+    return this.start();
   }
   private async start(): Promise<void> {
     this.state = "starting";
@@ -136,7 +125,6 @@ export class App {
       failure: (error) => this.fail(error),
     });
     this.state = "stopped";
-    releaseHotApp(this.options.hot, this);
     if (this.failed) throw this.failure;
   }
   stop(): void {
@@ -159,11 +147,6 @@ export class App {
   }
   private async render(): Promise<void> {
     const startedAt = performance.now();
-    if (this.replacement) {
-      replaceRoot(this.root, this.replacement);
-      this.replacement = undefined;
-      this.frames.invalidate();
-    }
     reconcile(this.root, this.root.element, {
       app: this,
       schedule: () => this.schedule(),
@@ -194,7 +177,5 @@ export class App {
   }
 }
 export function createApp(render: () => Child, options?: AppOptions): App {
-  if (options?.hot !== undefined)
-    return hotApp(options.hot, render, () => new App(render, options));
   return new App(render, options);
 }

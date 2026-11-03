@@ -108,8 +108,7 @@ export function Studio(): Element {
     .onKey(shortcuts.onKey);
 }
 if (import.meta.main) {
-  // Let entry-point evaluation finish so Bun can watch while the session runs.
-  void createApp(Studio, { hot: import.meta.url })
+  void createApp(Studio)
     .run()
     .catch((error: unknown) => {
       console.error(error);

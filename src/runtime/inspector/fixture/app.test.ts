@@ -115,7 +115,7 @@ test("preview picking captures sample controls and survives resizing and root re
     await settle(app);
     expect(terminal.screen?.width).toBe(60);
     expect(terminal.screen?.toString()).toContain("Layout");
-    app.update(InspectorFixture);
+    app.schedule();
     await settle(app);
     expect(app.status).toBe("running");
     expect(terminal.screen?.toString()).toContain("FixtureCard");

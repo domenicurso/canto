@@ -29,7 +29,7 @@ function Counter() {
     .gap(1);
 }
 // Let entry-point evaluation finish so Bun can watch while the session runs.
-void createApp(Counter, { mode: "inline", hot: import.meta.url })
+void createApp(Counter, { mode: "inline" })
   .run()
   .catch((error: unknown) => {
     console.error(error);

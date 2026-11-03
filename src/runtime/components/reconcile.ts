@@ -4,7 +4,6 @@ import type { Mounted } from "./tree";
 
 import { flatten } from "../../element/node";
 import { boundaryContent, captureOwnBoundary } from "./error-boundary";
-import { hookRuntime } from "./hook-scope";
 import { cleanupHooks, enter } from "./hooks";
 import { mounted } from "./tree";
 
@@ -50,22 +49,9 @@ export function reconcile(
   try {
     reconcileNode(node, element, context);
   } catch (error) {
-    if (error === hookRuntime.mismatch && node.component.refreshing) {
-      resetComponent(node);
-      reconcileNode(node, element, context);
-      return;
-    }
     if (!captureOwnBoundary(node, error)) throw error;
     reconcileNode(node, element, context);
   }
-}
-function resetComponent(node: Mounted): void {
-  for (const child of node.children) unmount(child);
-  node.children = [];
-  cleanupHooks(node);
-  node.component.hooks = [];
-  node.component.rendered = false;
-  node.component.dirty = true;
 }
 function reconcileNode(
   node: Mounted,
@@ -97,15 +83,12 @@ function reconcileNode(
       ),
     ]);
     if (node.component.rendered && node.component.hookIndex !== previousCount)
-      throw node.component.refreshing
-        ? hookRuntime.mismatch
-        : new Error("Hook count changed between renders.");
+      throw new Error("Hook count changed between renders.");
     node.component.rendered = true;
   } else {
     descriptions = flatten(element.data.children);
   }
   reconcileChildren(node, descriptions, context);
-  node.component.refreshing = false;
   node.component.descendantsDirty = false;
 }
 function reconcileChildren(

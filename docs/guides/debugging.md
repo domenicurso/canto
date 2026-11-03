@@ -22,22 +22,8 @@ The Elements tree highlights names, strings, numbers, and literals. Click a brea
 
 Click a supported scalar style value in Styles or text in Props to edit its JSON representation. Enter applies the value; Escape cancels. Invalid input stays in the editor with an error. Changes are temporary overrides on the mounted node and survive application renders; Reset removes all overrides for that node. Removing the node discards them. Callback props, objects, and hook state remain read-only; edits never write source files.
 
-## Hot reload
-
-Run `bun run dev` for Studio or `bun run dev:inline` for the counter. For your own entry point, give the application a stable identity and let the module finish evaluating so Bun can begin watching:
-
-```ts
-const app = createApp(Main, { hot: import.meta.url });
-void app.run().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
-```
-
-Start it with `bun --hot --no-clear-screen entry.ts`. Canto keeps one terminal session and replaces the root render function, retaining compatible root hooks. Mark nested components with unique `component(render, { hot: "component-name" })` identities to retain their hooks too. Effects clean up and rerun, memo closures refresh, and incompatible hook layouts remount. State type changes and session option changes require a restart. Other development watchers can call `app.update(render)`; Canto's current runtime still requires Bun.
-
 ## Developing the inspector
 
-Run `bun run dev:inspector` to open the internal [inspector fixture](../../src/runtime/inspector/fixture/app.ts) with hot reload. It mounts the production `InspectorView` as application content, so F3 opens an independent inspector that can pick the fixture's actual buttons, tree rows, property editors, and layout. Close the outer inspector with F3 to return to the preview.
+Run `bun run dev:inspector` to open the internal [inspector fixture](../../src/runtime/inspector/fixture/app.ts). It mounts the production `InspectorView` as application content, so F3 opens an independent inspector that can pick the fixture's actual buttons, tree rows, property editors, and layout. Close the outer inspector with F3 to return to the preview.
 
 The top row switches between Sample, Long tree, Values, and Empty cases. Use the preview's own tabs, Pick, and Sidebar/Overlay controls to exercise its states; Reset clears temporary edits and restores the initial selection, and Open restores a closed preview. Resize the terminal or dock the outer inspector to check narrow layouts. Stats uses fixed readings so its labels stay stable while designing. Sample descriptions live in [sample.ts](../../src/runtime/inspector/fixture/sample.ts); appearance changes belong in the production inspector components alongside the fixture directory. This entry point is internal and adds no package exports.

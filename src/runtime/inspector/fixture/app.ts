@@ -98,8 +98,7 @@ function toolbar(fixture: InspectorFixtureModel) {
 }
 
 if (import.meta.main) {
-  // Entry-point evaluation must finish before Bun starts watching the inspector modules.
-  void createApp(InspectorFixture, { hot: import.meta.url })
+  void createApp(InspectorFixture)
     .run()
     .catch((error: unknown) => {
       console.error(error);
