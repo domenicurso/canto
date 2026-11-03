@@ -1,11 +1,11 @@
-import type { DrawingContext } from "./drawing";
+import type { DrawingContext } from "./graphics/drawing";
+import type { PixelBuffer, CanvasOptions } from "./graphics/pixels";
 import type { Child } from "./node";
 import type { OverlayProps } from "./overlay";
-import type { PixelBuffer, CanvasOptions } from "./pixels";
 import type { ButtonProps, InputProps, ScrollProps } from "./props";
 
+import { validatePixels } from "./graphics/pixels";
 import { Element, flatten } from "./node";
-import { validatePixels } from "./pixels";
 
 export function text(...content: Child[]): Element {
   const elements = flatten(content);

@@ -1,6 +1,6 @@
 # Styles and fluent builders
 
-[API index](README.md) · [Builder](../../src/style/builder.ts) · [Layout methods](../../src/style/layout-builder.ts) · [Decoration methods](../../src/style/decoration-builder.ts) · [Types](../../src/style/types.ts)
+[API index](README.md) · [Builder](../../src/style/builders/builder.ts) · [Layout methods](../../src/style/builders/layout-builder.ts) · [Decoration methods](../../src/style/builders/decoration-builder.ts) · [Types](../../src/style/types.ts)
 
 `style(): StyleBuilder` creates an empty immutable builder. `Element` inherits the same methods. Each call returns a new value; `.style(value: Readonly<Style>)` merges object properties and `.use(...styles: readonly StyleBuilder[])` merges definitions left to right. The last declaration of a base property wins. `new StyleBuilder(definition?)` also accepts a raw definition, but its representation type isn't a package export; prefer `style()`.
 

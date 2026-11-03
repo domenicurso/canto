@@ -1,11 +1,11 @@
-import type { PixelBuffer } from "../element/pixels";
+import type { PixelBuffer } from "../element/graphics/pixels";
 import type { Rect } from "../layout/geometry";
 import type { ColorTheme, RGB } from "../style/colors";
 import type { Style } from "../style/types";
-import type { CellSize } from "../terminal/cell-size";
-import type { GraphicsCapabilities } from "../terminal/graphics-capabilities";
-import type { PixelCell } from "./pixel-surface";
-import type { RasterPlacement } from "./raster-placement";
+import type { CellSize } from "../terminal/capabilities/cell-size";
+import type { GraphicsCapabilities } from "../terminal/capabilities/graphics";
+import type { PixelCell } from "./graphics/pixel-surface";
+import type { RasterPlacement } from "./graphics/raster-placement";
 
 import { contains } from "../layout/geometry";
 import { columns, graphemes } from "../text/columns";

@@ -1,5 +1,4 @@
 import type { Style, StyleDefinition } from "../style/types";
-import type { DrawingContext } from "./drawing";
 import type {
   AutoFocusOptions,
   ElementEvents,
@@ -7,10 +6,11 @@ import type {
   KeyEvent,
   PointerEvent,
 } from "./events";
-import type { PixelBuffer } from "./pixels";
+import type { DrawingContext } from "./graphics/drawing";
+import type { PixelBuffer } from "./graphics/pixels";
 import type { ElementProps } from "./props";
 
-import { StyleBuilder } from "../style/builder";
+import { StyleBuilder } from "../style/builders/builder";
 
 export type Kind =
   | "text"

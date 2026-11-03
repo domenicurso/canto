@@ -1,6 +1,6 @@
 # Diagnostics and frame statistics
 
-[API index](README.md) · [Controls](../../src/runtime/debug-panel.ts) · [Frame fields](../../src/runtime/frame-stats.ts) · [Presentation fields](../../src/terminal/presentation.ts)
+[API index](README.md) · [Controls](../../src/runtime/inspector/panel.ts) · [Frame fields](../../src/runtime/frame-stats.ts) · [Presentation fields](../../src/terminal/output/presentation.ts)
 
 ## DebugControl
 

@@ -3,10 +3,10 @@ import { expect, test } from "bun:test";
 import { column, overlay, row, scroll, text } from "../../index";
 import { layout, invalidateLayout } from "../layout/arrange";
 import { LayoutInvalidation } from "../layout/invalidation";
-import { repositionScroll } from "../layout/scroll";
-import { resolveStyles } from "../layout/styles";
-import { mounted, walk } from "../runtime/tree";
-import { paint } from "./paint";
+import { repositionScroll } from "../layout/scrolling/scroll";
+import { resolveStyles } from "../layout/styling/resolve";
+import { mounted, walk } from "../runtime/components/tree";
+import { paint } from "./painting/paint";
 import { RetainedPaint } from "./retained";
 
 function view(step: number) {
@@ -48,7 +48,7 @@ test("retained painting matches a full repaint through geometry, styling, remova
   }
 });
 import type { Element } from "../element/node";
-import type { Mounted } from "../runtime/tree";
+import type { Mounted } from "../runtime/components/tree";
 
 import { flatten } from "../element/node";
 function update(node: Mounted, element: Element): void {

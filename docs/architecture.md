@@ -9,7 +9,7 @@ Runtime coordinates immutable element descriptions, mounted component state, cel
 | Boundary   | Owns                                                                     | Main entry points                                                                |
 | ---------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
 | `element`  | Descriptions, component identities, props, canvas contracts              | [node](../src/element/node.ts), [factories](../src/element/factories.ts)         |
-| `style`    | Immutable style composition and value contracts                          | [builder](../src/style/builder.ts), [types](../src/style/types.ts)               |
+| `style`    | Immutable style composition and value contracts                          | [builder](../src/style/builders/builder.ts), [types](../src/style/types.ts)      |
 | `runtime`  | Mounted tree, hooks, event routing, frame scheduling, session lifetime   | [app](../src/runtime/app.ts), [frame](../src/runtime/frame.ts)                   |
 | `layout`   | Measurement, allocation, clipping geometry, overlay placement            | [arrangement](../src/layout/arrange.ts)                                          |
 | `render`   | Retained cells, damage, opacity, raster composition, ANSI cell diff      | [retained paint](../src/render/retained.ts), [diff](../src/render/diff.ts)       |

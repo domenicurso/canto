@@ -1,21 +1,21 @@
 import type { Clipboard } from "../terminal/clipboard";
-import type { TerminalEvent } from "../terminal/events";
+import type { TerminalEvent } from "../terminal/input/events";
 import type { Terminal } from "../terminal/transport";
-import type { SelectionControl } from "./selection-mode";
+import type { SelectionControl } from "./selection/selection-mode";
 import type { AppOptions, AppStatus } from "./session";
 
 import { component, type Child } from "../element/node";
 import { unavailableClipboard } from "../terminal/clipboard";
 import { ProcessTerminal } from "../terminal/process";
 import { dispatchInput } from "./app-events";
-import { DebugPanel, type DebugControl } from "./debug-panel";
+import { commitEffects } from "./components/hooks";
+import { reconcile } from "./components/reconcile";
+import { Refs } from "./components/refs";
+import { mounted } from "./components/tree";
 import { Frames } from "./frame";
-import { commitEffects } from "./hooks";
-import { InputRouter } from "./input";
-import { reconcile } from "./reconcile";
-import { Refs } from "./refs";
+import { InputRouter } from "./input/router";
+import { DebugPanel, type DebugControl } from "./inspector/panel";
 import { SessionSignals, releaseSession } from "./session";
-import { mounted } from "./tree";
 
 export type { AppOptions, AppStatus } from "./session";
 export class App {

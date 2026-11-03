@@ -1,6 +1,6 @@
 # Scrolling and virtual lists
 
-[API index](README.md) · [Factory](../../src/element/factories.ts) · [Props](../../src/element/props.ts) · [List](../../src/element/list.ts)
+[API index](README.md) · [Factory](../../src/element/factories.ts) · [Props](../../src/element/props.ts) · [List](../../src/element/collections/list.ts)
 
 ## scroll and ScrollProps
 

@@ -1,8 +1,8 @@
-import type { TerminalEvent } from "../terminal/events";
-import type { DebugPanel } from "./debug-panel";
+import type { TerminalEvent } from "../terminal/input/events";
+import type { Mounted } from "./components/tree";
 import type { Frames } from "./frame";
-import type { InputRouter } from "./input";
-import type { Mounted } from "./tree";
+import type { InputRouter } from "./input/router";
+import type { DebugPanel } from "./inspector/panel";
 
 interface AppEvents {
   root: Mounted;

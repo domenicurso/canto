@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test";
 
 import { style, text } from "../../index";
-import { partStyle, selectionStyle } from "../layout/style-parts";
-import { resolveStyles } from "../layout/styles";
-import { mounted } from "../runtime/tree";
+import { partStyle, selectionStyle } from "../layout/styling/parts";
+import { resolveStyles } from "../layout/styling/resolve";
+import { mounted } from "../runtime/components/tree";
 
 test("nested interactions require every state and compose without mutating reusable styles", () => {
   const combined = style().hovered(style().focused(style().color("red")));

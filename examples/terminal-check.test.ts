@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 
 import { createApp, keyEvent, MemoryTerminal } from "../index";
-import { Decoder } from "../src/terminal/decoder";
+import { Decoder } from "../src/terminal/input/decoder";
 import { TerminalCheck, type TerminalChecks } from "./terminal-check";
 
 test("the terminal checklist records observed results and confirms injected clipboard paste", async () => {

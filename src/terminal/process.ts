@@ -1,16 +1,16 @@
 import type { Screen } from "../render/screen";
-import type { CellSize } from "./cell-size";
-import type { TerminalEvent } from "./events";
+import type { CellSize } from "./capabilities/cell-size";
+import type { TerminalEvent } from "./input/events";
 import type { Mode, Terminal } from "./transport";
 
-import { CellMetrics } from "./cell-size";
+import { CellMetrics } from "./capabilities/cell-size";
+import { graphicsQuery } from "./capabilities/graphics";
+import { TerminalColors, themeQuery } from "./capabilities/theme";
 import { clipboardOutput } from "./clipboard";
-import { Decoder } from "./decoder";
-import { graphicsQuery } from "./graphics-capabilities";
-import { InputTimeout } from "./input-timeout";
-import { keyboardStart, keyboardStop } from "./keys";
-import { Presentation } from "./presentation";
-import { TerminalColors, themeQuery } from "./theme";
+import { Decoder } from "./input/decoder";
+import { InputTimeout } from "./input/input-timeout";
+import { keyboardStart, keyboardStop } from "./input/keys";
+import { Presentation } from "./output/presentation";
 
 let owner: ProcessTerminal | undefined;
 export class ProcessTerminal implements Terminal {

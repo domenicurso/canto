@@ -1,10 +1,10 @@
 import type { Clipboard } from "../terminal/clipboard";
 import type { Mode, Terminal } from "../terminal/transport";
-import type { InputRouter } from "./input";
-import type { SelectionMode } from "./selection-mode";
-import type { Mounted } from "./tree";
+import type { Mounted } from "./components/tree";
+import type { InputRouter } from "./input/router";
+import type { SelectionMode } from "./selection/selection-mode";
 
-import { unmount } from "./reconcile";
+import { unmount } from "./components/reconcile";
 /** Pair process and abort subscriptions with the terminal session that owns them. */
 export class SessionSignals {
   constructor(

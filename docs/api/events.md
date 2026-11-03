@@ -1,6 +1,6 @@
 # Events and mounted refs
 
-[API index](README.md) · [Element events](../../src/element/events.ts) · [Terminal events](../../src/terminal/events.ts)
+[API index](README.md) · [Element events](../../src/element/events.ts) · [Terminal events](../../src/terminal/input/events.ts)
 
 ## KeyEvent and keyEvent
 

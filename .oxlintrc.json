@@ -212,7 +212,7 @@
       "files": [
         "src/terminal/**/*.ts",
         "src/text/columns.ts",
-        "src/runtime/editing.ts",
+        "src/runtime/editor/editing.ts",
         "**/*.test.ts"
       ],
       "rules": {

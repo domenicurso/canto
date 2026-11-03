@@ -1,6 +1,6 @@
 # Hooks
 
-[API index](README.md) · [Source](../../src/runtime/hooks.ts) · [Component guide](../guides/components.md)
+[API index](README.md) · [Source](../../src/runtime/components/hooks.ts) · [Component guide](../guides/components.md)
 
 Call hooks inside the root render or a mounted `component()` callback. Keep calls in the same order on every render, outside loops and conditionals. A plain helper shares its caller's hook scope; it doesn't create an independent state boundary.
 

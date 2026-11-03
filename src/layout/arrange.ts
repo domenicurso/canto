@@ -1,12 +1,12 @@
-import type { Mounted } from "../runtime/tree";
+import type { Mounted } from "../runtime/components/tree";
 import type { Rect, Size } from "./geometry";
 
 import { wrap } from "../text/wrap";
-import { flow } from "./flow";
+import { flow } from "./flow/flow";
 import { bounded, dimension, inset } from "./geometry";
-import { invalidateMeasurement, content, measure } from "./measure";
+import { invalidateMeasurement, content, measure } from "./measurement/measure";
 import { placeOverlays } from "./overlay";
-import { arrangeScroll } from "./scroll";
+import { arrangeScroll } from "./scrolling/scroll";
 
 const placements = new WeakMap<Mounted, Rect>();
 let placed = 0;

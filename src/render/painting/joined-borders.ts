@@ -1,0 +1,94 @@
+import type { Rect } from "../../layout/geometry";
+import type { Mounted } from "../../runtime/components/tree";
+import type { Screen } from "../screen";
+
+import { borderOwner, borderOverlap } from "../../layout/flow/border-joining";
+import { contains } from "../../layout/geometry";
+import { hit } from "../../runtime/input/focus";
+
+// Direction bits are up, right, down, left. Corners at a shared edge become junctions.
+const glyphs = {
+  single: " ╵╶└╷│┌├╴┘─┴┐┤┬┼",
+  heavy: " ╹╺┗╻┃┏┣╸┛━┻┓┫┳╋",
+  double: " ╵╶╚╷║╔╠╴╝═╩╗╣╦╬",
+};
+export function joinedBorders(node: Mounted, screen: Screen, clip: Rect): void {
+  if (!node.layout.style.joinBorders) return;
+  const horizontal = node.element.data.kind === "row";
+  const children = node.children.filter(
+    (child) => child.layout.style.position !== "absolute",
+  );
+  for (const [index, child] of children.entries()) {
+    const previous = children[index - 1];
+    if (!borderOverlap(previous, child, horizontal) || !previous) continue;
+    const a = borderOwner(previous),
+      b = borderOwner(child);
+    if (a && b) seam({ a, b, horizontal, parent: node }, screen, clip);
+  }
+}
+function seam(
+  pair: { a: Mounted; b: Mounted; horizontal: boolean; parent: Mounted },
+  screen: Screen,
+  clip: Rect,
+): void {
+  const { a, b, horizontal } = pair;
+  const ar = a.layout.rect,
+    br = b.layout.rect;
+  if (horizontal ? ar.x + ar.width - 1 !== br.x : ar.y + ar.height - 1 !== br.y)
+    return;
+  const start = Math.max(horizontal ? ar.y : ar.x, horizontal ? br.y : br.x);
+  const end = Math.min(
+    horizontal ? ar.y + ar.height : ar.x + ar.width,
+    horizontal ? br.y + br.height : br.x + br.width,
+  );
+  for (let position = start; position < end; position++) {
+    const x = horizontal ? br.x : position,
+      y = horizontal ? position : br.y;
+    if (!contains(clip, x, y)) continue;
+    const visible = hit(pair.parent, { x, y }, clip);
+    if (visible !== a && visible !== b) continue;
+    const owner = visible;
+    if (hiddenBorder(owner, pair.parent)) continue;
+    const mask =
+      (hiddenBorder(a, pair.parent) ? 0 : directions(a, x, y)) |
+      (hiddenBorder(b, pair.parent) ? 0 : directions(b, x, y));
+    const cell = screen.get(x, y);
+    if (!cell) continue;
+    const type =
+      owner.layout.style.border === "rounded"
+        ? "single"
+        : owner.layout.style.border;
+    const text =
+      type && type !== "none" && typeof type !== "object"
+        ? glyphs[type][mask]
+        : undefined;
+    if (text) screen.put({ x, y, width: 1, height: 1 }, text, cell.style, clip);
+  }
+}
+function directions(node: Mounted, x: number, y: number): number {
+  const r = node.layout.rect,
+    s = node.layout.style;
+  const right = r.x + r.width - 1,
+    bottom = r.y + r.height - 1;
+  let mask = 0;
+  const horizontal =
+    (y === r.y && s.borderTop !== false) ||
+    (y === bottom && s.borderBottom !== false);
+  const vertical =
+    (x === r.x && s.borderLeft !== false) ||
+    (x === right && s.borderRight !== false);
+  if (horizontal) mask |= (x > r.x ? 8 : 0) | (x < right ? 2 : 0);
+  if (vertical) mask |= (y > r.y ? 1 : 0) | (y < bottom ? 4 : 0);
+  return mask;
+}
+
+function hiddenBorder(node: Mounted, parent: Mounted): boolean {
+  for (
+    let owner: Mounted | null = node;
+    owner && owner !== parent;
+    owner = owner.parent
+  ) {
+    if (owner.layout.style.opacity === 0) return true;
+  }
+  return false;
+}

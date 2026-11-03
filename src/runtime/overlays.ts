@@ -1,6 +1,6 @@
-import type { Mounted } from "./tree";
+import type { Mounted } from "./components/tree";
 
-import { walk } from "./tree";
+import { walk } from "./components/tree";
 
 export function overlays(root: Mounted): Mounted[] {
   return walk(root)

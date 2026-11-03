@@ -7,7 +7,7 @@ export {
   useRef,
   useApp,
   useViewport,
-} from "./src/runtime/hooks";
+} from "./src/runtime/components/hooks";
 export { component, Element } from "./src/element/node";
 export type { Child, Component } from "./src/element/node";
 export { errorBoundary } from "./src/element/error-boundary";
@@ -36,7 +36,7 @@ export type {
   PointerEvent,
   ElementRef,
 } from "./src/element/events";
-export { style, StyleBuilder } from "./src/style/builder";
+export { style, StyleBuilder } from "./src/style/builders/builder";
 export type {
   Style,
   Color,
@@ -51,30 +51,30 @@ export type {
 } from "./src/style/types";
 export { MemoryTerminal } from "./src/terminal/transport";
 export type { Terminal, Mode } from "./src/terminal/transport";
-export { keyEvent } from "./src/terminal/events";
-export type { TerminalEvent } from "./src/terminal/events";
-export type { DrawingContext } from "./src/element/drawing";
-export { list } from "./src/element/list";
-export type { ListOptions } from "./src/element/list";
+export { keyEvent } from "./src/terminal/input/events";
+export type { TerminalEvent } from "./src/terminal/input/events";
+export type { DrawingContext } from "./src/element/graphics/drawing";
+export { list } from "./src/element/collections/list";
+export type { ListOptions } from "./src/element/collections/list";
 
-export type { CellSize } from "./src/terminal/cell-size";
+export type { CellSize } from "./src/terminal/capabilities/cell-size";
 
 export type { Clipboard } from "./src/terminal/clipboard";
 
 export type {
   SelectionMode,
   SelectionControl,
-} from "./src/runtime/selection-mode";
+} from "./src/runtime/selection/selection-mode";
 
 export type { OverlayProps } from "./src/element/overlay";
 
-export type { PixelBuffer, CanvasOptions } from "./src/element/pixels";
+export type { PixelBuffer, CanvasOptions } from "./src/element/graphics/pixels";
 
-export type { GraphicsCapabilities } from "./src/terminal/graphics-capabilities";
+export type { GraphicsCapabilities } from "./src/terminal/capabilities/graphics";
 
 export type { ColorTheme } from "./src/style/colors";
 
-export type { DebugControl } from "./src/runtime/debug-panel";
+export type { DebugControl } from "./src/runtime/inspector/panel";
 export type { FrameStats, ContentFrameStats } from "./src/runtime/frame-stats";
 
-export type { PresentationStats } from "./src/terminal/presentation";
+export type { PresentationStats } from "./src/terminal/output/presentation";

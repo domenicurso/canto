@@ -1,6 +1,6 @@
 # Canvas and graphics
 
-[API index](README.md) · [Factory](../../src/element/factories.ts) · [Drawing contract](../../src/element/drawing.ts) · [Pixels](../../src/element/pixels.ts)
+[API index](README.md) · [Factory](../../src/element/factories.ts) · [Drawing contract](../../src/element/graphics/drawing.ts) · [Pixels](../../src/element/graphics/pixels.ts)
 
 ## canvas
 

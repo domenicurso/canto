@@ -1,11 +1,11 @@
 import type { ElementProps } from "../element/props";
-import type { Mounted } from "../runtime/tree";
+import type { Mounted } from "../runtime/components/tree";
 import type { Style } from "../style/types";
 
 import { width } from "../text/columns";
 import { wrap } from "../text/wrap";
 import { invalidateLayout } from "./arrange";
-import { content } from "./measure";
+import { content } from "./measurement/measure";
 
 const geometry: readonly (keyof Style)[] = [
   "width",

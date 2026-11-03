@@ -1,7 +1,7 @@
 import type { Rect } from "../layout/geometry";
 import type { ColorTheme, RGB } from "../style/colors";
 import type { Style } from "../style/types";
-import type { PixelSurface } from "./pixel-surface";
+import type { PixelSurface } from "./graphics/pixel-surface";
 import type { Cell, Screen } from "./screen";
 
 import { intersect } from "../layout/geometry";

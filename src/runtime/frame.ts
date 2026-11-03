@@ -1,18 +1,21 @@
 import type { Screen } from "../render/screen";
 import type { Mode, Terminal } from "../terminal/transport";
-import type { DebugPanel } from "./debug-panel";
+import type { Mounted } from "./components/tree";
 import type { ContentFrameStats, FrameStats } from "./frame-stats";
-import type { Selection } from "./selection";
-import type { Mounted } from "./tree";
+import type { DebugPanel } from "./inspector/panel";
+import type { Selection } from "./selection/selection";
 
 import { layout, positionOverlays } from "../layout/arrange";
 import { LayoutInvalidation } from "../layout/invalidation";
-import { repositionScroll } from "../layout/scroll";
-import { resolveStyles } from "../layout/styles";
+import { repositionScroll } from "../layout/scrolling/scroll";
+import { resolveStyles } from "../layout/styling/resolve";
 import { diff } from "../render/diff";
-import { maskRasterCells, RasterPlacements } from "../render/raster-placement";
+import {
+  maskRasterCells,
+  RasterPlacements,
+} from "../render/graphics/raster-placement";
 import { RetainedPaint } from "../render/retained";
-import { cursorOutput } from "./editor-cursor";
+import { cursorOutput } from "./editor/cursor";
 import { FrameRate } from "./frame-rate";
 
 interface FrameInput {

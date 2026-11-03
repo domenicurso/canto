@@ -1,10 +1,10 @@
 import type { Screen } from "../render/screen";
 import type { ColorTheme } from "../style/colors";
-import type { CellSize } from "./cell-size";
+import type { CellSize } from "./capabilities/cell-size";
+import type { GraphicsCapabilities } from "./capabilities/graphics";
 import type { Clipboard } from "./clipboard";
-import type { TerminalEvent } from "./events";
-import type { GraphicsCapabilities } from "./graphics-capabilities";
-import type { PresentationStats } from "./presentation";
+import type { TerminalEvent } from "./input/events";
+import type { PresentationStats } from "./output/presentation";
 
 export type Mode = "fullscreen" | "inline";
 export interface Terminal {

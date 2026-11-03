@@ -1,9 +1,9 @@
-import type { Mounted } from "../runtime/tree";
-import type { Place } from "./flow";
+import type { Mounted } from "../runtime/components/tree";
+import type { Place } from "./flow/flow";
 import type { Rect } from "./geometry";
 
 import { overlays } from "../runtime/overlays";
-import { measure } from "./measure";
+import { measure } from "./measurement/measure";
 
 export function placeOverlays(root: Mounted, place: Place): void {
   for (const node of overlays(root)) {

@@ -1,14 +1,14 @@
-import type { PixelBuffer } from "../element/pixels";
+import type { PixelBuffer } from "../element/graphics/pixels";
 import type { Rect } from "../layout/geometry";
-import type { Mounted } from "../runtime/tree";
+import type { Mounted } from "../runtime/components/tree";
 import type { ColorTheme } from "../style/colors";
-import type { CellSize } from "../terminal/cell-size";
-import type { GraphicsCapabilities } from "../terminal/graphics-capabilities";
+import type { CellSize } from "../terminal/capabilities/cell-size";
+import type { GraphicsCapabilities } from "../terminal/capabilities/graphics";
 
 import { intersect } from "../layout/geometry";
-import { content } from "../layout/measure";
-import { activeInteractions } from "../layout/style-parts";
-import { draw } from "./paint";
+import { content } from "../layout/measurement/measure";
+import { activeInteractions } from "../layout/styling/parts";
+import { draw } from "./painting/paint";
 import { Screen } from "./screen";
 
 interface Snapshot {

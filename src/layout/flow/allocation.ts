@@ -1,0 +1,75 @@
+import type { Mounted } from "../../runtime/components/tree";
+import type { Size } from "../geometry";
+
+import { measure } from "../measurement/measure";
+import { minimum } from "../measurement/minimum";
+import { flowGaps } from "./border-joining";
+
+export interface Allocation {
+  node: Mounted;
+  size: Size;
+  flow: number;
+  min: number;
+  max: number;
+  grow: number;
+  shrink: number;
+}
+export function allocate(
+  children: Mounted[],
+  available: Size,
+  horizontal: boolean,
+): Allocation[] {
+  const axis = horizontal ? "width" : "height";
+  const result = children.map((node) => {
+    const s = node.layout.style;
+    const size = measure(node, available);
+    const fill = s[axis] === "fill";
+    const min = minimum(node, horizontal);
+    const max = (horizontal ? s.maxWidth : s.maxHeight) ?? Infinity;
+    const token = s[axis];
+    return {
+      node,
+      size,
+      flow: fill ? min : size[axis],
+      min,
+      max,
+      grow: s.grow ?? (fill ? 1 : 0),
+      shrink: s.shrink ?? (typeof token === "number" ? 0 : 1),
+    };
+  });
+  const remaining =
+    available[axis] -
+    flowGaps(children, horizontal) -
+    result.reduce((sum, item) => sum + item.flow, 0);
+  distribute(result, remaining);
+  return result;
+}
+function distribute(items: Allocation[], free: number): void {
+  const growing = free > 0;
+  let remaining = Math.abs(Math.floor(free));
+  if (!Number.isFinite(remaining)) return;
+  while (remaining > 0) {
+    const eligible = items.filter((item) =>
+      growing
+        ? item.grow > 0 && item.flow < item.max
+        : item.shrink > 0 && item.flow > item.min,
+    );
+    if (!eligible.length) break;
+    const total = eligible.reduce(
+      (sum, item) => sum + (growing ? item.grow : item.shrink),
+      0,
+    );
+    const budget = remaining;
+    for (const item of eligible) {
+      const weight = growing ? item.grow : item.shrink;
+      const capacity = growing ? item.max - item.flow : item.flow - item.min;
+      const share = Math.min(
+        remaining,
+        capacity,
+        Math.max(1, Math.floor((budget * weight) / total)),
+      );
+      item.flow += growing ? share : -share;
+      remaining -= share;
+    }
+  }
+}

@@ -1,7 +1,7 @@
 import type { ErrorBoundaryProps } from "./error-boundary";
 import type { ElementEvents } from "./events";
+import type { CanvasOptions } from "./graphics/pixels";
 import type { OverlayProps } from "./overlay";
-import type { CanvasOptions } from "./pixels";
 
 export type ValueProps =
   | { value: string; onChange: (value: string) => void; defaultValue?: never }

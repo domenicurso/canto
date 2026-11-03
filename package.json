@@ -17,7 +17,7 @@
     "demo": "bun examples/dashboard.ts",
     "demo:inline": "bun examples/counter.ts",
     "terminal:check": "bun examples/terminal-check.ts",
-    "bench": "bun src/runtime/performance.bench.ts && bun src/runtime/rendering.bench.ts && bun src/runtime/graphics.bench.ts",
+    "bench": "bun src/runtime/benchmarks/performance.bench.ts && bun src/runtime/benchmarks/rendering.bench.ts && bun src/runtime/benchmarks/graphics.bench.ts",
     "demo:form": "bun examples/form.ts",
     "demo:layout": "bun examples/layout.ts",
     "demo:tasks": "bun examples/tasks.ts",

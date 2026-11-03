@@ -1,6 +1,6 @@
 # Overlays
 
-[API index](README.md) · [Factory](../../src/element/factories.ts) · [Props](../../src/element/overlay.ts) · [Behavior](../../src/runtime/overlay-input.ts)
+[API index](README.md) · [Factory](../../src/element/factories.ts) · [Props](../../src/element/overlay.ts) · [Behavior](../../src/runtime/input/overlay-input.ts)
 
 ```ts
 overlay(...children: Child[]): Element
