@@ -3,7 +3,7 @@ import { expect, test } from "bun:test";
 import { text } from "../../element/factories";
 import { mounted } from "../components/tree";
 import { parseStyleEdit } from "./edit-values";
-import { applyInspectorEdits, editProperty, resetProperties } from "./edits";
+import { editProperty, resetProperties } from "./edits";
 
 test("style editing validates units, enums, colors, and padding before applying", () => {
   expect(parseStyleEdit("width", '"50%"')).toEqual({ width: "50%" });
@@ -31,12 +31,12 @@ test("mounted overrides survive replacement descriptions and reset to the latest
   const node = mounted(original, null);
   editProperty(node, "foreground", '"blue"');
   editProperty(node, "text", '"Edited"');
-  applyInspectorEdits(node);
+  node.element = node.descriptionOverride?.(node.element) ?? node.element;
   expect(node.element.definition.base.foreground).toBe("blue");
   expect(node.element.data.text).toBe("Edited");
   expect(original.data.text).toBe("First");
   node.element = text("Second").color("green");
-  applyInspectorEdits(node);
+  node.element = node.descriptionOverride?.(node.element) ?? node.element;
   expect(node.element.data.text).toBe("Edited");
   resetProperties(node);
   expect(node.element.data.text).toBe("Second");

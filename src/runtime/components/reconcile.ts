@@ -58,6 +58,7 @@ function reconcileNode(
   element: Element,
   context: ReconcileContext,
 ): void {
+  element = node.descriptionOverride?.(element) ?? element;
   const previous = node.element;
   node.element = element;
   const call = element.data.call;

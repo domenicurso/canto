@@ -20,7 +20,7 @@ Nested arrays flatten recursively. Strings and numbers become text. `null`, `und
 
 ## component
 
-`component<P = void>(render: Component<P>)` returns a factory that creates an `Element`. The factory requires props unless `P` is `void`, when arguments are optional. Each mounted call owns hooks, effects, and refs. Define factories outside rendering to preserve render-function identity.
+`component<P = void>(render: Component<P>, options?: { name?: string })` returns a factory that creates an `Element`. The factory requires props unless `P` is `void`, when arguments are optional. Each mounted call owns hooks, effects, and refs. Define factories outside rendering to preserve render-function identity. The optional `name` overrides the render function name displayed by the inspector; name render functions or set this option for anonymous functions.
 
 ```ts
 import { button, component, useState } from "canto";

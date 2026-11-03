@@ -53,7 +53,7 @@ function useQueueNavigation(props: QueueProps) {
   };
   return { listRef, rows, move };
 }
-export const Queue = component((props: QueueProps): Element => {
+export const Queue = component(function Queue(props: QueueProps): Element {
   const { listRef, rows, move } = useQueueNavigation(props);
   const { width, height } = useViewport();
   return column(

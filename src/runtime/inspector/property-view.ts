@@ -6,23 +6,26 @@ import { component } from "../../element/node";
 import { style } from "../../style/builders/builder";
 import { useState } from "../components/hooks";
 import { debugColors } from "./controls";
-import { editProperty } from "./edits";
+import { editProperty, hasEdits, resetProperties } from "./edits";
 import { syntaxText } from "./syntax";
 
 interface PropertyProps {
   node: Mounted;
   line: PropertyLine;
   width: number;
+  first: boolean;
   changed: () => void;
 }
-export const PropertyRow = component((props: PropertyProps) => {
+export const PropertyRow = component(function PropertyRow(
+  props: PropertyProps,
+) {
   const { line, node, width } = props;
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
   if (line.section)
     return text(line.label)
       .color(debugColors.muted)
-      .paddingTop(1)
+      .paddingTop(props.first ? 0 : 1)
       .width("fill");
   if (line.value === undefined) return text(line.label).width("fill");
   const value = editing
@@ -45,6 +48,14 @@ export const PropertyRow = component((props: PropertyProps) => {
       .wrap("none")
       .overflow("ellipsis"),
     value,
+    line.edit &&
+      hasEdits(node, line.edit) &&
+      button(text("reset").color(debugColors.muted), () => {
+        resetProperties(node, line.edit);
+        props.changed();
+      })
+        .focusable(false)
+        .width(5),
   )
     .gap(1)
     .width("fill")
@@ -61,7 +72,7 @@ function valueEditor(
 ) {
   return column(
     input({
-      defaultValue: props.line.value ?? "",
+      defaultValue: props.line.source ?? props.line.value ?? "",
       onSubmit: (value) => {
         try {
           editProperty(props.node, props.line.edit ?? "", value);

@@ -37,6 +37,8 @@ export interface ComponentCall {
   render: () => Child;
   identity: object;
   name?: string;
+  props?: unknown;
+  renderWithProps?: (props: unknown) => Child;
 }
 export interface ElementData {
   kind: Kind;
@@ -96,6 +98,7 @@ export class Element extends StyleBuilder {
 }
 export function component<P = void>(
   render: Component<P>,
+  options?: { name?: string },
 ): (...args: P extends void ? [props?: P] : [props: P]) => Element {
   return (...args) =>
     new Element({
@@ -104,8 +107,10 @@ export function component<P = void>(
       props: {},
       call: {
         identity: render,
-        name: render.name,
-        // An omitted argument is permitted only for a component whose props are void.
+        name: options?.name || render.name || "Anonymous",
+        props: args[0],
+        // Inspector prop edits are validated against the component's original prop values.
+        renderWithProps: (props) => render(props as P),
         render: () => render(args[0] as P),
       },
     });

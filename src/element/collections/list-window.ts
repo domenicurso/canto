@@ -1,6 +1,7 @@
 import type { StyleBuilder } from "../../style/builders/builder";
 import type { ElementRef, KeyEvent } from "../events";
 import type { Child } from "../node";
+import type { ScrollProps } from "../props";
 
 import {
   useEffect,
@@ -14,6 +15,7 @@ import { component } from "../node";
 import { ListGeometry } from "./list-geometry";
 
 export interface WindowOptions {
+  contentWidth?: number;
   count: number;
   height: number | "fill";
   itemHeight: number | ((index: number) => number);
@@ -26,7 +28,7 @@ export interface WindowOptions {
   scrollStyle?: StyleBuilder;
 }
 
-export const Window = component((options: WindowOptions) => {
+export const Window = component(function ListWindow(options: WindowOptions) {
   const [offset, setOffset] = useState(0);
   const [measuredHeight, setHeight] = useState(1);
   const [selected, setSelected] = useState(-1);
@@ -35,7 +37,10 @@ export const Window = component((options: WindowOptions) => {
     () => new ListGeometry(options.count, options.itemHeight),
     [options.dataset, options.heightIdentity],
   );
-  const height = options.height === "fill" ? measuredHeight : options.height;
+  const viewportHeight =
+    options.height === "fill" ? measuredHeight : options.height;
+  const height = Math.max(1, viewportHeight - (options.contentWidth ? 1 : 0));
+  const position = useWindowPosition(offset, setOffset, options.contentWidth);
   const active = options.activeIndex ?? selected;
   useEffect(() => {
     if (options.height === "fill")
@@ -50,10 +55,10 @@ export const Window = component((options: WindowOptions) => {
       );
   }, [active, geometry, height]);
   const top = Math.max(0, Math.min(offset, geometry.total - height));
-  return scroll(windowContent(options, geometry, { offset: top, height }), {
-    offset: top,
-    onScroll: setOffset,
-  })
+  return scroll(
+    windowContent(options, geometry, { offset: top, height }),
+    position,
+  )
     .use(options.scrollStyle ?? style())
     .height(options.height)
     .width("fill")
@@ -96,7 +101,25 @@ function windowContent(
     box()
       .height(Math.max(0, geometry.total - geometry.start(end)))
       .key("after"),
-  ).width("fill");
+  ).width(options.contentWidth ?? "fill");
+}
+
+function useWindowPosition(
+  offset: number,
+  onScroll: (offset: number) => void,
+  width?: number,
+): ScrollProps {
+  const [x, setX] = useState(0);
+  return width === undefined
+    ? { offset, onScroll }
+    : {
+        axis: "both",
+        offset: { x, y: offset },
+        onScroll: (position) => {
+          setX(position.x);
+          onScroll(position.y);
+        },
+      };
 }
 
 function navigate(

@@ -1,60 +1,67 @@
-import type { Style } from "../../style/types";
 import type { Mounted } from "../components/tree";
+import type { DescriptionPatch } from "./description-edit";
+import type { StateEdit } from "./state-edit";
 
 import { Element } from "../../element/node";
-import { walk } from "../components/tree";
-import { parseStyleEdit } from "./edit-values";
+import { markDirty } from "../components/tree";
+import { descriptionEdit } from "./description-edit";
+import { editState } from "./state-edit";
 
-interface Override {
-  style: Style;
-  text?: string;
-  original?: Element;
+interface Overrides {
+  original: Element;
   applied?: Element;
+  descriptions: Map<string, DescriptionPatch>;
+  state: Map<string, StateEdit>;
 }
-const overrides = new WeakMap<Mounted, Override>();
+const overrides = new WeakMap<Mounted, Overrides>();
 
 export function editProperty(node: Mounted, key: string, source: string): void {
-  const current = overrides.get(node) ?? { style: {} };
-  if (key === "text") {
-    const value: unknown = JSON.parse(source);
-    if (typeof value !== "string")
-      throw new Error("Text must be a JSON string.");
-    current.text = value;
-  } else current.style = { ...current.style, ...parseStyleEdit(key, source) };
-  if (current.applied === node.element && current.original)
-    node.element = current.original;
-  current.applied = undefined;
+  const current: Overrides = overrides.get(node) ?? {
+    original: node.element,
+    descriptions: new Map(),
+    state: new Map(),
+  };
+  if (key.startsWith("state.")) {
+    const state = editState(node, key, source);
+    if (!current.state.has(key)) current.state.set(key, state);
+  } else current.descriptions.set(key, descriptionEdit(node, key, source));
   overrides.set(node, current);
+  node.descriptionOverride = (element) => describe(current, element);
+  current.applied = undefined;
+  node.element = describe(current, current.original);
+  if (node.element.data.call) markDirty(node);
 }
-
-export function resetProperties(node: Mounted): void {
+function describe(current: Overrides, element: Element): Element {
+  if (element === current.applied) return element;
+  if (element === current.original && current.applied) return current.applied;
+  current.original = element;
+  for (const patch of current.descriptions.values()) element = patch(element);
+  current.applied = element;
+  return element;
+}
+export function resetProperties(node: Mounted, key?: string): void {
   const current = overrides.get(node);
-  if (current?.applied === node.element && current.original)
-    node.element = current.original;
-  overrides.delete(node);
-}
-
-export function hasEdits(node: Mounted): boolean {
-  return overrides.has(node);
-}
-
-export function applyInspectorEdits(root: Mounted): void {
-  for (const node of walk(root)) {
-    const current = overrides.get(node);
-    if (!current || current.applied === node.element) continue;
-    current.original = node.element;
-    node.element = new Element(
-      {
-        ...node.element.data,
-        ...(current.text === undefined
-          ? {}
-          : { text: current.text, runs: undefined }),
-      },
-      {
-        ...node.element.definition,
-        base: { ...node.element.definition.base, ...current.style },
-      },
-    );
-    current.applied = node.element;
+  if (!current) return;
+  if (key !== undefined) {
+    current.state.get(key)?.restore();
+    current.state.delete(key);
+    current.descriptions.delete(key);
+  } else {
+    for (const state of current.state.values()) state.restore();
+    current.state.clear();
+    current.descriptions.clear();
   }
+  current.applied = undefined;
+  node.element = describe(current, current.original);
+  if (!current.state.size && !current.descriptions.size) {
+    overrides.delete(node);
+    node.descriptionOverride = undefined;
+  }
+  if (node.element.data.call) markDirty(node);
+}
+export function hasEdits(node: Mounted, key?: string): boolean {
+  const current = overrides.get(node);
+  return key === undefined
+    ? Boolean(current)
+    : Boolean(current?.descriptions.has(key) || current?.state.has(key));
 }

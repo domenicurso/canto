@@ -40,7 +40,7 @@ function key(terminal: MemoryTerminal, value: string, modifiers = {}): void {
 }
 
 test("properties move with wheel and keyboard scrolling, and breadcrumbs select ancestors", async () => {
-  const terminal = new MemoryTerminal(100, 28);
+  const terminal = new MemoryTerminal(100, 22);
   const app = createApp(() => column(text("Child")).fill().padding(1), {
     terminal,
   });
@@ -65,11 +65,11 @@ test("properties move with wheel and keyboard scrolling, and breadcrumbs select 
     await Bun.sleep(0);
     await app.flush();
     expect(terminal.screen?.toString()).toContain("Geometry");
-    click(terminal, "component / column");
+    click(terminal, "Anonymous / column");
     await Bun.sleep(0);
     await app.flush();
-    expect(terminal.screen?.toString()).toContain("component");
-    expect(terminal.screen?.toString()).not.toContain("component / column");
+    expect(terminal.screen?.toString()).toContain("Anonymous");
+    expect(terminal.screen?.toString()).not.toContain("Anonymous / column");
   } finally {
     app.stop();
     await running;

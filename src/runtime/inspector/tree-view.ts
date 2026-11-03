@@ -4,40 +4,49 @@ import { Window } from "../../element/collections/list-window";
 import { button, column, row, text } from "../../element/factories";
 import { component } from "../../element/node";
 import { style } from "../../style/builders/builder";
+import { width as columns } from "../../text/columns";
 import { debugColors, inspectorScrollStyle } from "./controls";
 import { elementName } from "./element-details";
 import { syntaxText } from "./syntax";
 
-export const InspectorTree = component(
-  ({ model, height }: { model: DebugSelection; height: number }) => {
-    const selected = model.entries.findIndex(
-      (entry) => entry.node === model.selected,
-    );
-    return column(
-      Window({
-        dataset: model.entries,
-        count: model.entries.length,
-        heightIdentity: 1,
-        height: Math.max(1, height - 1),
-        itemHeight: 1,
-        key: (index) => model.entries[index]?.id ?? index,
-        activeIndex: selected,
-        onActiveChange: (index) => model.select(model.entries[index]?.node),
-        render: (index) => {
-          const entry = model.entries[index];
-          if (!entry)
-            throw new Error("Inspector tree changed while rendering.");
-          return treeRow(model, entry);
-        },
-        scrollStyle: inspectorScrollStyle(),
-      }).key("inspector-tree"),
-      text(`${model.entries.length} nodes`).color(debugColors.muted).height(1),
-    )
-      .height(height)
-      .width("fill")
-      .onKey((event) => model.navigate(event));
-  },
-);
+export const InspectorTree = component(function InspectorTree({
+  model,
+  height,
+}: {
+  model: DebugSelection;
+  height: number;
+}) {
+  const selected = model.entries.findIndex(
+    (entry) => entry.node === model.selected,
+  );
+  return column(
+    Window({
+      contentWidth: model.entries.reduce(
+        (width, { node, depth }) =>
+          Math.max(width, depth * 2 + 2 + columns(elementName(node))),
+        1,
+      ),
+      dataset: model.entries,
+      count: model.entries.length,
+      heightIdentity: 1,
+      height: Math.max(1, height - 1),
+      itemHeight: 1,
+      key: (index) => model.entries[index]?.id ?? index,
+      activeIndex: selected,
+      onActiveChange: (index) => model.select(model.entries[index]?.node),
+      render: (index) => {
+        const entry = model.entries[index];
+        if (!entry) throw new Error("Inspector tree changed while rendering.");
+        return treeRow(model, entry);
+      },
+      scrollStyle: inspectorScrollStyle(),
+    }).key("inspector-tree"),
+    text(`${model.entries.length} nodes`).color(debugColors.muted).height(1),
+  )
+    .height(height)
+    .width("fill")
+    .onKey((event) => model.navigate(event));
+});
 
 function treeRow(model: DebugSelection, entry: InspectorEntry) {
   const { node, depth } = entry;
@@ -52,7 +61,7 @@ function treeRow(model: DebugSelection, entry: InspectorEntry) {
     .width(2)
     .focusable(false);
   return row(
-    text(" ".repeat(Math.min(depth * 2, 16))),
+    text(" ".repeat(depth * 2)),
     toggle,
     button(
       text(
@@ -66,7 +75,6 @@ function treeRow(model: DebugSelection, entry: InspectorEntry) {
         ),
       )
         .wrap("none")
-        .overflow("ellipsis")
         .width("fill"),
       () => model.select(node),
     )

@@ -29,7 +29,9 @@ export interface InspectorProps {
   actions: InspectorActions;
 }
 
-export const InspectorView = component((props: InspectorProps) => {
+export const InspectorView = component(function InspectorView(
+  props: InspectorProps,
+) {
   const { rect, model, view } = props;
   const bodyHeight = Math.max(0, rect.height - 1);
   const body =
@@ -112,7 +114,7 @@ function elementPanes({ rect, model }: InspectorProps) {
     .width("fill")
     .height(wide ? height : Math.max(0, height - treeHeight - 1));
   return column(
-    breadcrumbs(model),
+    breadcrumbs(model, rect.width - 2),
     wide
       ? row(tree, details).gap(1).width("fill").height(height)
       : column(tree, details).gap(1).width("fill").height(height),

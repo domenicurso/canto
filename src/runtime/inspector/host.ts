@@ -6,12 +6,6 @@ import type { Terminal } from "../../terminal/transport";
 import type { DebugControl } from "./chrome";
 
 import { component } from "../../element/node";
-import { layout, positionOverlays } from "../../layout/arrange";
-import { LayoutInvalidation } from "../../layout/invalidation";
-import { repositionScroll } from "../../layout/scrolling/scroll";
-import { resolveStyles } from "../../layout/styling/resolve";
-import { draw } from "../../render/painting/paint";
-import { Screen as Surface } from "../../render/screen";
 import { unavailableClipboard } from "../../terminal/clipboard";
 import { commitEffects } from "../components/hooks";
 import { reconcile, unmount } from "../components/reconcile";
@@ -22,6 +16,7 @@ import { setScroll, hit } from "../input/focus";
 import { InputRouter } from "../input/router";
 import { overlays } from "../overlays";
 import { composeInspector } from "./composition";
+import { InspectorSurface } from "./surface";
 
 /** A second Canto tree shares output, but never acquires a terminal or inspects itself. */
 export class InspectorHost {
@@ -29,15 +24,22 @@ export class InspectorHost {
   private readonly router: InputRouter;
   private readonly refs: Refs;
   private failure?: unknown;
-  private readonly invalidation = new LayoutInvalidation();
+  private readonly surface = new InspectorSurface();
   keyboard = true;
   private metric?: string;
+  private tooltipRects: Rect[] = [];
+  private pendingCommit = false;
+  private hasModal = false;
   constructor(
     private readonly terminal: Terminal,
     private readonly debug: DebugControl,
     private readonly changed: () => void,
   ) {
-    this.router = new InputRouter(changed, () => terminal.cellSize, {
+    const schedule = () => {
+      this.invalidate();
+      changed();
+    };
+    this.router = new InputRouter(schedule, () => terminal.cellSize, {
       clipboard: () => terminal.clipboard ?? unavailableClipboard,
       terminal: () => terminal,
       selection: () => "text",
@@ -46,10 +48,28 @@ export class InspectorHost {
         changed();
       },
     });
-    this.refs = new Refs(this.router.focus, changed);
+    this.refs = new Refs(this.router.focus, schedule);
   }
-  compose(view: Child, content: Screen, rect: Rect): Screen {
+  get modal(): boolean {
+    return this.hasModal;
+  }
+  invalidate(): void {
+    this.surface.dirty = true;
+  }
+  due(screen: Screen, fps: number): boolean {
+    return this.surface.due(screen, fps);
+  }
+  compose(view: Child | undefined, content: Screen, rect: Rect): Screen {
     if (this.failure !== undefined) throw this.failure;
+    const layer =
+      view === undefined ? this.surface.layer : this.render(view, content);
+    if (!layer) throw new Error("The inspector surface hasn't been rendered.");
+    composeInspector(content, layer, rect);
+    for (const tooltip of this.tooltipRects)
+      composeInspector(content, layer, tooltip);
+    return content;
+  }
+  private render(view: Child, content: Screen): Screen {
     const terminal = this.terminal;
     this.router.flushScroll(this.root);
     reconcile(this.root, component(() => view)(), {
@@ -63,30 +83,16 @@ export class InspectorHost {
       },
     });
     this.router.refresh(this.root);
-    resolveStyles(this.root);
-    this.invalidation.changed(this.root);
-    layout(this.root, content);
-    repositionScroll(this.root);
-    positionOverlays(this.root);
-    const layer = new Surface(
-      content.width,
-      content.height,
-      undefined,
-      content.cellSize,
-    );
-    layer.theme = content.theme;
-    draw(this.root, layer, {
-      x: 0,
-      y: 0,
-      width: content.width,
-      height: content.height,
-    });
+    const layer = this.surface.render(this.root, content).clone();
+    this.surface.layer = layer;
     this.router.selection.present(layer, this.root);
-    const shown = content.clone();
-    composeInspector(shown, layer, rect);
-    for (const tooltip of overlays(this.root))
-      composeInspector(shown, layer, tooltip.layout.rect);
-    return shown;
+    const layers = overlays(this.root);
+    this.tooltipRects = layers.map((node) => node.layout.rect);
+    this.hasModal = layers.some(
+      (node) => node.element.data.props.overlay?.modal === true,
+    );
+    this.pendingCommit = true;
+    return layer;
   }
   get cursor(): string | undefined {
     return this.editing
@@ -169,10 +175,15 @@ export class InspectorHost {
     if (event.action === "press") this.keyboard = false;
   }
   commit(): void {
+    if (!this.pendingCommit) return;
+    this.pendingCommit = false;
     this.refs.commit(this.root);
     commitEffects(this.root);
   }
   clear(): void {
+    this.surface.clear();
+    this.hasModal = false;
+    this.tooltipRects = [];
     this.router.focus.set(undefined);
     this.router.resetPointer();
     unmount(this.root);

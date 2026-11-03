@@ -89,14 +89,14 @@ test("fixture cases, reset, placement, close, and reopening exercise the same in
     expect(terminal.screen?.toString()).toContain("Props");
     click(terminal, "Reset");
     await settle(app);
-    expect(terminal.screen?.toString()).toContain("Geometry");
+    expect(terminal.screen?.toString()).toContain("Props");
   } finally {
     app.stop();
     await running;
   }
 });
 
-test("preview picking captures sample controls and survives resizing and root reloads", async () => {
+test("preview picking captures sample controls and survives resizing and app rerenders", async () => {
   const terminal = new MemoryTerminal(120, 40);
   const app = createApp(InspectorFixture, { terminal });
   const running = app.run();

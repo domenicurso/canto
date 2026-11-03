@@ -81,7 +81,11 @@ function Metadata({ issue, update }: DetailProps): Element {
   ).gap(1);
 }
 
-const Title = component(({ issue, compact, update }: DetailProps): Element => {
+const Title = component(function Title({
+  issue,
+  compact,
+  update,
+}: DetailProps): Element {
   const ref = useRef<ElementRef | null>(null);
   useEffect(() => {
     if (compact || issue.title === "Untitled issue") ref.current?.focus();

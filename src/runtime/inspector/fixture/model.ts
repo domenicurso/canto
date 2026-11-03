@@ -14,7 +14,6 @@ import { resolveStyles } from "../../../layout/styling/resolve";
 import { reconcile, unmount } from "../../components/reconcile";
 import { mounted, walk } from "../../components/tree";
 import { sidebarWidth } from "../chrome";
-import { applyInspectorEdits } from "../edits";
 import { DebugSelection } from "../selection";
 import { sampleScene } from "./sample";
 
@@ -36,20 +35,20 @@ export class InspectorFixtureModel {
   prepare(size: Size): void {
     const scene = this.scene;
     const replaced = scene !== this.preparedScene;
+    const width = this.contentWidth(size);
     reconcile(
       this.root,
-      component(() =>
-        column(
+      component(function FixtureSample() {
+        return column(
           text("").height(1),
-          sampleScene(scene).key(scene).width(this.contentWidth(size)),
-        ).fill(),
-      )(),
+          sampleScene(scene).key(scene).width(width),
+        ).fill();
+      })(),
       {
         app: this.app,
         schedule: this.changed,
       },
     );
-    applyInspectorEdits(this.root);
     resolveStyles(this.root);
     this.invalidation.changed(this.root);
     layout(this.root, size);
@@ -75,7 +74,7 @@ export class InspectorFixtureModel {
     this.root = mounted(component(() => null)(), null);
     this.preparedScene = undefined;
     this.visible = true;
-    this.view = { tab: "elements", picking: false, placement: "overlay" };
+    this.view = { ...this.view, picking: false };
     this.selection.collapsed.clear();
     this.selection.hovered = undefined;
     this.selection.help = undefined;

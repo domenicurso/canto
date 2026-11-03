@@ -9,6 +9,9 @@ import {
   MemoryTerminal,
   text,
 } from "../../../index";
+import { mounted } from "../components/tree";
+import { DebugSelection } from "./selection";
+import { InspectorTree } from "./tree-view";
 
 function pointer(
   terminal: MemoryTerminal,
@@ -104,6 +107,47 @@ test("header actions stay right aligned and switching placement reflows the appl
     click(terminal, " Overlay ");
     await app.flush();
     expect(app.viewport.width).toBe(140);
+  } finally {
+    app.stop();
+    await running;
+  }
+});
+
+test("deep tree indentation remains uncapped and horizontal wheel scrolling reveals full labels", async () => {
+  const root = mounted(column(), null);
+  let parent = root;
+  for (let depth = 0; depth < 35; depth++) {
+    const child = mounted(column(), parent);
+    parent.children = [child];
+    parent = child;
+  }
+  parent.children = [mounted(text("deeply nested target"), parent)];
+  const model = new DebugSelection(() => app.schedule());
+  model.refresh(root);
+  const terminal = new MemoryTerminal(40, 12);
+  const app = createApp(() => InspectorTree({ model, height: 12 }), {
+    terminal,
+  });
+  const running = app.run();
+  try {
+    await Bun.sleep(0);
+    await app.flush();
+    for (const delta of [
+      { deltaY: 100, deltaX: 0 },
+      { deltaY: 0, deltaX: 100 },
+    ]) {
+      terminal.dispatch({
+        type: "mouse",
+        event: { action: "scroll", x: 10, y: 4, button: 0, ...delta },
+      });
+      await app.flush();
+      if (!delta.deltaX)
+        expect(terminal.screen?.toString()).not.toContain("column");
+    }
+    expect(terminal.screen?.toString()).toContain(
+      'text "deeply nested target"',
+    );
+    expect(terminal.screen?.toString()).toContain("37 nodes");
   } finally {
     app.stop();
     await running;

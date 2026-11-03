@@ -1,7 +1,9 @@
 import type { KeyEvent, PointerEvent } from "../../element/events";
 import type { Mounted } from "../components/tree";
+import type { DetailTab } from "./properties";
 
 import { hit } from "../input/focus";
+import { selectionPath, resolveSelection } from "./selection-path";
 
 export interface InspectorEntry {
   node: Mounted;
@@ -9,6 +11,7 @@ export interface InspectorEntry {
   id: number;
 }
 export class DebugSelection {
+  detailTab: DetailTab = "Layout";
   root?: Mounted;
   selected?: Mounted;
   hovered?: Mounted;
@@ -19,10 +22,13 @@ export class DebugSelection {
   readonly collapsed = new Set<Mounted>();
   private readonly ids = new WeakMap<Mounted, number>();
   private nextId = 0;
+  private path?: ReturnType<typeof selectionPath>;
   constructor(private readonly changed: () => void) {}
   refresh(root: Mounted): void {
     this.root = root;
-    if (!this.selected?.active) this.selected = undefined;
+    if (this.selected && !this.selected.active)
+      this.selected = this.path && resolveSelection(root, this.path);
+    this.path = this.selected ? selectionPath(this.selected) : undefined;
     if (!this.hovered?.active) this.hovered = undefined;
     for (const node of this.collapsed)
       if (!node.active) this.collapsed.delete(node);
@@ -40,6 +46,7 @@ export class DebugSelection {
   }
   select(node: Mounted | undefined): void {
     this.selected = node;
+    this.path = node ? selectionPath(node) : undefined;
     this.changed();
   }
   hover(node: Mounted | undefined): void {
@@ -53,6 +60,7 @@ export class DebugSelection {
       this.root && hit(this.root, this.point, this.root.layout.rect);
     if (event.action === "press" && event.button === 0) {
       this.selected = this.hovered;
+      this.path = this.selected ? selectionPath(this.selected) : undefined;
       this.picking = false;
       for (let parent = this.selected?.parent; parent; parent = parent.parent)
         this.collapsed.delete(parent);
@@ -74,14 +82,22 @@ export class DebugSelection {
     } else if (this.collapsed.has(node)) this.toggle(node);
     else this.select(node.children[0] ?? node);
   }
-  private collect(node: Mounted, depth = 0): InspectorEntry[] {
-    const id = this.ids.get(node) ?? this.nextId++;
-    this.ids.set(node, id);
-    return [
-      { node, depth, id },
-      ...(this.collapsed.has(node)
-        ? []
-        : node.children.flatMap((child) => this.collect(child, depth + 1))),
-    ];
+  private collect(root: Mounted): InspectorEntry[] {
+    const entries: InspectorEntry[] = [];
+    const pending = [{ node: root, depth: 0 }];
+    while (pending.length) {
+      const entry = pending.pop();
+      if (!entry) break;
+      const { node, depth } = entry;
+      const id = this.ids.get(node) ?? this.nextId++;
+      this.ids.set(node, id);
+      entries.push({ node, depth, id });
+      if (this.collapsed.has(node)) continue;
+      for (let index = node.children.length - 1; index >= 0; index--) {
+        const child = node.children[index];
+        if (child) pending.push({ node: child, depth: depth + 1 });
+      }
+    }
+    return entries;
   }
 }

@@ -17,7 +17,6 @@ import {
 import { RetainedPaint } from "../render/retained";
 import { cursorOutput } from "./editor/cursor";
 import { FrameRate } from "./frame-rate";
-import { applyInspectorEdits } from "./inspector/edits";
 
 interface FrameInput {
   root: Mounted;
@@ -152,7 +151,6 @@ export class Frames {
   }
   private prepare(root: Mounted) {
     const start = performance.now();
-    applyInspectorEdits(root);
     resolveStyles(root);
     const viewport = this.viewport;
     const size = `${viewport.width}:${viewport.height}`;

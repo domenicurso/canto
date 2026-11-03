@@ -94,13 +94,13 @@ test("click pins a target without activating it; the tree navigates parents and 
       expect(app.debug.picking).toBe(false);
       expect(presses).toBe(0);
       expect(terminal.screen?.toString()).toContain(
-        "component / column / button",
+        "Anonymous / column / button",
       );
       expect(terminal.screen?.toString()).toContain("Geometry");
       terminal.dispatch({ type: "key", event: keyEvent("left") });
       terminal.dispatch({ type: "key", event: keyEvent("left") });
       await app.flush();
-      expect(terminal.screen?.toString()).toContain("component / column");
+      expect(terminal.screen?.toString()).toContain("Anonymous / column");
       app.debug.setVisible(false);
       terminal.dispatch({ type: "key", event: keyEvent("X", { text: "X" }) });
       await app.flush();

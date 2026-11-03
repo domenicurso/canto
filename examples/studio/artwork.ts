@@ -11,7 +11,7 @@ import { pixelArt } from "../pixel-art";
 import { action, colors, surface } from "./theme";
 
 const artwork = pixelArt();
-export const Artwork = component(() => {
+export const Artwork = component(function Artwork() {
   const [open, setOpen] = useState(false);
   const close = (): void => setOpen(false);
   return column(

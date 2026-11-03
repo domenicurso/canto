@@ -6,6 +6,7 @@ import type { Hook } from "./hooks";
 
 export interface Mounted {
   element: Element;
+  descriptionOverride?: (element: Element) => Element;
   parent: Mounted | null;
   children: Mounted[];
   active: boolean;
@@ -65,7 +66,18 @@ export function mounted(element: Element, parent: Mounted | null): Mounted {
   };
 }
 export function walk(root: Mounted): Mounted[] {
-  return [root, ...root.children.flatMap(walk)];
+  const result: Mounted[] = [];
+  const pending = [root];
+  while (pending.length) {
+    const node = pending.pop();
+    if (!node) break;
+    result.push(node);
+    for (let index = node.children.length - 1; index >= 0; index--) {
+      const child = node.children[index];
+      if (child) pending.push(child);
+    }
+  }
+  return result;
 }
 export function markDirty(node: Mounted): void {
   node.component.dirty = true;

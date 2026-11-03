@@ -6,7 +6,13 @@ export interface ErrorBoundaryProps {
   fallback: (error: unknown, reset: () => void) => Child;
 }
 
-const Content = component(({ render }: { render: () => Child }) => render());
+const Content = component(function BoundaryContent({
+  render,
+}: {
+  render: () => Child;
+}) {
+  return render();
+});
 
 /** Keep hook state in a child so recovery always remounts the failed content. */
 export function errorBoundary(
@@ -17,7 +23,11 @@ export function errorBoundary(
     kind: "component",
     children: [],
     props: { errorBoundary: { fallback } },
-    call: { identity: errorBoundary, render: () => Content({ render }) },
+    call: {
+      name: "ErrorBoundary",
+      identity: errorBoundary,
+      render: () => Content({ render }),
+    },
   });
 }
 

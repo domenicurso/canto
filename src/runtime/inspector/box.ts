@@ -1,6 +1,7 @@
 import type { Rect } from "../../layout/geometry";
 import type { Screen } from "../../render/screen";
 import type { Mounted } from "../components/tree";
+import type { DebugSelection } from "./selection";
 
 import { contains, inset, intersect } from "../../layout/geometry";
 import { composite } from "../../render/opacity";
@@ -100,4 +101,15 @@ function paintGaps(screen: Screen, node: Mounted, clip: Rect): void {
       for (let x = area.x; x < area.x + area.width; x++)
         tint(screen, x, y, boxColors.gap);
   }
+}
+
+export function highlightSelection(
+  screen: Screen,
+  model: DebugSelection,
+  enabled: boolean,
+): Screen {
+  const shown = screen.clone();
+  const node = model.hovered ?? (model.picking ? undefined : model.selected);
+  if (enabled && node?.active) paintBox(shown, node);
+  return shown;
 }
