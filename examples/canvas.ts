@@ -25,12 +25,16 @@ export function Canvas() {
   );
   useEffect(() => {
     if (paused) return;
-    const timer = setInterval(
-      () => setPhase((previous) => previous + 0.0625),
-      33,
-    );
+    let previousTime = performance.now();
+    const timer = setInterval(() => {
+      const now = performance.now();
+      const elapsed = now - previousTime;
+      previousTime = now;
+      setPhase((previous) => previous + (elapsed / 33) * 0.0625);
+    }, 0);
     return () => clearInterval(timer);
   }, [paused]);
+
   return column(
     text("Custom canvas · animated sine wave").bold(),
     canvas(
@@ -58,9 +62,6 @@ export function Canvas() {
       button("Reset", () => setPhase(0)).use(action),
       button("Quit", () => app.stop()).use(action),
     ).gap(2),
-    text(
-      "RGBA pixel waveform · Kitty → Sixel → quadrant blocks · resize to fit.",
-    ).dim(),
   )
     .gap(1)
     .fill();
