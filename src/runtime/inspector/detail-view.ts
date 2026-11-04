@@ -70,7 +70,9 @@ function propertyContent(
               node,
               width: width - 2,
               changed: () => model.select(node),
-            }).key(key)
+            })
+              .key(key)
+              .paddingTop(1)
           : PropertyRow({
               node,
               line,
